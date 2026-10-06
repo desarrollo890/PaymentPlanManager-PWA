@@ -1,8 +1,8 @@
 # Contratos y referencia financiera web
 
-Los contratos v1 definen trece entidades y revisiones financieras. El motor TypeScript y la sincronizaci?n del producto siguen pendientes. La [referencia financiera](../tests/fixtures/financial-reference.v1.json) es una exportaci?n sint?tica independiente de datos personales; se usa para preservar reglas durante la implementaci?n.
+Los contratos v1 definen trece entidades y revisiones financieras. El motor TypeScript y la sincronización del producto siguen pendientes. La [referencia financiera](../tests/fixtures/financial-reference.v1.json) es una exportación sintética independiente de datos personales; se usa para preservar reglas durante la implementación.
 
-Incluye ocho escenarios: deuda inicial del periodo actual, deuda libre para dividir, edici?n/pagos de MSI/MCI, compra y reclasificaci?n, plazo de Plata, objetivo bancario confirmado, saldo a favor e intereses futuros y pr?stamos/presupuesto. Incluye adem?s 240 fechas de quincena, 120 cuotas y tres amortizaciones. La aplicaci?n no necesita proyectos .NET para compilar ni ejecutar las pruebas de este repositorio.
+Incluye ocho escenarios: deuda inicial del periodo actual, deuda libre para dividir, edición/pagos de MSI/MCI, compra y reclasificación, plazo de Plata, objetivo bancario confirmado, saldo a favor e intereses futuros y préstamos/presupuesto. Incluye además 240 fechas de quincena, 120 cuotas y tres amortizaciones. La aplicación no necesita proyectos .NET para compilar ni ejecutar las pruebas de este repositorio.
 
 ## Formato de datos v1
 
@@ -84,4 +84,4 @@ npm run check
 npm run test:architecture
 ```
 
-La referencia financiera es una entrada sint?tica versionada, no una cartera de usuario. Node se usa para desarrollo y CI; Pages sirve solamente JavaScript, CSS, HTML y assets est?ticos.
+La referencia financiera es una entrada sintética versionada, no una cartera de usuario. Node se usa para desarrollo y CI; Pages sirve solamente JavaScript, CSS, HTML y assets estáticos.
