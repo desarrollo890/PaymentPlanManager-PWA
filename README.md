@@ -6,9 +6,11 @@ Vista previa publicada: https://desarrollo890.github.io/PaymentPlanManager-PWA/
 
 ## Ejecutar y verificar
 
-Requiere Node 24.13.0 y npm. Desde la ra?z:
+Requiere Node 24.13.0 y npm. Clonar y abrir este repositorio en una carpeta independiente. Si tambi?n se conserva la versi?n .NET, usar carpetas hermanas `PaymentPlanManager` y `PaymentPlanManager-PWA`, cada una con su propio workspace de VS Code.
 
 ```sh
+git clone https://github.com/desarrollo890/PaymentPlanManager-PWA.git
+cd PaymentPlanManager-PWA
 npm ci --ignore-scripts
 npm ci --prefix tools/architecture --ignore-scripts
 npm run dev
