@@ -1,0 +1,62 @@
+name: Web checks and Pages preview
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tools/architecture/package-lock.json
+      - name: Install workspace dependencies
+        run: npm ci --ignore-scripts
+      - name: Install architecture check dependencies
+        run: npm ci --prefix tools/architecture --ignore-scripts
+      - name: Check contracts, boundaries, types, tests and static build
+        run: npm run check
+      - name: Check architecture prototypes
+        run: npm run test:architecture
+      - name: Install browser for synthetic UI checks
+        run: npx playwright install --with-deps chromium
+      - name: Check desktop, mobile and synthetic Google probe
+        run: npm run test:browser
+      - name: Upload static Pages preview
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: apps/pwa/dist
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages preview
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

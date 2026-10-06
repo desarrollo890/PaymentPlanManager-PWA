@@ -1,0 +1,5575 @@
+{
+  "fixtureVersion": 1,
+  "reference": "Synthetic financial reference v1",
+  "synthetic": true,
+  "currency": "MXN",
+  "timeZone": "America/Mexico_City",
+  "initialInstant": "2026-10-03T18:00:00Z",
+  "cases": [
+    {
+      "id": "initial-current-period",
+      "source": "PaymentPlanManager.Application",
+      "steps": [
+        {
+          "action": "createCard",
+          "input": {
+            "name": "Inicial",
+            "limitCents": 2000000,
+            "availableCents": 1000000,
+            "debtCents": 1000000,
+            "cutDay": 11,
+            "dueDay": 25,
+            "date": "2026-10-03",
+            "initialDebtOrigin": "currentPeriod"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 1000000,
+            "creditCents": 0,
+            "pendingCents": 1000000,
+            "horizon": "2026-10-31",
+            "cards": [
+              {
+                "name": "Inicial",
+                "debtCents": 1000000,
+                "availableCents": 1000000,
+                "installmentDebtCents": 0,
+                "freeDebtCents": 1000000,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 1000000,
+                    "pendingCents": 1000000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [],
+                "projections": []
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 1000000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -1000000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "available-debt",
+      "source": "PaymentPlanManager.Application",
+      "steps": [
+        {
+          "action": "createCard",
+          "input": {
+            "name": "División",
+            "limitCents": 2000000,
+            "availableCents": 1000000,
+            "debtCents": 1000000,
+            "cutDay": 11,
+            "dueDay": 25
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 1000000,
+            "creditCents": 0,
+            "pendingCents": 1000000,
+            "horizon": "2026-10-31",
+            "cards": [
+              {
+                "name": "División",
+                "debtCents": 1000000,
+                "availableCents": 1000000,
+                "installmentDebtCents": 0,
+                "freeDebtCents": 1000000,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 1000000,
+                    "pendingCents": 1000000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [],
+                "projections": []
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 1000000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -1000000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        },
+        {
+          "action": "divideDebt",
+          "input": {
+            "card": "División",
+            "plan": "Primer plan",
+            "principalCents": 600000,
+            "months": 3,
+            "firstCut": "2026-10-11"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 1000000,
+            "creditCents": 0,
+            "pendingCents": 600000,
+            "horizon": "2026-12-25",
+            "cards": [
+              {
+                "name": "División",
+                "debtCents": 1000000,
+                "availableCents": 1000000,
+                "installmentDebtCents": 600000,
+                "freeDebtCents": 400000,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 600000,
+                    "pendingCents": 600000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Primer plan",
+                    "months": 3,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 600000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 200000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 200000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 600000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -600000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              }
+            ]
+          }
+        },
+        {
+          "action": "recordExpense",
+          "input": {
+            "card": "División",
+            "amountCents": 50000,
+            "date": "2026-10-03"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 1050000,
+            "creditCents": 0,
+            "pendingCents": 650000,
+            "horizon": "2026-12-25",
+            "cards": [
+              {
+                "name": "División",
+                "debtCents": 1050000,
+                "availableCents": 950000,
+                "installmentDebtCents": 600000,
+                "freeDebtCents": 450000,
+                "movements": 1,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 650000,
+                    "pendingCents": 650000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Primer plan",
+                    "months": 3,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 600000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 200000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 200000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 650000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -650000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              }
+            ]
+          }
+        },
+        {
+          "action": "recordPayment",
+          "input": {
+            "card": "División",
+            "amountCents": 150000,
+            "date": "2026-10-03"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 900000,
+            "creditCents": 0,
+            "pendingCents": 500000,
+            "horizon": "2026-12-25",
+            "cards": [
+              {
+                "name": "División",
+                "debtCents": 900000,
+                "availableCents": 1100000,
+                "installmentDebtCents": 600000,
+                "freeDebtCents": 300000,
+                "movements": 2,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 500000,
+                    "pendingCents": 500000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Primer plan",
+                    "months": 3,
+                    "cancelled": false,
+                    "canEditAmounts": false,
+                    "remainingCents": 600000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 200000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 200000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -150000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 500000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -500000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              }
+            ]
+          }
+        },
+        {
+          "action": "schedulePayment",
+          "input": {
+            "card": "División",
+            "amountCents": 50000,
+            "date": "2026-10-04"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 900000,
+            "creditCents": 0,
+            "pendingCents": 500000,
+            "horizon": "2026-12-25",
+            "cards": [
+              {
+                "name": "División",
+                "debtCents": 900000,
+                "availableCents": 1100000,
+                "installmentDebtCents": 600000,
+                "freeDebtCents": 300000,
+                "movements": 3,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 500000,
+                    "pendingCents": 500000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Primer plan",
+                    "months": 3,
+                    "cancelled": false,
+                    "canEditAmounts": false,
+                    "remainingCents": 600000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 200000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 200000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -150000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 500000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -500000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              }
+            ]
+          }
+        },
+        {
+          "action": "divideDebt",
+          "input": {
+            "card": "División",
+            "plan": "Segundo plan",
+            "principalCents": 300000,
+            "months": 3,
+            "firstCut": "2026-10-11"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 900000,
+            "creditCents": 0,
+            "pendingCents": 300000,
+            "horizon": "2026-12-25",
+            "cards": [
+              {
+                "name": "División",
+                "debtCents": 900000,
+                "availableCents": 1100000,
+                "installmentDebtCents": 900000,
+                "freeDebtCents": 0,
+                "movements": 3,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 300000,
+                    "pendingCents": 300000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Primer plan",
+                    "months": 3,
+                    "cancelled": false,
+                    "canEditAmounts": false,
+                    "remainingCents": 600000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  },
+                  {
+                    "description": "Segundo plan",
+                    "months": 3,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 300000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 100000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 100000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 100000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 300000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 300000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -150000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 300000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -300000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 300000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -300000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 300000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -300000
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit-and-pay-installment",
+      "source": "PaymentPlanManager.Application",
+      "steps": [
+        {
+          "action": "createCard",
+          "input": {
+            "name": "Editable",
+            "limitCents": 2000000,
+            "availableCents": 600000,
+            "debtCents": 1400000,
+            "cutDay": 11,
+            "dueDay": 25
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 1400000,
+            "creditCents": 0,
+            "pendingCents": 1400000,
+            "horizon": "2026-10-31",
+            "cards": [
+              {
+                "name": "Editable",
+                "debtCents": 1400000,
+                "availableCents": 600000,
+                "installmentDebtCents": 0,
+                "freeDebtCents": 1400000,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 1400000,
+                    "pendingCents": 1400000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [],
+                "projections": []
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 1400000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -1400000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        },
+        {
+          "action": "divideDebt",
+          "input": {
+            "card": "Editable",
+            "plan": "Plan",
+            "principalCents": 600000,
+            "months": 3,
+            "firstCut": "2026-10-11"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 1400000,
+            "creditCents": 0,
+            "pendingCents": 1000000,
+            "horizon": "2026-12-25",
+            "cards": [
+              {
+                "name": "Editable",
+                "debtCents": 1400000,
+                "availableCents": 600000,
+                "installmentDebtCents": 600000,
+                "freeDebtCents": 800000,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 1000000,
+                    "pendingCents": 1000000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Plan",
+                    "months": 3,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 600000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 200000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 200000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 200000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 1000000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -1000000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 200000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -200000
+              }
+            ]
+          }
+        },
+        {
+          "action": "editPlan",
+          "input": {
+            "card": "Editable",
+            "plan": "Plan",
+            "principalCents": 1400000,
+            "interestCents": 140000,
+            "months": 14,
+            "firstCut": "2026-10-11"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 1400000,
+            "creditCents": 0,
+            "pendingCents": 110000,
+            "horizon": "2027-11-25",
+            "cards": [
+              {
+                "name": "Editable",
+                "debtCents": 1400000,
+                "availableCents": 600000,
+                "installmentDebtCents": 1400000,
+                "freeDebtCents": 0,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 110000,
+                    "pendingCents": 110000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Plan",
+                    "months": 14,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 1540000,
+                    "futureInterestCents": 140000,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 4,
+                        "cutDate": "2027-01-11",
+                        "dueDate": "2027-01-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 5,
+                        "cutDate": "2027-02-11",
+                        "dueDate": "2027-02-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 6,
+                        "cutDate": "2027-03-11",
+                        "dueDate": "2027-03-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 7,
+                        "cutDate": "2027-04-11",
+                        "dueDate": "2027-04-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 8,
+                        "cutDate": "2027-05-11",
+                        "dueDate": "2027-05-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 9,
+                        "cutDate": "2027-06-11",
+                        "dueDate": "2027-06-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 10,
+                        "cutDate": "2027-07-11",
+                        "dueDate": "2027-07-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 11,
+                        "cutDate": "2027-08-11",
+                        "dueDate": "2027-08-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 12,
+                        "cutDate": "2027-09-11",
+                        "dueDate": "2027-09-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 13,
+                        "cutDate": "2027-10-11",
+                        "dueDate": "2027-10-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 14,
+                        "cutDate": "2027-11-11",
+                        "dueDate": "2027-11-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-01-11",
+                    "dueDate": "2027-01-25",
+                    "payday": "2027-01-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-02-11",
+                    "dueDate": "2027-02-25",
+                    "payday": "2027-02-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-03-11",
+                    "dueDate": "2027-03-25",
+                    "payday": "2027-03-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-04-11",
+                    "dueDate": "2027-04-25",
+                    "payday": "2027-04-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-05-11",
+                    "dueDate": "2027-05-25",
+                    "payday": "2027-05-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-06-11",
+                    "dueDate": "2027-06-25",
+                    "payday": "2027-06-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-07-11",
+                    "dueDate": "2027-07-25",
+                    "payday": "2027-07-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-08-11",
+                    "dueDate": "2027-08-25",
+                    "payday": "2027-08-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-09-11",
+                    "dueDate": "2027-09-25",
+                    "payday": "2027-09-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-10-11",
+                    "dueDate": "2027-10-25",
+                    "payday": "2027-10-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-11-11",
+                    "dueDate": "2027-11-25",
+                    "payday": "2027-11-15",
+                    "pendingCents": 110000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2026-12-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-01-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-01-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-02-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-02-28",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-03-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-03-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-04-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-04-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-05-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-05-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-06-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-06-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-07-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-07-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-08-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-08-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-09-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-10-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-11-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              }
+            ]
+          }
+        },
+        {
+          "action": "payQuotaPrincipal",
+          "input": {
+            "card": "Editable",
+            "plan": "Plan",
+            "quota": 2,
+            "principalCents": 100000,
+            "date": "2026-10-03"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 1300000,
+            "creditCents": 0,
+            "pendingCents": 110000,
+            "horizon": "2027-11-25",
+            "cards": [
+              {
+                "name": "Editable",
+                "debtCents": 1300000,
+                "availableCents": 700000,
+                "installmentDebtCents": 1300000,
+                "freeDebtCents": 0,
+                "movements": 1,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 110000,
+                    "pendingCents": 110000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Plan",
+                    "months": 14,
+                    "cancelled": false,
+                    "canEditAmounts": false,
+                    "remainingCents": 1440000,
+                    "futureInterestCents": 140000,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 100000
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 4,
+                        "cutDate": "2027-01-11",
+                        "dueDate": "2027-01-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 5,
+                        "cutDate": "2027-02-11",
+                        "dueDate": "2027-02-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 6,
+                        "cutDate": "2027-03-11",
+                        "dueDate": "2027-03-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 7,
+                        "cutDate": "2027-04-11",
+                        "dueDate": "2027-04-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 8,
+                        "cutDate": "2027-05-11",
+                        "dueDate": "2027-05-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 9,
+                        "cutDate": "2027-06-11",
+                        "dueDate": "2027-06-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 10,
+                        "cutDate": "2027-07-11",
+                        "dueDate": "2027-07-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 11,
+                        "cutDate": "2027-08-11",
+                        "dueDate": "2027-08-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 12,
+                        "cutDate": "2027-09-11",
+                        "dueDate": "2027-09-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 13,
+                        "cutDate": "2027-10-11",
+                        "dueDate": "2027-10-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 14,
+                        "cutDate": "2027-11-11",
+                        "dueDate": "2027-11-25",
+                        "principalCents": 100000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 10000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-01-11",
+                    "dueDate": "2027-01-25",
+                    "payday": "2027-01-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-02-11",
+                    "dueDate": "2027-02-25",
+                    "payday": "2027-02-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-03-11",
+                    "dueDate": "2027-03-25",
+                    "payday": "2027-03-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-04-11",
+                    "dueDate": "2027-04-25",
+                    "payday": "2027-04-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-05-11",
+                    "dueDate": "2027-05-25",
+                    "payday": "2027-05-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-06-11",
+                    "dueDate": "2027-06-25",
+                    "payday": "2027-06-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-07-11",
+                    "dueDate": "2027-07-25",
+                    "payday": "2027-07-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-08-11",
+                    "dueDate": "2027-08-25",
+                    "payday": "2027-08-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-09-11",
+                    "dueDate": "2027-09-25",
+                    "payday": "2027-09-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-10-11",
+                    "dueDate": "2027-10-25",
+                    "payday": "2027-10-15",
+                    "pendingCents": 110000
+                  },
+                  {
+                    "cutDate": "2027-11-11",
+                    "dueDate": "2027-11-25",
+                    "payday": "2027-11-15",
+                    "pendingCents": 110000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -100000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 10000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -10000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2026-12-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-01-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-01-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-02-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-02-28",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-03-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-03-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-04-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-04-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-05-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-05-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-06-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-06-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-07-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-07-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-08-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-08-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-09-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-10-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              },
+              {
+                "payday": "2027-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-11-15",
+                "pendingCents": 110000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -110000
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "purchase-reclassification",
+      "source": "PaymentPlanManager.Application",
+      "steps": [
+        {
+          "action": "createCard",
+          "input": {
+            "name": "Compra",
+            "limitCents": 500000,
+            "availableCents": 500000,
+            "debtCents": 0,
+            "cutDay": 11,
+            "dueDay": 25
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 0,
+            "creditCents": 0,
+            "pendingCents": 0,
+            "horizon": "2026-10-31",
+            "cards": [
+              {
+                "name": "Compra",
+                "debtCents": 0,
+                "availableCents": 500000,
+                "installmentDebtCents": 0,
+                "freeDebtCents": 0,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 0,
+                    "pendingCents": 0,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [],
+                "projections": []
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        },
+        {
+          "action": "purchaseInstallments",
+          "input": {
+            "card": "Compra",
+            "plan": "Compra financiada",
+            "principalCents": 90000,
+            "months": 3,
+            "firstCut": "2026-10-11",
+            "date": "2026-10-03"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 90000,
+            "creditCents": 0,
+            "pendingCents": 30000,
+            "horizon": "2026-12-25",
+            "cards": [
+              {
+                "name": "Compra",
+                "debtCents": 90000,
+                "availableCents": 410000,
+                "installmentDebtCents": 90000,
+                "freeDebtCents": 0,
+                "movements": 1,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 30000,
+                    "pendingCents": 30000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Compra financiada",
+                    "months": 3,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 90000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 30000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 30000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 30000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 30000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 30000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 30000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -30000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 30000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -30000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 30000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -30000
+              }
+            ]
+          }
+        },
+        {
+          "action": "editPlan",
+          "input": {
+            "card": "Compra",
+            "plan": "Compra financiada",
+            "principalCents": 60000,
+            "months": 6,
+            "firstCut": "2026-10-11"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 90000,
+            "creditCents": 0,
+            "pendingCents": 40000,
+            "horizon": "2027-03-25",
+            "cards": [
+              {
+                "name": "Compra",
+                "debtCents": 90000,
+                "availableCents": 410000,
+                "installmentDebtCents": 60000,
+                "freeDebtCents": 30000,
+                "movements": 1,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 40000,
+                    "pendingCents": 40000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Compra financiada",
+                    "months": 6,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 60000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 10000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 10000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 3,
+                        "cutDate": "2026-12-11",
+                        "dueDate": "2026-12-25",
+                        "principalCents": 10000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 4,
+                        "cutDate": "2027-01-11",
+                        "dueDate": "2027-01-25",
+                        "principalCents": 10000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 5,
+                        "cutDate": "2027-02-11",
+                        "dueDate": "2027-02-25",
+                        "principalCents": 10000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 6,
+                        "cutDate": "2027-03-11",
+                        "dueDate": "2027-03-25",
+                        "principalCents": 10000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 10000
+                  },
+                  {
+                    "cutDate": "2026-12-11",
+                    "dueDate": "2026-12-25",
+                    "payday": "2026-12-15",
+                    "pendingCents": 10000
+                  },
+                  {
+                    "cutDate": "2027-01-11",
+                    "dueDate": "2027-01-25",
+                    "payday": "2027-01-15",
+                    "pendingCents": 10000
+                  },
+                  {
+                    "cutDate": "2027-02-11",
+                    "dueDate": "2027-02-25",
+                    "payday": "2027-02-15",
+                    "pendingCents": 10000
+                  },
+                  {
+                    "cutDate": "2027-03-11",
+                    "dueDate": "2027-03-25",
+                    "payday": "2027-03-15",
+                    "pendingCents": 10000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 40000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -40000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 10000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -10000
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 10000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -10000
+              },
+              {
+                "payday": "2026-12-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-01-15",
+                "pendingCents": 10000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -10000
+              },
+              {
+                "payday": "2027-01-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-02-15",
+                "pendingCents": 10000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -10000
+              },
+              {
+                "payday": "2027-02-28",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2027-03-15",
+                "pendingCents": 10000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -10000
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "plata-deadline",
+      "source": "PaymentPlanManager.Application",
+      "steps": [
+        {
+          "action": "createCard",
+          "input": {
+            "name": "Plata",
+            "limitCents": 100000,
+            "availableCents": 60000,
+            "debtCents": 40000,
+            "cutDay": 2,
+            "dueDay": 2,
+            "dueMonthOffset": 1
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 40000,
+            "creditCents": 0,
+            "pendingCents": 40000,
+            "horizon": "2026-12-02",
+            "cards": [
+              {
+                "name": "Plata",
+                "debtCents": 40000,
+                "availableCents": 60000,
+                "installmentDebtCents": 0,
+                "freeDebtCents": 40000,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-11-02",
+                    "dueDate": "2026-12-02",
+                    "payday": "2026-11-30",
+                    "targetCents": 40000,
+                    "pendingCents": 40000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [],
+                "projections": []
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 40000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -40000
+              }
+            ]
+          }
+        },
+        {
+          "action": "divideDebt",
+          "input": {
+            "card": "Plata",
+            "plan": "Plata MSI",
+            "principalCents": 40000,
+            "months": 2,
+            "firstCut": "2026-11-02"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 40000,
+            "creditCents": 0,
+            "pendingCents": 20000,
+            "horizon": "2027-01-02",
+            "cards": [
+              {
+                "name": "Plata",
+                "debtCents": 40000,
+                "availableCents": 60000,
+                "installmentDebtCents": 40000,
+                "freeDebtCents": 0,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-11-02",
+                    "dueDate": "2026-12-02",
+                    "payday": "2026-11-30",
+                    "targetCents": 20000,
+                    "pendingCents": 20000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "Plata MSI",
+                    "months": 2,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 40000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-11-02",
+                        "dueDate": "2026-12-02",
+                        "principalCents": 20000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-12-02",
+                        "dueDate": "2027-01-02",
+                        "principalCents": 20000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-12-02",
+                    "dueDate": "2027-01-02",
+                    "payday": "2026-12-31",
+                    "pendingCents": 20000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-30",
+                "pendingCents": 20000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -20000
+              },
+              {
+                "payday": "2026-12-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-12-31",
+                "pendingCents": 20000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -20000
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "bank-confirmed-target",
+      "source": "PaymentPlanManager.Application",
+      "steps": [
+        {
+          "action": "createCard",
+          "input": {
+            "name": "Banco confirmado",
+            "limitCents": 200000,
+            "availableCents": 100000,
+            "debtCents": 100000,
+            "cutDay": 3,
+            "dueDay": 25
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 100000,
+            "creditCents": 0,
+            "pendingCents": 100000,
+            "horizon": "2026-11-25",
+            "cards": [
+              {
+                "name": "Banco confirmado",
+                "debtCents": 100000,
+                "availableCents": 100000,
+                "installmentDebtCents": 0,
+                "freeDebtCents": 100000,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-03",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 100000,
+                    "pendingCents": 100000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-03",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 0
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 100000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -100000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        },
+        {
+          "action": "divideDebt",
+          "input": {
+            "card": "Banco confirmado",
+            "plan": "MSI",
+            "principalCents": 100000,
+            "months": 2,
+            "firstCut": "2026-10-03"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 100000,
+            "creditCents": 0,
+            "pendingCents": 50000,
+            "horizon": "2026-11-25",
+            "cards": [
+              {
+                "name": "Banco confirmado",
+                "debtCents": 100000,
+                "availableCents": 100000,
+                "installmentDebtCents": 100000,
+                "freeDebtCents": 0,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-03",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 50000,
+                    "pendingCents": 50000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "MSI",
+                    "months": 2,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 100000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-03",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 50000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-03",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 50000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-03",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 50000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 50000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -50000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 50000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -50000
+              }
+            ]
+          }
+        },
+        {
+          "action": "recordBankTarget",
+          "input": {
+            "card": "Banco confirmado",
+            "cutDate": "2026-10-03",
+            "dueDate": "2026-10-25",
+            "targetCents": 10000
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 100000,
+            "creditCents": 0,
+            "pendingCents": 10000,
+            "horizon": "2026-11-25",
+            "cards": [
+              {
+                "name": "Banco confirmado",
+                "debtCents": 100000,
+                "availableCents": 100000,
+                "installmentDebtCents": 100000,
+                "freeDebtCents": 0,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-03",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 10000,
+                    "pendingCents": 10000,
+                    "estimated": false,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "MSI",
+                    "months": 2,
+                    "cancelled": false,
+                    "canEditAmounts": false,
+                    "remainingCents": 100000,
+                    "futureInterestCents": 0,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-03",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 50000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-03",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 50000,
+                        "interestCents": 0,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-03",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 90000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 10000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -10000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 90000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -90000
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "credit-covers-future-interest",
+      "source": "PaymentPlanManager.Application",
+      "steps": [
+        {
+          "action": "createCard",
+          "input": {
+            "name": "Saldo a favor",
+            "limitCents": 200000,
+            "availableCents": 100000,
+            "debtCents": 100000,
+            "cutDay": 11,
+            "dueDay": 25
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 100000,
+            "creditCents": 0,
+            "pendingCents": 100000,
+            "horizon": "2026-10-31",
+            "cards": [
+              {
+                "name": "Saldo a favor",
+                "debtCents": 100000,
+                "availableCents": 100000,
+                "installmentDebtCents": 0,
+                "freeDebtCents": 100000,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 100000,
+                    "pendingCents": 100000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [],
+                "projections": []
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 100000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -100000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        },
+        {
+          "action": "divideDebt",
+          "input": {
+            "card": "Saldo a favor",
+            "plan": "MCI",
+            "principalCents": 100000,
+            "interestCents": 20000,
+            "months": 2,
+            "firstCut": "2026-10-11"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 100000,
+            "creditCents": 0,
+            "pendingCents": 60000,
+            "horizon": "2026-11-25",
+            "cards": [
+              {
+                "name": "Saldo a favor",
+                "debtCents": 100000,
+                "availableCents": 100000,
+                "installmentDebtCents": 100000,
+                "freeDebtCents": 0,
+                "movements": 0,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 60000,
+                    "pendingCents": 60000,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "MCI",
+                    "months": 2,
+                    "cancelled": false,
+                    "canEditAmounts": true,
+                    "remainingCents": 120000,
+                    "futureInterestCents": 20000,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 50000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 50000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 60000
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 60000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -60000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 60000,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -60000
+              }
+            ]
+          }
+        },
+        {
+          "action": "recordPayment",
+          "input": {
+            "card": "Saldo a favor",
+            "amountCents": 120000,
+            "date": "2026-10-03"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 0,
+            "creditCents": 20000,
+            "pendingCents": 0,
+            "horizon": "2026-11-25",
+            "cards": [
+              {
+                "name": "Saldo a favor",
+                "debtCents": -20000,
+                "availableCents": 220000,
+                "installmentDebtCents": 0,
+                "freeDebtCents": 0,
+                "movements": 1,
+                "cuts": [
+                  {
+                    "cutDate": "2026-10-11",
+                    "dueDate": "2026-10-25",
+                    "payday": "2026-10-15",
+                    "targetCents": 0,
+                    "pendingCents": 0,
+                    "estimated": true,
+                    "current": true
+                  }
+                ],
+                "plans": [
+                  {
+                    "description": "MCI",
+                    "months": 2,
+                    "cancelled": false,
+                    "canEditAmounts": false,
+                    "remainingCents": 20000,
+                    "futureInterestCents": 20000,
+                    "quotas": [
+                      {
+                        "number": 1,
+                        "cutDate": "2026-10-11",
+                        "dueDate": "2026-10-25",
+                        "principalCents": 50000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      },
+                      {
+                        "number": 2,
+                        "cutDate": "2026-11-11",
+                        "dueDate": "2026-11-25",
+                        "principalCents": 50000,
+                        "interestCents": 10000,
+                        "principalPaidCents": 0
+                      }
+                    ]
+                  }
+                ],
+                "projections": [
+                  {
+                    "cutDate": "2026-11-11",
+                    "dueDate": "2026-11-25",
+                    "payday": "2026-11-15",
+                    "pendingCents": 0
+                  }
+                ]
+              }
+            ],
+            "loans": [],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -120000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-11-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "personal-loans-budget",
+      "source": "PaymentPlanManager.Application",
+      "steps": [
+        {
+          "action": "createLoan",
+          "input": {
+            "person": "Persona A",
+            "principalCents": 100000,
+            "date": "2026-10-03",
+            "dueDate": "2026-10-14",
+            "includeReceivedMoney": false
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 0,
+            "creditCents": 0,
+            "pendingCents": 0,
+            "horizon": "2026-10-31",
+            "cards": [],
+            "loans": [
+              {
+                "person": "Persona A",
+                "balanceCents": 100000,
+                "paidCents": 0,
+                "scheduledCents": 0
+              }
+            ],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 100000,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -100000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        },
+        {
+          "action": "createLoan",
+          "input": {
+            "person": "Persona B",
+            "principalCents": 50000,
+            "date": "2026-10-03",
+            "dueDate": "2026-10-20",
+            "includeReceivedMoney": true
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 0,
+            "creditCents": 0,
+            "pendingCents": 0,
+            "horizon": "2026-10-31",
+            "cards": [],
+            "loans": [
+              {
+                "person": "Persona A",
+                "balanceCents": 100000,
+                "paidCents": 0,
+                "scheduledCents": 0
+              },
+              {
+                "person": "Persona B",
+                "balanceCents": 50000,
+                "paidCents": 0,
+                "scheduledCents": 0
+              }
+            ],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 100000,
+                "receivedLoanCents": 50000,
+                "loanPaidCents": 0,
+                "balanceCents": -50000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 50000,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": -50000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 0
+              }
+            ]
+          }
+        },
+        {
+          "action": "configureIncome",
+          "input": {
+            "income15Cents": 1000000,
+            "incomeEndCents": 1000000,
+            "expensesCents": 100000,
+            "reserveCents": 50000
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 0,
+            "creditCents": 0,
+            "pendingCents": 0,
+            "horizon": "2026-10-31",
+            "cards": [],
+            "loans": [
+              {
+                "person": "Persona A",
+                "balanceCents": 100000,
+                "paidCents": 0,
+                "scheduledCents": 0
+              },
+              {
+                "person": "Persona B",
+                "balanceCents": 50000,
+                "paidCents": 0,
+                "scheduledCents": 0
+              }
+            ],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 100000,
+                "receivedLoanCents": 50000,
+                "loanPaidCents": 0,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 50000,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              }
+            ]
+          }
+        },
+        {
+          "action": "payLoan",
+          "input": {
+            "person": "Persona A",
+            "amountCents": 25000,
+            "date": "2026-10-03"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 0,
+            "creditCents": 0,
+            "pendingCents": 0,
+            "horizon": "2026-10-31",
+            "cards": [],
+            "loans": [
+              {
+                "person": "Persona A",
+                "balanceCents": 75000,
+                "paidCents": 25000,
+                "scheduledCents": 0
+              },
+              {
+                "person": "Persona B",
+                "balanceCents": 50000,
+                "paidCents": 0,
+                "scheduledCents": 0
+              }
+            ],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 75000,
+                "receivedLoanCents": 50000,
+                "loanPaidCents": 25000,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 50000,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              }
+            ]
+          }
+        },
+        {
+          "action": "scheduleLoanPayment",
+          "input": {
+            "person": "Persona B",
+            "amountCents": 20000,
+            "date": "2026-10-15"
+          },
+          "expected": {
+            "today": "2026-10-03",
+            "debtCents": 0,
+            "creditCents": 0,
+            "pendingCents": 0,
+            "horizon": "2026-10-31",
+            "cards": [],
+            "loans": [
+              {
+                "person": "Persona A",
+                "balanceCents": 75000,
+                "paidCents": 25000,
+                "scheduledCents": 0
+              },
+              {
+                "person": "Persona B",
+                "balanceCents": 50000,
+                "paidCents": 0,
+                "scheduledCents": 20000
+              }
+            ],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 75000,
+                "receivedLoanCents": 50000,
+                "loanPaidCents": 25000,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 50000,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              }
+            ]
+          }
+        },
+        {
+          "action": "advanceClock",
+          "input": {
+            "instant": "2026-10-16T18:00:00Z"
+          },
+          "expected": {
+            "today": "2026-10-16",
+            "debtCents": 0,
+            "creditCents": 0,
+            "pendingCents": 0,
+            "horizon": "2026-10-31",
+            "cards": [],
+            "loans": [
+              {
+                "person": "Persona A",
+                "balanceCents": 75000,
+                "paidCents": 25000,
+                "scheduledCents": 0
+              },
+              {
+                "person": "Persona B",
+                "balanceCents": 50000,
+                "paidCents": 0,
+                "scheduledCents": 20000
+              }
+            ],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 75000,
+                "receivedLoanCents": 50000,
+                "loanPaidCents": 25000,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 50000,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              }
+            ]
+          }
+        },
+        {
+          "action": "confirmLoanPayment",
+          "input": {
+            "person": "Persona B",
+            "amountCents": 20000,
+            "date": "2026-10-16"
+          },
+          "expected": {
+            "today": "2026-10-16",
+            "debtCents": 0,
+            "creditCents": 0,
+            "pendingCents": 0,
+            "horizon": "2026-10-31",
+            "cards": [],
+            "loans": [
+              {
+                "person": "Persona A",
+                "balanceCents": 75000,
+                "paidCents": 25000,
+                "scheduledCents": 0
+              },
+              {
+                "person": "Persona B",
+                "balanceCents": 30000,
+                "paidCents": 20000,
+                "scheduledCents": 0
+              }
+            ],
+            "budgets": [
+              {
+                "payday": "2026-09-15",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              },
+              {
+                "payday": "2026-09-30",
+                "pendingCents": 0,
+                "loanPendingCents": 75000,
+                "receivedLoanCents": 50000,
+                "loanPaidCents": 25000,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-15",
+                "pendingCents": 0,
+                "loanPendingCents": 30000,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 20000,
+                "balanceCents": 800000
+              },
+              {
+                "payday": "2026-10-31",
+                "pendingCents": 0,
+                "loanPendingCents": 0,
+                "receivedLoanCents": 0,
+                "loanPaidCents": 0,
+                "balanceCents": 850000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "paydays": [
+    {
+      "dueDate": "2024-01-01",
+      "expectedPayday": "2023-12-31"
+    },
+    {
+      "dueDate": "2024-01-14",
+      "expectedPayday": "2023-12-31"
+    },
+    {
+      "dueDate": "2024-01-15",
+      "expectedPayday": "2024-01-15"
+    },
+    {
+      "dueDate": "2024-01-30",
+      "expectedPayday": "2024-01-15"
+    },
+    {
+      "dueDate": "2024-01-31",
+      "expectedPayday": "2024-01-31"
+    },
+    {
+      "dueDate": "2024-02-01",
+      "expectedPayday": "2024-01-31"
+    },
+    {
+      "dueDate": "2024-02-14",
+      "expectedPayday": "2024-01-31"
+    },
+    {
+      "dueDate": "2024-02-15",
+      "expectedPayday": "2024-02-15"
+    },
+    {
+      "dueDate": "2024-02-28",
+      "expectedPayday": "2024-02-15"
+    },
+    {
+      "dueDate": "2024-02-29",
+      "expectedPayday": "2024-02-29"
+    },
+    {
+      "dueDate": "2024-03-01",
+      "expectedPayday": "2024-02-29"
+    },
+    {
+      "dueDate": "2024-03-14",
+      "expectedPayday": "2024-02-29"
+    },
+    {
+      "dueDate": "2024-03-15",
+      "expectedPayday": "2024-03-15"
+    },
+    {
+      "dueDate": "2024-03-30",
+      "expectedPayday": "2024-03-15"
+    },
+    {
+      "dueDate": "2024-03-31",
+      "expectedPayday": "2024-03-31"
+    },
+    {
+      "dueDate": "2024-04-01",
+      "expectedPayday": "2024-03-31"
+    },
+    {
+      "dueDate": "2024-04-14",
+      "expectedPayday": "2024-03-31"
+    },
+    {
+      "dueDate": "2024-04-15",
+      "expectedPayday": "2024-04-15"
+    },
+    {
+      "dueDate": "2024-04-29",
+      "expectedPayday": "2024-04-15"
+    },
+    {
+      "dueDate": "2024-04-30",
+      "expectedPayday": "2024-04-30"
+    },
+    {
+      "dueDate": "2024-05-01",
+      "expectedPayday": "2024-04-30"
+    },
+    {
+      "dueDate": "2024-05-14",
+      "expectedPayday": "2024-04-30"
+    },
+    {
+      "dueDate": "2024-05-15",
+      "expectedPayday": "2024-05-15"
+    },
+    {
+      "dueDate": "2024-05-30",
+      "expectedPayday": "2024-05-15"
+    },
+    {
+      "dueDate": "2024-05-31",
+      "expectedPayday": "2024-05-31"
+    },
+    {
+      "dueDate": "2024-06-01",
+      "expectedPayday": "2024-05-31"
+    },
+    {
+      "dueDate": "2024-06-14",
+      "expectedPayday": "2024-05-31"
+    },
+    {
+      "dueDate": "2024-06-15",
+      "expectedPayday": "2024-06-15"
+    },
+    {
+      "dueDate": "2024-06-29",
+      "expectedPayday": "2024-06-15"
+    },
+    {
+      "dueDate": "2024-06-30",
+      "expectedPayday": "2024-06-30"
+    },
+    {
+      "dueDate": "2024-07-01",
+      "expectedPayday": "2024-06-30"
+    },
+    {
+      "dueDate": "2024-07-14",
+      "expectedPayday": "2024-06-30"
+    },
+    {
+      "dueDate": "2024-07-15",
+      "expectedPayday": "2024-07-15"
+    },
+    {
+      "dueDate": "2024-07-30",
+      "expectedPayday": "2024-07-15"
+    },
+    {
+      "dueDate": "2024-07-31",
+      "expectedPayday": "2024-07-31"
+    },
+    {
+      "dueDate": "2024-08-01",
+      "expectedPayday": "2024-07-31"
+    },
+    {
+      "dueDate": "2024-08-14",
+      "expectedPayday": "2024-07-31"
+    },
+    {
+      "dueDate": "2024-08-15",
+      "expectedPayday": "2024-08-15"
+    },
+    {
+      "dueDate": "2024-08-30",
+      "expectedPayday": "2024-08-15"
+    },
+    {
+      "dueDate": "2024-08-31",
+      "expectedPayday": "2024-08-31"
+    },
+    {
+      "dueDate": "2024-09-01",
+      "expectedPayday": "2024-08-31"
+    },
+    {
+      "dueDate": "2024-09-14",
+      "expectedPayday": "2024-08-31"
+    },
+    {
+      "dueDate": "2024-09-15",
+      "expectedPayday": "2024-09-15"
+    },
+    {
+      "dueDate": "2024-09-29",
+      "expectedPayday": "2024-09-15"
+    },
+    {
+      "dueDate": "2024-09-30",
+      "expectedPayday": "2024-09-30"
+    },
+    {
+      "dueDate": "2024-10-01",
+      "expectedPayday": "2024-09-30"
+    },
+    {
+      "dueDate": "2024-10-14",
+      "expectedPayday": "2024-09-30"
+    },
+    {
+      "dueDate": "2024-10-15",
+      "expectedPayday": "2024-10-15"
+    },
+    {
+      "dueDate": "2024-10-30",
+      "expectedPayday": "2024-10-15"
+    },
+    {
+      "dueDate": "2024-10-31",
+      "expectedPayday": "2024-10-31"
+    },
+    {
+      "dueDate": "2024-11-01",
+      "expectedPayday": "2024-10-31"
+    },
+    {
+      "dueDate": "2024-11-14",
+      "expectedPayday": "2024-10-31"
+    },
+    {
+      "dueDate": "2024-11-15",
+      "expectedPayday": "2024-11-15"
+    },
+    {
+      "dueDate": "2024-11-29",
+      "expectedPayday": "2024-11-15"
+    },
+    {
+      "dueDate": "2024-11-30",
+      "expectedPayday": "2024-11-30"
+    },
+    {
+      "dueDate": "2024-12-01",
+      "expectedPayday": "2024-11-30"
+    },
+    {
+      "dueDate": "2024-12-14",
+      "expectedPayday": "2024-11-30"
+    },
+    {
+      "dueDate": "2024-12-15",
+      "expectedPayday": "2024-12-15"
+    },
+    {
+      "dueDate": "2024-12-30",
+      "expectedPayday": "2024-12-15"
+    },
+    {
+      "dueDate": "2024-12-31",
+      "expectedPayday": "2024-12-31"
+    },
+    {
+      "dueDate": "2025-01-01",
+      "expectedPayday": "2024-12-31"
+    },
+    {
+      "dueDate": "2025-01-14",
+      "expectedPayday": "2024-12-31"
+    },
+    {
+      "dueDate": "2025-01-15",
+      "expectedPayday": "2025-01-15"
+    },
+    {
+      "dueDate": "2025-01-30",
+      "expectedPayday": "2025-01-15"
+    },
+    {
+      "dueDate": "2025-01-31",
+      "expectedPayday": "2025-01-31"
+    },
+    {
+      "dueDate": "2025-02-01",
+      "expectedPayday": "2025-01-31"
+    },
+    {
+      "dueDate": "2025-02-14",
+      "expectedPayday": "2025-01-31"
+    },
+    {
+      "dueDate": "2025-02-15",
+      "expectedPayday": "2025-02-15"
+    },
+    {
+      "dueDate": "2025-02-27",
+      "expectedPayday": "2025-02-15"
+    },
+    {
+      "dueDate": "2025-02-28",
+      "expectedPayday": "2025-02-28"
+    },
+    {
+      "dueDate": "2025-03-01",
+      "expectedPayday": "2025-02-28"
+    },
+    {
+      "dueDate": "2025-03-14",
+      "expectedPayday": "2025-02-28"
+    },
+    {
+      "dueDate": "2025-03-15",
+      "expectedPayday": "2025-03-15"
+    },
+    {
+      "dueDate": "2025-03-30",
+      "expectedPayday": "2025-03-15"
+    },
+    {
+      "dueDate": "2025-03-31",
+      "expectedPayday": "2025-03-31"
+    },
+    {
+      "dueDate": "2025-04-01",
+      "expectedPayday": "2025-03-31"
+    },
+    {
+      "dueDate": "2025-04-14",
+      "expectedPayday": "2025-03-31"
+    },
+    {
+      "dueDate": "2025-04-15",
+      "expectedPayday": "2025-04-15"
+    },
+    {
+      "dueDate": "2025-04-29",
+      "expectedPayday": "2025-04-15"
+    },
+    {
+      "dueDate": "2025-04-30",
+      "expectedPayday": "2025-04-30"
+    },
+    {
+      "dueDate": "2025-05-01",
+      "expectedPayday": "2025-04-30"
+    },
+    {
+      "dueDate": "2025-05-14",
+      "expectedPayday": "2025-04-30"
+    },
+    {
+      "dueDate": "2025-05-15",
+      "expectedPayday": "2025-05-15"
+    },
+    {
+      "dueDate": "2025-05-30",
+      "expectedPayday": "2025-05-15"
+    },
+    {
+      "dueDate": "2025-05-31",
+      "expectedPayday": "2025-05-31"
+    },
+    {
+      "dueDate": "2025-06-01",
+      "expectedPayday": "2025-05-31"
+    },
+    {
+      "dueDate": "2025-06-14",
+      "expectedPayday": "2025-05-31"
+    },
+    {
+      "dueDate": "2025-06-15",
+      "expectedPayday": "2025-06-15"
+    },
+    {
+      "dueDate": "2025-06-29",
+      "expectedPayday": "2025-06-15"
+    },
+    {
+      "dueDate": "2025-06-30",
+      "expectedPayday": "2025-06-30"
+    },
+    {
+      "dueDate": "2025-07-01",
+      "expectedPayday": "2025-06-30"
+    },
+    {
+      "dueDate": "2025-07-14",
+      "expectedPayday": "2025-06-30"
+    },
+    {
+      "dueDate": "2025-07-15",
+      "expectedPayday": "2025-07-15"
+    },
+    {
+      "dueDate": "2025-07-30",
+      "expectedPayday": "2025-07-15"
+    },
+    {
+      "dueDate": "2025-07-31",
+      "expectedPayday": "2025-07-31"
+    },
+    {
+      "dueDate": "2025-08-01",
+      "expectedPayday": "2025-07-31"
+    },
+    {
+      "dueDate": "2025-08-14",
+      "expectedPayday": "2025-07-31"
+    },
+    {
+      "dueDate": "2025-08-15",
+      "expectedPayday": "2025-08-15"
+    },
+    {
+      "dueDate": "2025-08-30",
+      "expectedPayday": "2025-08-15"
+    },
+    {
+      "dueDate": "2025-08-31",
+      "expectedPayday": "2025-08-31"
+    },
+    {
+      "dueDate": "2025-09-01",
+      "expectedPayday": "2025-08-31"
+    },
+    {
+      "dueDate": "2025-09-14",
+      "expectedPayday": "2025-08-31"
+    },
+    {
+      "dueDate": "2025-09-15",
+      "expectedPayday": "2025-09-15"
+    },
+    {
+      "dueDate": "2025-09-29",
+      "expectedPayday": "2025-09-15"
+    },
+    {
+      "dueDate": "2025-09-30",
+      "expectedPayday": "2025-09-30"
+    },
+    {
+      "dueDate": "2025-10-01",
+      "expectedPayday": "2025-09-30"
+    },
+    {
+      "dueDate": "2025-10-14",
+      "expectedPayday": "2025-09-30"
+    },
+    {
+      "dueDate": "2025-10-15",
+      "expectedPayday": "2025-10-15"
+    },
+    {
+      "dueDate": "2025-10-30",
+      "expectedPayday": "2025-10-15"
+    },
+    {
+      "dueDate": "2025-10-31",
+      "expectedPayday": "2025-10-31"
+    },
+    {
+      "dueDate": "2025-11-01",
+      "expectedPayday": "2025-10-31"
+    },
+    {
+      "dueDate": "2025-11-14",
+      "expectedPayday": "2025-10-31"
+    },
+    {
+      "dueDate": "2025-11-15",
+      "expectedPayday": "2025-11-15"
+    },
+    {
+      "dueDate": "2025-11-29",
+      "expectedPayday": "2025-11-15"
+    },
+    {
+      "dueDate": "2025-11-30",
+      "expectedPayday": "2025-11-30"
+    },
+    {
+      "dueDate": "2025-12-01",
+      "expectedPayday": "2025-11-30"
+    },
+    {
+      "dueDate": "2025-12-14",
+      "expectedPayday": "2025-11-30"
+    },
+    {
+      "dueDate": "2025-12-15",
+      "expectedPayday": "2025-12-15"
+    },
+    {
+      "dueDate": "2025-12-30",
+      "expectedPayday": "2025-12-15"
+    },
+    {
+      "dueDate": "2025-12-31",
+      "expectedPayday": "2025-12-31"
+    },
+    {
+      "dueDate": "2026-01-01",
+      "expectedPayday": "2025-12-31"
+    },
+    {
+      "dueDate": "2026-01-14",
+      "expectedPayday": "2025-12-31"
+    },
+    {
+      "dueDate": "2026-01-15",
+      "expectedPayday": "2026-01-15"
+    },
+    {
+      "dueDate": "2026-01-30",
+      "expectedPayday": "2026-01-15"
+    },
+    {
+      "dueDate": "2026-01-31",
+      "expectedPayday": "2026-01-31"
+    },
+    {
+      "dueDate": "2026-02-01",
+      "expectedPayday": "2026-01-31"
+    },
+    {
+      "dueDate": "2026-02-14",
+      "expectedPayday": "2026-01-31"
+    },
+    {
+      "dueDate": "2026-02-15",
+      "expectedPayday": "2026-02-15"
+    },
+    {
+      "dueDate": "2026-02-27",
+      "expectedPayday": "2026-02-15"
+    },
+    {
+      "dueDate": "2026-02-28",
+      "expectedPayday": "2026-02-28"
+    },
+    {
+      "dueDate": "2026-03-01",
+      "expectedPayday": "2026-02-28"
+    },
+    {
+      "dueDate": "2026-03-14",
+      "expectedPayday": "2026-02-28"
+    },
+    {
+      "dueDate": "2026-03-15",
+      "expectedPayday": "2026-03-15"
+    },
+    {
+      "dueDate": "2026-03-30",
+      "expectedPayday": "2026-03-15"
+    },
+    {
+      "dueDate": "2026-03-31",
+      "expectedPayday": "2026-03-31"
+    },
+    {
+      "dueDate": "2026-04-01",
+      "expectedPayday": "2026-03-31"
+    },
+    {
+      "dueDate": "2026-04-14",
+      "expectedPayday": "2026-03-31"
+    },
+    {
+      "dueDate": "2026-04-15",
+      "expectedPayday": "2026-04-15"
+    },
+    {
+      "dueDate": "2026-04-29",
+      "expectedPayday": "2026-04-15"
+    },
+    {
+      "dueDate": "2026-04-30",
+      "expectedPayday": "2026-04-30"
+    },
+    {
+      "dueDate": "2026-05-01",
+      "expectedPayday": "2026-04-30"
+    },
+    {
+      "dueDate": "2026-05-14",
+      "expectedPayday": "2026-04-30"
+    },
+    {
+      "dueDate": "2026-05-15",
+      "expectedPayday": "2026-05-15"
+    },
+    {
+      "dueDate": "2026-05-30",
+      "expectedPayday": "2026-05-15"
+    },
+    {
+      "dueDate": "2026-05-31",
+      "expectedPayday": "2026-05-31"
+    },
+    {
+      "dueDate": "2026-06-01",
+      "expectedPayday": "2026-05-31"
+    },
+    {
+      "dueDate": "2026-06-14",
+      "expectedPayday": "2026-05-31"
+    },
+    {
+      "dueDate": "2026-06-15",
+      "expectedPayday": "2026-06-15"
+    },
+    {
+      "dueDate": "2026-06-29",
+      "expectedPayday": "2026-06-15"
+    },
+    {
+      "dueDate": "2026-06-30",
+      "expectedPayday": "2026-06-30"
+    },
+    {
+      "dueDate": "2026-07-01",
+      "expectedPayday": "2026-06-30"
+    },
+    {
+      "dueDate": "2026-07-14",
+      "expectedPayday": "2026-06-30"
+    },
+    {
+      "dueDate": "2026-07-15",
+      "expectedPayday": "2026-07-15"
+    },
+    {
+      "dueDate": "2026-07-30",
+      "expectedPayday": "2026-07-15"
+    },
+    {
+      "dueDate": "2026-07-31",
+      "expectedPayday": "2026-07-31"
+    },
+    {
+      "dueDate": "2026-08-01",
+      "expectedPayday": "2026-07-31"
+    },
+    {
+      "dueDate": "2026-08-14",
+      "expectedPayday": "2026-07-31"
+    },
+    {
+      "dueDate": "2026-08-15",
+      "expectedPayday": "2026-08-15"
+    },
+    {
+      "dueDate": "2026-08-30",
+      "expectedPayday": "2026-08-15"
+    },
+    {
+      "dueDate": "2026-08-31",
+      "expectedPayday": "2026-08-31"
+    },
+    {
+      "dueDate": "2026-09-01",
+      "expectedPayday": "2026-08-31"
+    },
+    {
+      "dueDate": "2026-09-14",
+      "expectedPayday": "2026-08-31"
+    },
+    {
+      "dueDate": "2026-09-15",
+      "expectedPayday": "2026-09-15"
+    },
+    {
+      "dueDate": "2026-09-29",
+      "expectedPayday": "2026-09-15"
+    },
+    {
+      "dueDate": "2026-09-30",
+      "expectedPayday": "2026-09-30"
+    },
+    {
+      "dueDate": "2026-10-01",
+      "expectedPayday": "2026-09-30"
+    },
+    {
+      "dueDate": "2026-10-14",
+      "expectedPayday": "2026-09-30"
+    },
+    {
+      "dueDate": "2026-10-15",
+      "expectedPayday": "2026-10-15"
+    },
+    {
+      "dueDate": "2026-10-30",
+      "expectedPayday": "2026-10-15"
+    },
+    {
+      "dueDate": "2026-10-31",
+      "expectedPayday": "2026-10-31"
+    },
+    {
+      "dueDate": "2026-11-01",
+      "expectedPayday": "2026-10-31"
+    },
+    {
+      "dueDate": "2026-11-14",
+      "expectedPayday": "2026-10-31"
+    },
+    {
+      "dueDate": "2026-11-15",
+      "expectedPayday": "2026-11-15"
+    },
+    {
+      "dueDate": "2026-11-29",
+      "expectedPayday": "2026-11-15"
+    },
+    {
+      "dueDate": "2026-11-30",
+      "expectedPayday": "2026-11-30"
+    },
+    {
+      "dueDate": "2026-12-01",
+      "expectedPayday": "2026-11-30"
+    },
+    {
+      "dueDate": "2026-12-14",
+      "expectedPayday": "2026-11-30"
+    },
+    {
+      "dueDate": "2026-12-15",
+      "expectedPayday": "2026-12-15"
+    },
+    {
+      "dueDate": "2026-12-30",
+      "expectedPayday": "2026-12-15"
+    },
+    {
+      "dueDate": "2026-12-31",
+      "expectedPayday": "2026-12-31"
+    },
+    {
+      "dueDate": "2027-01-01",
+      "expectedPayday": "2026-12-31"
+    },
+    {
+      "dueDate": "2027-01-14",
+      "expectedPayday": "2026-12-31"
+    },
+    {
+      "dueDate": "2027-01-15",
+      "expectedPayday": "2027-01-15"
+    },
+    {
+      "dueDate": "2027-01-30",
+      "expectedPayday": "2027-01-15"
+    },
+    {
+      "dueDate": "2027-01-31",
+      "expectedPayday": "2027-01-31"
+    },
+    {
+      "dueDate": "2027-02-01",
+      "expectedPayday": "2027-01-31"
+    },
+    {
+      "dueDate": "2027-02-14",
+      "expectedPayday": "2027-01-31"
+    },
+    {
+      "dueDate": "2027-02-15",
+      "expectedPayday": "2027-02-15"
+    },
+    {
+      "dueDate": "2027-02-27",
+      "expectedPayday": "2027-02-15"
+    },
+    {
+      "dueDate": "2027-02-28",
+      "expectedPayday": "2027-02-28"
+    },
+    {
+      "dueDate": "2027-03-01",
+      "expectedPayday": "2027-02-28"
+    },
+    {
+      "dueDate": "2027-03-14",
+      "expectedPayday": "2027-02-28"
+    },
+    {
+      "dueDate": "2027-03-15",
+      "expectedPayday": "2027-03-15"
+    },
+    {
+      "dueDate": "2027-03-30",
+      "expectedPayday": "2027-03-15"
+    },
+    {
+      "dueDate": "2027-03-31",
+      "expectedPayday": "2027-03-31"
+    },
+    {
+      "dueDate": "2027-04-01",
+      "expectedPayday": "2027-03-31"
+    },
+    {
+      "dueDate": "2027-04-14",
+      "expectedPayday": "2027-03-31"
+    },
+    {
+      "dueDate": "2027-04-15",
+      "expectedPayday": "2027-04-15"
+    },
+    {
+      "dueDate": "2027-04-29",
+      "expectedPayday": "2027-04-15"
+    },
+    {
+      "dueDate": "2027-04-30",
+      "expectedPayday": "2027-04-30"
+    },
+    {
+      "dueDate": "2027-05-01",
+      "expectedPayday": "2027-04-30"
+    },
+    {
+      "dueDate": "2027-05-14",
+      "expectedPayday": "2027-04-30"
+    },
+    {
+      "dueDate": "2027-05-15",
+      "expectedPayday": "2027-05-15"
+    },
+    {
+      "dueDate": "2027-05-30",
+      "expectedPayday": "2027-05-15"
+    },
+    {
+      "dueDate": "2027-05-31",
+      "expectedPayday": "2027-05-31"
+    },
+    {
+      "dueDate": "2027-06-01",
+      "expectedPayday": "2027-05-31"
+    },
+    {
+      "dueDate": "2027-06-14",
+      "expectedPayday": "2027-05-31"
+    },
+    {
+      "dueDate": "2027-06-15",
+      "expectedPayday": "2027-06-15"
+    },
+    {
+      "dueDate": "2027-06-29",
+      "expectedPayday": "2027-06-15"
+    },
+    {
+      "dueDate": "2027-06-30",
+      "expectedPayday": "2027-06-30"
+    },
+    {
+      "dueDate": "2027-07-01",
+      "expectedPayday": "2027-06-30"
+    },
+    {
+      "dueDate": "2027-07-14",
+      "expectedPayday": "2027-06-30"
+    },
+    {
+      "dueDate": "2027-07-15",
+      "expectedPayday": "2027-07-15"
+    },
+    {
+      "dueDate": "2027-07-30",
+      "expectedPayday": "2027-07-15"
+    },
+    {
+      "dueDate": "2027-07-31",
+      "expectedPayday": "2027-07-31"
+    },
+    {
+      "dueDate": "2027-08-01",
+      "expectedPayday": "2027-07-31"
+    },
+    {
+      "dueDate": "2027-08-14",
+      "expectedPayday": "2027-07-31"
+    },
+    {
+      "dueDate": "2027-08-15",
+      "expectedPayday": "2027-08-15"
+    },
+    {
+      "dueDate": "2027-08-30",
+      "expectedPayday": "2027-08-15"
+    },
+    {
+      "dueDate": "2027-08-31",
+      "expectedPayday": "2027-08-31"
+    },
+    {
+      "dueDate": "2027-09-01",
+      "expectedPayday": "2027-08-31"
+    },
+    {
+      "dueDate": "2027-09-14",
+      "expectedPayday": "2027-08-31"
+    },
+    {
+      "dueDate": "2027-09-15",
+      "expectedPayday": "2027-09-15"
+    },
+    {
+      "dueDate": "2027-09-29",
+      "expectedPayday": "2027-09-15"
+    },
+    {
+      "dueDate": "2027-09-30",
+      "expectedPayday": "2027-09-30"
+    },
+    {
+      "dueDate": "2027-10-01",
+      "expectedPayday": "2027-09-30"
+    },
+    {
+      "dueDate": "2027-10-14",
+      "expectedPayday": "2027-09-30"
+    },
+    {
+      "dueDate": "2027-10-15",
+      "expectedPayday": "2027-10-15"
+    },
+    {
+      "dueDate": "2027-10-30",
+      "expectedPayday": "2027-10-15"
+    },
+    {
+      "dueDate": "2027-10-31",
+      "expectedPayday": "2027-10-31"
+    },
+    {
+      "dueDate": "2027-11-01",
+      "expectedPayday": "2027-10-31"
+    },
+    {
+      "dueDate": "2027-11-14",
+      "expectedPayday": "2027-10-31"
+    },
+    {
+      "dueDate": "2027-11-15",
+      "expectedPayday": "2027-11-15"
+    },
+    {
+      "dueDate": "2027-11-29",
+      "expectedPayday": "2027-11-15"
+    },
+    {
+      "dueDate": "2027-11-30",
+      "expectedPayday": "2027-11-30"
+    },
+    {
+      "dueDate": "2027-12-01",
+      "expectedPayday": "2027-11-30"
+    },
+    {
+      "dueDate": "2027-12-14",
+      "expectedPayday": "2027-11-30"
+    },
+    {
+      "dueDate": "2027-12-15",
+      "expectedPayday": "2027-12-15"
+    },
+    {
+      "dueDate": "2027-12-30",
+      "expectedPayday": "2027-12-15"
+    },
+    {
+      "dueDate": "2027-12-31",
+      "expectedPayday": "2027-12-31"
+    }
+  ],
+  "rounding": {
+    "principalCents": 12001,
+    "months": 120,
+    "quotas": [
+      {
+        "number": 1,
+        "cutDate": "2026-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 2,
+        "cutDate": "2026-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 3,
+        "cutDate": "2026-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 4,
+        "cutDate": "2027-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 5,
+        "cutDate": "2027-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 6,
+        "cutDate": "2027-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 7,
+        "cutDate": "2027-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 8,
+        "cutDate": "2027-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 9,
+        "cutDate": "2027-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 10,
+        "cutDate": "2027-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 11,
+        "cutDate": "2027-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 12,
+        "cutDate": "2027-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 13,
+        "cutDate": "2027-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 14,
+        "cutDate": "2027-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 15,
+        "cutDate": "2027-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 16,
+        "cutDate": "2028-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 17,
+        "cutDate": "2028-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 18,
+        "cutDate": "2028-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 19,
+        "cutDate": "2028-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 20,
+        "cutDate": "2028-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 21,
+        "cutDate": "2028-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 22,
+        "cutDate": "2028-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 23,
+        "cutDate": "2028-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 24,
+        "cutDate": "2028-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 25,
+        "cutDate": "2028-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 26,
+        "cutDate": "2028-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 27,
+        "cutDate": "2028-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 28,
+        "cutDate": "2029-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 29,
+        "cutDate": "2029-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 30,
+        "cutDate": "2029-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 31,
+        "cutDate": "2029-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 32,
+        "cutDate": "2029-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 33,
+        "cutDate": "2029-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 34,
+        "cutDate": "2029-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 35,
+        "cutDate": "2029-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 36,
+        "cutDate": "2029-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 37,
+        "cutDate": "2029-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 38,
+        "cutDate": "2029-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 39,
+        "cutDate": "2029-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 40,
+        "cutDate": "2030-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 41,
+        "cutDate": "2030-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 42,
+        "cutDate": "2030-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 43,
+        "cutDate": "2030-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 44,
+        "cutDate": "2030-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 45,
+        "cutDate": "2030-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 46,
+        "cutDate": "2030-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 47,
+        "cutDate": "2030-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 48,
+        "cutDate": "2030-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 49,
+        "cutDate": "2030-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 50,
+        "cutDate": "2030-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 51,
+        "cutDate": "2030-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 52,
+        "cutDate": "2031-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 53,
+        "cutDate": "2031-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 54,
+        "cutDate": "2031-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 55,
+        "cutDate": "2031-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 56,
+        "cutDate": "2031-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 57,
+        "cutDate": "2031-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 58,
+        "cutDate": "2031-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 59,
+        "cutDate": "2031-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 60,
+        "cutDate": "2031-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 61,
+        "cutDate": "2031-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 62,
+        "cutDate": "2031-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 63,
+        "cutDate": "2031-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 64,
+        "cutDate": "2032-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 65,
+        "cutDate": "2032-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 66,
+        "cutDate": "2032-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 67,
+        "cutDate": "2032-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 68,
+        "cutDate": "2032-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 69,
+        "cutDate": "2032-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 70,
+        "cutDate": "2032-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 71,
+        "cutDate": "2032-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 72,
+        "cutDate": "2032-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 73,
+        "cutDate": "2032-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 74,
+        "cutDate": "2032-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 75,
+        "cutDate": "2032-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 76,
+        "cutDate": "2033-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 77,
+        "cutDate": "2033-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 78,
+        "cutDate": "2033-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 79,
+        "cutDate": "2033-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 80,
+        "cutDate": "2033-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 81,
+        "cutDate": "2033-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 82,
+        "cutDate": "2033-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 83,
+        "cutDate": "2033-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 84,
+        "cutDate": "2033-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 85,
+        "cutDate": "2033-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 86,
+        "cutDate": "2033-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 87,
+        "cutDate": "2033-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 88,
+        "cutDate": "2034-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 89,
+        "cutDate": "2034-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 90,
+        "cutDate": "2034-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 91,
+        "cutDate": "2034-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 92,
+        "cutDate": "2034-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 93,
+        "cutDate": "2034-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 94,
+        "cutDate": "2034-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 95,
+        "cutDate": "2034-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 96,
+        "cutDate": "2034-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 97,
+        "cutDate": "2034-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 98,
+        "cutDate": "2034-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 99,
+        "cutDate": "2034-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 100,
+        "cutDate": "2035-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 101,
+        "cutDate": "2035-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 102,
+        "cutDate": "2035-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 103,
+        "cutDate": "2035-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 104,
+        "cutDate": "2035-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 105,
+        "cutDate": "2035-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 106,
+        "cutDate": "2035-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 107,
+        "cutDate": "2035-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 108,
+        "cutDate": "2035-09-11",
+        "principalCents": 100
+      },
+      {
+        "number": 109,
+        "cutDate": "2035-10-11",
+        "principalCents": 100
+      },
+      {
+        "number": 110,
+        "cutDate": "2035-11-11",
+        "principalCents": 100
+      },
+      {
+        "number": 111,
+        "cutDate": "2035-12-11",
+        "principalCents": 100
+      },
+      {
+        "number": 112,
+        "cutDate": "2036-01-11",
+        "principalCents": 100
+      },
+      {
+        "number": 113,
+        "cutDate": "2036-02-11",
+        "principalCents": 100
+      },
+      {
+        "number": 114,
+        "cutDate": "2036-03-11",
+        "principalCents": 100
+      },
+      {
+        "number": 115,
+        "cutDate": "2036-04-11",
+        "principalCents": 100
+      },
+      {
+        "number": 116,
+        "cutDate": "2036-05-11",
+        "principalCents": 100
+      },
+      {
+        "number": 117,
+        "cutDate": "2036-06-11",
+        "principalCents": 100
+      },
+      {
+        "number": 118,
+        "cutDate": "2036-07-11",
+        "principalCents": 100
+      },
+      {
+        "number": 119,
+        "cutDate": "2036-08-11",
+        "principalCents": 100
+      },
+      {
+        "number": 120,
+        "cutDate": "2036-09-11",
+        "principalCents": 101
+      }
+    ]
+  },
+  "amortization": [
+    {
+      "method": "CuotaFija",
+      "monthlyRate": "2",
+      "interestTaxRate": "16",
+      "principalCents": 100000,
+      "months": 3,
+      "bankTable": null,
+      "quotas": [
+        {
+          "principalCents": 32675,
+          "interestCents": 2320
+        },
+        {
+          "principalCents": 33328,
+          "interestCents": 1563
+        },
+        {
+          "principalCents": 33997,
+          "interestCents": 789
+        }
+      ]
+    },
+    {
+      "method": "CapitalFijo",
+      "monthlyRate": "2",
+      "interestTaxRate": "16",
+      "principalCents": 100000,
+      "months": 3,
+      "bankTable": null,
+      "quotas": [
+        {
+          "principalCents": 33333,
+          "interestCents": 2320
+        },
+        {
+          "principalCents": 33333,
+          "interestCents": 1546
+        },
+        {
+          "principalCents": 33334,
+          "interestCents": 774
+        }
+      ]
+    },
+    {
+      "method": "TablaBanco",
+      "monthlyRate": "0",
+      "interestTaxRate": "0",
+      "principalCents": 100000,
+      "months": 3,
+      "bankTable": [
+        {
+          "principalCents": 30000,
+          "interestCents": 2000
+        },
+        {
+          "principalCents": 35000,
+          "interestCents": 1500
+        },
+        {
+          "principalCents": 35000,
+          "interestCents": 500
+        }
+      ],
+      "quotas": [
+        {
+          "principalCents": 30000,
+          "interestCents": 2000
+        },
+        {
+          "principalCents": 35000,
+          "interestCents": 1500
+        },
+        {
+          "principalCents": 35000,
+          "interestCents": 500
+        }
+      ]
+    }
+  ]
+}

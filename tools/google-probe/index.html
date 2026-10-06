@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PaymentPlan · Prueba Google F0</title>
+<style>body{font:15px/1.7 system-ui,sans-serif;margin:0;background:#f6f7f4;color:#20382f}main{max-width:760px;margin:40px auto;padding:30px;background:white;border:1px solid #e1e7db;border-radius:14px}h1{font-size:26px;margin:0}h2{font-size:18px;margin-top:28px}button{font:inherit;background:#173d36;color:white;border:0;border-radius:7px;padding:10px 15px;cursor:pointer;margin:6px 6px 6px 0}button:disabled{opacity:.45;cursor:default}label{display:block}input{font:inherit;max-width:100%}#status{background:#edf2e8;padding:12px;border-radius:7px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f7f2;padding:15px;border-radius:7px;font-size:12px}small{color:#63745e}button:focus-visible,input:focus-visible{outline:3px solid #8b9e60;outline-offset:3px}@media(max-width:600px){main{margin:15px;padding:22px}}</style></head>
+<body><main><h1>Prueba de Google Drive</h1><p>Validación técnica F0 con un archivo cifrado sintético. Esta herramienta no usa tu cartera ni registra pagos.</p>
+<p id="status" role="status">Cargando configuración local…</p><small id="origin"></small>
+<h2>1. Autorizar esta sesión</h2><p>La autorización usa únicamente el permiso de la carpeta de aplicación. El token permanece en memoria.</p>
+<button id="prepare" disabled>Preparar autorización Google</button><button id="authorize" disabled>Autorizar Drive</button><button id="disconnect" disabled>Desconectar esta sesión</button>
+<h2>2. Comprobar la carpeta</h2><button id="list" disabled>Listar archivos de prueba</button><button id="create" disabled>Crear y verificar archivo sintético</button><button id="download" disabled>Descargar paquete de prueba Android</button>
+<p><small>Crear escribe un archivo nuevo en appDataFolder. El paquete descargable contiene una clave aleatoria que protege solo este archivo de prueba; no es una contraseña ni una clave de tu cartera. Consérvalo localmente para la prueba entre plataformas.</small></p>
+<h2>3. Verificar desde otro dispositivo</h2><label for="packet">Paquete sintético generado por la prueba del otro dispositivo</label><input id="packet" type="file" accept="application/json,.json" disabled>
+<p><small>La verificación web → Android y Android → web seguirá pendiente hasta ejecutarla en Android con su autorización nativa.</small></p>
+<pre id="result" aria-label="Resultado de la prueba">No se ha ejecutado una prueba.</pre>
+</main><script type="module" src="/main.mjs"></script></body></html>

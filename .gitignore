@@ -1,0 +1,43 @@
+# Dependencies and build outputs
+node_modules/
+dist/
+artifacts/
+*.tsbuildinfo
+coverage/
+
+# Local configuration and personal financial files
+.env
+.env.*
+!.env.example
+datos*.json*
+backups/
+backup_*.json
+/private-data/
+/exports/
+paymentplan-f0-synthetic-probe*.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Credentials and signing files
+client_secret*.json
+credentials.json
+token.json
+tokens.json
+service-account*.json
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+local.properties
+
+# Local editor configuration
+.vs/
+.vscode/
+*.user
+.DS_Store
+Thumbs.db

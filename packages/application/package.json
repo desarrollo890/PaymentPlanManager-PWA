@@ -1,0 +1,16 @@
+{
+  "name": "@paymentplan/application",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@paymentplan/contracts": "0.1.0",
+    "@paymentplan/domain": "0.1.0",
+    "@paymentplan/crypto": "0.1.0",
+    "@paymentplan/storage": "0.1.0",
+    "@paymentplan/sync": "0.1.0"
+  }
+}

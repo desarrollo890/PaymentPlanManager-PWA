@@ -1,0 +1,12 @@
+{
+  "web": {
+    "clientId": "29363704791-mv1t807f968r6j5bm1ru0da7ggq7n4b5.apps.googleusercontent.com",
+    "reportedAuthorizedOrigins": [
+      "https://desarrollo890.github.io",
+      "http://localhost",
+      "http://localhost:5173"
+    ]
+  },
+  "scope": "https://www.googleapis.com/auth/drive.appdata",
+  "localOriginsConfirmed": true
+}

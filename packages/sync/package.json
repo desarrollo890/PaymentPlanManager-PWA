@@ -1,0 +1,13 @@
+{
+  "name": "@paymentplan/sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/memory-transport.ts"
+  },
+  "dependencies": {
+    "@paymentplan/contracts": "0.1.0"
+  }
+}

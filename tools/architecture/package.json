@@ -1,0 +1,14 @@
+{
+  "name": "paymentplan-architecture-checks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Synthetic F0 contract and feasibility checks; not application runtime",
+  "engines": { "node": ">=24.7.0" },
+  "scripts": {
+    "contracts": "node generate-contracts.mjs",
+    "test": "node --test checks/*.test.mjs",
+    "benchmark": "node crypto-benchmark.mjs"
+  },
+  "devDependencies": { "ajv": "8.20.0", "ajv-formats": "3.0.1", "hash-wasm": "4.12.0" }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "paymentplan-pwa-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.13.0 <25"
+  },
+  "scripts": {
+    "dev:google-probe": "node --env-file-if-exists=.env.local tools/google-probe/server.mjs",
+    "test:google-probe": "node --test tools/google-probe/*.test.mjs",
+    "dev": "npm run dev --workspace @paymentplan/pwa",
+    "preview": "npm run preview --workspace @paymentplan/pwa",
+    "contracts:generate": "node scripts/generate-contract-types.mjs",
+    "contracts:check": "node scripts/generate-contract-types.mjs --check",
+    "typecheck": "tsc -p tsconfig.json && tsc -p packages/domain/tsconfig.json",
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
+    "test": "node --test tests/unit/*.test.ts",
+    "test:architecture": "npm --prefix tools/architecture test",
+    "build": "npm run typecheck && npm run build --workspace @paymentplan/pwa && node scripts/check-static-build.mjs",
+    "check": "npm run contracts:check && npm run check:boundaries && npm run test && npm run test:google-probe && npm run build",
+    "test:browser": "node scripts/pwa-browser-checks.cjs && node tools/google-probe/browser-checks.cjs"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "7.0.2",
+    "playwright": "1.63.0"
+  }
+}
