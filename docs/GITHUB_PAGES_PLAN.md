@@ -36,4 +36,4 @@ La clave de datos aleatoria se protege con derivación de contraseña y una clav
 | F7 | Importación y piloto | Previsualización, cuadre, importación idempotente y recuperación con cartera de prueba. |
 | F8 | Publicación funcional | Validación HTTPS en PC/móvil, recuperación y recorrido completo de usuario. |
 
-La publicación inicial es una vista previa de F1, solicitada antes de terminar la migración. No significa que F8 funcional ni las fases financieras están completas. Los proyectos de escritorio, backend y código nativo quedan fuera de este repositorio.
+La primera publicación fue una vista previa de F1. La entrega actual incluye las funciones financieras y se ha verificado en la URL HTTPS publicada; F6, F7 y F8 conservan las condiciones de aceptación personal indicadas en el seguimiento. Los proyectos de escritorio, backend y código nativo quedan fuera de este repositorio.

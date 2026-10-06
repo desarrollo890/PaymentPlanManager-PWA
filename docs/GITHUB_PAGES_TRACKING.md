@@ -12,7 +12,7 @@ Actualizado el 6 de octubre de 2026. La implementación financiera, el almacenam
 | F5 · Fusión y conflictos | Implementado y verificado automáticamente | Revisiones causales, reintentos, grupos incompletos, ramas conservadas, fusión de presentación y decisiones visibles. Validación de capacidad, atribuciones y cambios de historia entre entidades. |
 | F6 · Drive web | Adaptador completo; prueba real pendiente | Dos dispositivos aislados pasan con REST simulado y bloques cifrados. Tokens solo en memoria, autorización explícita, caducidad, desconexión y revocación. Falta autorización real de la aplicación en dos navegadores. |
 | F7 · Importación y piloto | Implementado; aceptación personal pendiente | Importación sintética conserva IDs, saldos, préstamos y horizonte; previsualización, cierres e idempotencia. Falta comparar y recuperar la cartera personal del usuario. |
-| F8 · Publicación funcional | Artefacto preparado; aceptación física pendiente | Build estático, manifiesto, service worker y recorridos PC/móvil automatizados. Publicación mediante CI; cierre sujeto a HTTPS publicado y teléfono físico. |
+| F8 · Publicación funcional | Publicado y verificado en HTTPS; aceptación física pendiente | CI aprobado y aplicación publicada. Recorridos de PC y móvil emulado pasan en el sitio real, con registro offline y recuperación. Falta el teléfono físico. |
 
 ## Comprobaciones de esta entrega
 
@@ -23,6 +23,14 @@ Actualizado el 6 de octubre de 2026. La implementación financiera, el almacenam
 - Lectura XLSX con ZIP/deflate y XML limitada y sin ejecutar fórmulas. Importes exactos contrastados en navegador.
 
 Las pruebas automáticas no acceden a la cuenta Google del usuario ni a sus datos financieros. La [prueba personal pendiente](PERSONAL_ACCEPTANCE.md) describe la intervención necesaria para cerrar F6/F7/F8.
+
+## Publicación verificada
+
+- Implementación: commit `b9947d9`, [CI y despliegue aprobados](https://github.com/desarrollo890/PaymentPlanManager-PWA/actions/runs/37548729320).
+- Recorridos sintéticos contra la URL HTTPS publicada: PC y móvil emulado; cartera cifrada, cuatro tarjetas, planes, importación sin duplicados, respaldo, recuperación, recarga y registro sin conexión. La actualización protegida del service worker se comprobó en el servidor local controlado.
+- El sitio publicado carga el SDK real de Google Identity Services respetando su CSP. Esta comprobación no abre sesión ni concede acceso a Drive.
+- Revisión previa a publicación: 106 archivos candidatos y seis commits, sin detecciones de secretos mediante Gitleaks; identidad de autor y committer genérica. Esta revisión automática no equivale a una auditoría de seguridad independiente.
+- El repositorio privado original conserva su código e historial sin cambios de esta entrega. Los archivos de evidencia local y los datos sintéticos no se publican.
 
 ## Evidencia previa de Google
 
