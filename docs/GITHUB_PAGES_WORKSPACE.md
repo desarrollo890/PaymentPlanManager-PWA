@@ -6,7 +6,7 @@ El workspace usa React, Vite, TypeScript y npm. El dominio se compila sin DOM/No
 | --- | --- |
 | apps/pwa | Interfaz y compilación estática para Pages. |
 | packages/contracts | Tipos generados desde JSON Schema. |
-| packages/domain | Estructura del motor financiero independiente. |
+| packages/domain | Reglas base de calendario civil, quincenas y cuotas MSI/MCI; motor en migración. |
 | packages/application | Casos de uso; actualmente expone la configuración de base. |
 | packages/storage | Contrato inicial del almacenamiento local. |
 | packages/crypto | Contrato inicial del cifrado. |

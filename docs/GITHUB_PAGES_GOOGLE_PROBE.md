@@ -1,6 +1,6 @@
 # Prueba local web de Google Drive
 
-La prueba F0 verifica autorización y lectura/escritura cifrada con datos sintéticos. Es una herramienta local independiente de la cartera y no forma parte del sitio publicado. La prueba real sigue pendiente.
+La prueba F0 verifica autorización y lectura/escritura cifrada con datos sintéticos. Es una herramienta local independiente de la cartera y no forma parte del sitio publicado. El usuario completó la prueba real web el 6 de octubre de 2026 y reportó listado e integridad correctos del archivo sintético. La interoperabilidad Android y la sincronización de la cartera siguen pendientes.
 
 1. Instalar dependencias desde la raíz y detener el servidor React si ocupa 5173.
 2. Ejecutar `npm run dev:google-probe` y abrir http://localhost:5173/.
