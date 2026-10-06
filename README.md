@@ -2,7 +2,7 @@
 
 Aplicaci?n web personal para organizar deudas y pagos por quincena, preparada para GitHub Pages con React y TypeScript. Esta entrega es una **vista previa en desarrollo**: navegaci?n e interfaz inicial, contratos y pruebas. El registro financiero, los c?lculos, IndexedDB, uso offline y sincronizaci?n de la cartera todav?a est?n pendientes.
 
-Vista previa prevista: https://desarrollo890.github.io/PaymentPlanManager-PWA/
+Vista previa publicada: https://desarrollo890.github.io/PaymentPlanManager-PWA/
 
 ## Ejecutar y verificar
 
