@@ -1,34 +1,31 @@
 # Seguimiento de implementación web
 
-Actualizado el 6 de octubre de 2026. La interfaz publicada corresponde a una vista previa inicial. Los estados de este tablero se refieren a la implementación React y TypeScript.
+Actualizado el 6 de octubre de 2026. La implementación financiera, el almacenamiento cifrado y la PWA están conectados. La aceptación personal sigue abierta en los puntos que necesitan la cuenta o los dispositivos del usuario.
 
-| Área | Estado | Evidencia o siguiente paso |
+| Fase | Estado | Evidencia / siguiente paso |
 | --- | --- | --- |
-| Contratos y referencia | Completado | Tres esquemas, trece entidades y referencia financiera sintética incluidos. |
-| Viabilidad criptográfica | En curso | Prototipos y vectores disponibles; falta selección y validación del almacenamiento final. |
-| OAuth de Google web | Validado en prueba local | El usuario completó la autorización real y reportó creación, listado e integridad del bloque sintético en appDataFolder. Android sigue pendiente. |
-| Workspace React | Completado | Seis paquetes separados y comprobaciones de contratos, tipos y dependencias. |
-| CI y vista previa Pages | Completado | [Ejecución aprobada](https://github.com/desarrollo890/PaymentPlanManager-PWA/actions/runs/37530623689): instalación limpia, 26 pruebas, tipos/build, navegador PC/móvil y probe sintético; despliegue exitoso. |
-| Motor financiero | En curso | Primera entrega: calendario civil, quincenas, vencimientos y cuotas MSI/MCI. Paridad completa de los ocho escenarios de cartera pendiente. |
-| IndexedDB, cifrado y recuperación | Pendiente | Persistencia, migraciones, grupos/outbox atómicos y respaldo. |
-| Pantallas financieras y PWA offline | Pendiente | Tarjetas, movimientos, MSI/MCI, cortes, préstamos y presupuesto. |
-| Fusión y conflictos | Pendiente | Revisiones, dependencias, validación entre entidades y resolución visible. |
-| Drive y sincronización real | Pendiente | Vincular cuenta, lotes cifrados, auto-sync y dos navegadores. |
-| Importación y piloto | Pendiente | Cuadre, importación repetida sin duplicados y recuperación. |
-| Publicación funcional | Pendiente | Recorrido financiero completo; la vista previa inicial no satisface este hito. |
+| F0 · Contratos y viabilidad | Implementado; validación física pendiente | Esquemas estrictos, AES-GCM/PBKDF2, recuperación independiente y pruebas en Chromium. OAuth real del probe previamente reportado por el usuario. Falta rendimiento/recuperación en su teléfono. |
+| F1 · Workspace y CI | Implementado | Seis paquetes; tipos estrictos, dominio sin DOM/Node y pipeline de publicación. |
+| F2 · Motor financiero | Completado y verificado | Todas las instantáneas de ocho escenarios .NET, 240 quincenas, 120 cuotas y tres amortizaciones; saldos, cortes, préstamos y horizonte completo. |
+| F3 · IndexedDB y cifrado | Implementado y verificado automáticamente | Persistencia real en navegador; CAS, cambios/outbox atómicos, grupos de 1001 operaciones en lotes acotados, bloqueo, respaldo y recuperación. Versiones desconocidas se rechazan; existe migración del JSON anterior a v1. |
+| F4 · PWA funcional | Implementado y verificado automáticamente | Tarjetas, movimientos, MSI/MCI, cortes, préstamos, presupuesto, avisos y periodos. CSV/XLSX, exportaciones, recarga/registro offline y actualización protegida. |
+| F5 · Fusión y conflictos | Implementado y verificado automáticamente | Revisiones causales, reintentos, grupos incompletos, ramas conservadas, fusión de presentación y decisiones visibles. Validación de capacidad, atribuciones y cambios de historia entre entidades. |
+| F6 · Drive web | Adaptador completo; prueba real pendiente | Dos dispositivos aislados pasan con REST simulado y bloques cifrados. Tokens solo en memoria, autorización explícita, caducidad, desconexión y revocación. Falta autorización real de la aplicación en dos navegadores. |
+| F7 · Importación y piloto | Implementado; aceptación personal pendiente | Importación sintética conserva IDs, saldos, préstamos y horizonte; previsualización, cierres e idempotencia. Falta comparar y recuperar la cartera personal del usuario. |
+| F8 · Publicación funcional | Artefacto preparado; aceptación física pendiente | Build estático, manifiesto, service worker y recorridos PC/móvil automatizados. Publicación mediante CI; cierre sujeto a HTTPS publicado y teléfono físico. |
 
-Siguiente paso funcional: completar el motor financiero, empezando por saldos, atribución de pagos a planes y estimación de cortes. El producto no debe presentar como implementados los prototipos de arquitectura ni las pruebas con tokens sintéticos.
+## Comprobaciones de esta entrega
 
-Cada entrega registra sus pruebas y enlaza la ejecución de CI. El workflow usa una identidad de commit genérica; los cambios hechos desde otros clones deben conservar esa configuración.
+- `npm run check`: 54 pruebas unitarias, cuatro pruebas del probe Google, contratos, dependencias, tipos y build.
+- `npm run test:architecture`: 17 pruebas de prototipos, incluyendo el vector Argon2id. El producto utiliza PBKDF2; ese vector no implica uso de Argon2id en la PWA.
+- `npm run test:browser`: recorridos Chromium de 1440×1000 y 390×844 con datos sintéticos; creación, cuatro tarjetas en una fila, MSI/edición/saldo libre, horizonte, CSV sin duplicados, respaldo, contraseña incorrecta, recuperación, offline y actualización.
+- Dos contextos de navegador con IndexedDB aislado y Drive REST simulado: movimientos independientes offline, respuesta de upload perdida, conflicto financiero/resolución, bloques alterados, CAS/outbox, tombstones importados, grupo de 1001 operaciones y tokens en memoria/revocación.
+- Lectura XLSX con ZIP/deflate y XML limitada y sin ejecutar fórmulas. Importes exactos contrastados en navegador.
 
-## Publicación inicial
+Las pruebas automáticas no acceden a la cuenta Google del usuario ni a sus datos financieros. La [prueba personal pendiente](PERSONAL_ACCEPTANCE.md) describe la intervención necesaria para cerrar F6/F7/F8.
 
-[Repositorio público](https://github.com/desarrollo890/PaymentPlanManager-PWA) y [vista previa HTTPS](https://desarrollo890.github.io/PaymentPlanManager-PWA/), publicados el 6 de octubre de 2026. El historial comienza con una entrega web independiente y autores genéricos. La publicación inicial incluye 62 archivos web; no incorpora proyectos de escritorio/backend, datos personales ni historial anterior. La cartera funcional y la publicación final F8 siguen pendientes.
+## Evidencia previa de Google
 
-La URL HTTPS se verificó en Chromium con vistas de 1440×1000 y 390×844: assets, navegación, recarga directa, enfoque del teclado y ausencia de desbordamiento horizontal aprobados. El sitio realiza únicamente peticiones a sus assets, sin cargar Google ni invocar APIs financieras.
+El usuario reportó `integrityVerified: true`, `synthetic: true` y `listedInAppDataFolder: true` desde la herramienta local. No se publican IDs de archivo/bloque, tokens o claves. Eso acredita la prueba del probe, no todavía una cartera sincronizada por esta aplicación. La interoperabilidad Android nativa permanece fuera de la entrega web.
 
-## Prueba real de Google web
-
-El 6 de octubre de 2026 el usuario compartió el resultado de la herramienta local: `integrityVerified: true`, `synthetic: true` y `listedInAppDataFolder: true`. Según ese resultado, el archivo cifrado de prueba fue creado, encontrado, descargado y verificado. No se publican identificadores del archivo/bloque, tokens ni claves. La interoperabilidad Android permanece pendiente. Esta validación no equivale a sincronización de una cartera ni cierra la selección y recuperación del almacenamiento cifrado de F0.
-
-La primera entrega de F2 se documenta en [Motor financiero](FINANCIAL_ENGINE.md). No está conectada aún a formularios o almacenamiento.
+[Repositorio](https://github.com/desarrollo890/PaymentPlanManager-PWA) · [Aplicación HTTPS](https://desarrollo890.github.io/PaymentPlanManager-PWA/) · [Ejecuciones de CI](https://github.com/desarrollo890/PaymentPlanManager-PWA/actions/workflows/pages.yml)

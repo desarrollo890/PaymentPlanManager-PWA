@@ -1,4 +1,4 @@
-name: Web checks and Pages preview
+name: Web checks and Pages application
 
 on:
   push:
@@ -37,9 +37,9 @@ jobs:
         run: npm run test:architecture
       - name: Install browser for synthetic UI checks
         run: npx playwright install --with-deps chromium
-      - name: Check desktop, mobile and synthetic Google probe
+      - name: Check desktop, mobile and IndexedDB sync and synthetic Google probe
         run: npm run test:browser
-      - name: Upload static Pages preview
+      - name: Upload static Pages application
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
@@ -57,6 +57,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy Pages preview
+      - name: Deploy Pages application
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

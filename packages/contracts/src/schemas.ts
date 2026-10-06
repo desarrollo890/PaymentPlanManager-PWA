@@ -1,0 +1,1695 @@
+// Generated from contracts/v1. Do not edit.
+import type { Schema } from './validation.ts';
+export const schemas: Readonly<Record<string, Schema>> = {
+  "operation": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:paymentplan:operation:v1",
+    "title": "PaymentPlan operation v1",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "schemaVersion": {
+        "const": 1
+      },
+      "vaultId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "operationId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "entityId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "entityType": {
+        "enum": [
+          "card",
+          "balance",
+          "movement",
+          "installment",
+          "statement",
+          "loan",
+          "loanPayment",
+          "income",
+          "budget",
+          "reminderPreferences",
+          "reminderState",
+          "closure",
+          "device"
+        ]
+      },
+      "deviceId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "deviceSequence": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 9007199254740991
+      },
+      "parentRevisionIds": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "not": {
+            "const": "00000000-0000-0000-0000-000000000000"
+          }
+        },
+        "maxItems": 10000,
+        "uniqueItems": true
+      },
+      "dependencyOperationIds": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "not": {
+            "const": "00000000-0000-0000-0000-000000000000"
+          }
+        },
+        "maxItems": 10000,
+        "uniqueItems": true
+      },
+      "groupId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "not": {
+              "const": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "groupIndex": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9999
+      },
+      "groupSize": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10000
+      },
+      "action": {
+        "enum": [
+          "create",
+          "replace",
+          "void",
+          "restore",
+          "resolve"
+        ]
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "payload": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "schemaVersion",
+      "vaultId",
+      "operationId",
+      "entityId",
+      "entityType",
+      "deviceId",
+      "deviceSequence",
+      "parentRevisionIds",
+      "dependencyOperationIds",
+      "groupId",
+      "groupIndex",
+      "groupSize",
+      "action",
+      "updatedAt",
+      "payload"
+    ],
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "create"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "parentRevisionIds": {
+              "type": "array",
+              "maxItems": 0
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "parentRevisionIds": {
+              "type": "array",
+              "minItems": 1
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "resolve"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "parentRevisionIds": {
+              "type": "array",
+              "minItems": 2
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "void"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "payload": {
+              "type": "null"
+            }
+          }
+        },
+        "else": {
+          "oneOf": [
+            {
+              "properties": {
+                "entityType": {
+                  "const": "card"
+                },
+                "payload": {
+                  "$ref": "#/$defs/card"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "balance"
+                },
+                "payload": {
+                  "$ref": "#/$defs/balance"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "movement"
+                },
+                "payload": {
+                  "$ref": "#/$defs/movement"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "installment"
+                },
+                "payload": {
+                  "$ref": "#/$defs/installment"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "statement"
+                },
+                "payload": {
+                  "$ref": "#/$defs/statement"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "loan"
+                },
+                "payload": {
+                  "$ref": "#/$defs/loan"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "loanPayment"
+                },
+                "payload": {
+                  "$ref": "#/$defs/loanPayment"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "income"
+                },
+                "payload": {
+                  "$ref": "#/$defs/income"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "budget"
+                },
+                "payload": {
+                  "$ref": "#/$defs/budget"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "reminderPreferences"
+                },
+                "payload": {
+                  "$ref": "#/$defs/reminderPreferences"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "reminderState"
+                },
+                "payload": {
+                  "$ref": "#/$defs/reminderState"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "closure"
+                },
+                "payload": {
+                  "$ref": "#/$defs/closure"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "device"
+                },
+                "payload": {
+                  "$ref": "#/$defs/device"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "groupId": {
+              "type": "null"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "groupIndex": {
+              "const": 0
+            },
+            "groupSize": {
+              "const": 1
+            }
+          }
+        }
+      }
+    ],
+    "$defs": {
+      "uuid": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "date": {
+        "type": "string",
+        "format": "date",
+        "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+      },
+      "instant": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "money": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "signedMoney": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "allocation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "planId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "not": {
+              "const": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "quotaNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 120
+          },
+          "principalCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "interestCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "planId",
+          "quotaNumber",
+          "principalCents",
+          "interestCents"
+        ]
+      },
+      "card": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "bank": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "limitCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "cutDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "dueDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "dueMonthOffset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "initialDebtOrigin": {
+            "enum": [
+              "unknown",
+              "currentPeriod",
+              "previousStatement"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "bank",
+          "limitCents",
+          "cutDay",
+          "dueDay",
+          "dueMonthOffset",
+          "color",
+          "initialDebtOrigin",
+          "archived"
+        ]
+      },
+      "balance": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cardId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "not": {
+              "const": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "availableCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "debtCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "includedMovementIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "not": {
+                "const": "00000000-0000-0000-0000-000000000000"
+              }
+            },
+            "maxItems": 10000,
+            "uniqueItems": true
+          },
+          "interestIncluded": {
+            "type": "boolean"
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "legacyOrdinal": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cardId",
+          "date",
+          "availableCents",
+          "debtCents",
+          "includedMovementIds",
+          "interestIncluded",
+          "recordedAt",
+          "legacyOrdinal"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "recordedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "legacyOrdinal": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "movement": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cardId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "not": {
+              "const": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "kind": {
+            "enum": [
+              "expense",
+              "payment",
+              "interest",
+              "fee"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "scheduled": {
+            "type": "boolean"
+          },
+          "reconciled": {
+            "type": "boolean"
+          },
+          "statementId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "not": {
+                  "const": "00000000-0000-0000-0000-000000000000"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/allocation"
+            },
+            "maxItems": 10000
+          },
+          "importReference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "legacyOrdinal": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cardId",
+          "date",
+          "amountCents",
+          "kind",
+          "description",
+          "scheduled",
+          "reconciled",
+          "statementId",
+          "allocations",
+          "importReference",
+          "recordedAt",
+          "legacyOrdinal"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "recordedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "legacyOrdinal": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "installment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cardId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "not": {
+              "const": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "principalCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "months": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 120
+          },
+          "interestCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "firstCutDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "cutDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "purchaseId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "not": {
+                  "const": "00000000-0000-0000-0000-000000000000"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interestIncludedInDebt": {
+            "type": "boolean"
+          },
+          "interestIncorporatedThrough": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amortization": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "method": {
+                    "enum": [
+                      "fixedPayment",
+                      "fixedPrincipal",
+                      "bankTable"
+                    ]
+                  },
+                  "monthlyRate": {
+                    "type": "string",
+                    "pattern": "^(?:(?:[0-9]|[1-9][0-9])(?:\\.[0-9]{1,8})?|100(?:\\.0{1,8})?)$"
+                  },
+                  "interestTaxRate": {
+                    "type": "string",
+                    "pattern": "^(?:(?:[0-9]|[1-9][0-9])(?:\\.[0-9]{1,8})?|100(?:\\.0{1,8})?)$"
+                  },
+                  "table": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "principalCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "interestCents": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "principalCents",
+                            "interestCents"
+                          ]
+                        },
+                        "maxItems": 120
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "method",
+                  "monthlyRate",
+                  "interestTaxRate",
+                  "table"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "legacyOrdinal": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cardId",
+          "description",
+          "principalCents",
+          "months",
+          "interestCents",
+          "startDate",
+          "firstCutDate",
+          "cutDay",
+          "purchaseId",
+          "interestIncludedInDebt",
+          "interestIncorporatedThrough",
+          "amortization",
+          "recordedAt",
+          "legacyOrdinal"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "recordedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "legacyOrdinal": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "statement": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cardId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "not": {
+              "const": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "cutDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "targetCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "minimumCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "initialPaidCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reservedCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "estimated": {
+            "type": "boolean"
+          },
+          "balanceReferenceDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "includedPaymentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "not": {
+                "const": "00000000-0000-0000-0000-000000000000"
+              }
+            },
+            "maxItems": 10000,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "cardId",
+          "cutDate",
+          "dueDate",
+          "targetCents",
+          "minimumCents",
+          "initialPaidCents",
+          "reservedCents",
+          "estimated",
+          "balanceReferenceDate",
+          "includedPaymentIds"
+        ]
+      },
+      "loan": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "person": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "principalCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "balanceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "includeReceivedMoney": {
+            "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "legacyOrdinal": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "person",
+          "description",
+          "principalCents",
+          "balanceDate",
+          "dueDate",
+          "includeReceivedMoney",
+          "archived",
+          "recordedAt",
+          "legacyOrdinal"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "recordedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "legacyOrdinal": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "loanPayment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "loanId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "not": {
+              "const": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "scheduled": {
+            "type": "boolean"
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "legacyOrdinal": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "loanId",
+          "date",
+          "amountCents",
+          "description",
+          "scheduled",
+          "recordedAt",
+          "legacyOrdinal"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "recordedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "legacyOrdinal": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "income": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "income15Cents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "incomeEndCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expensesCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reserveCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "income15Cents",
+          "incomeEndCents",
+          "expensesCents",
+          "reserveCents"
+        ]
+      },
+      "budget": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "payday": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "expectedIncomeCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "receivedIncomeCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expensesCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reserveCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "payday",
+          "expectedIncomeCents",
+          "receivedIncomeCents",
+          "expensesCents",
+          "reserveCents",
+          "note"
+        ]
+      },
+      "reminderPreferences": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "daysBefore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "cuts": {
+            "type": "boolean"
+          },
+          "payments": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "daysBefore",
+          "cuts",
+          "payments"
+        ]
+      },
+      "reminderState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reminderKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "postponedUntil": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reminderKey",
+          "postponedUntil"
+        ]
+      },
+      "closure": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cardId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "not": {
+              "const": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "from": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+          },
+          "openingDebtCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "openingAvailableCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "paymentsCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expensesCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "feesCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "interestCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "closingDebtCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "closingAvailableCents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "bankDebtCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bankAvailableCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "historyHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "legacyOrdinal": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cardId",
+          "from",
+          "to",
+          "openingDebtCents",
+          "openingAvailableCents",
+          "paymentsCents",
+          "expensesCents",
+          "feesCents",
+          "interestCents",
+          "closingDebtCents",
+          "closingAvailableCents",
+          "bankDebtCents",
+          "bankAvailableCents",
+          "historyHash",
+          "recordedAt",
+          "legacyOrdinal"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "recordedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "legacyOrdinal": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "device": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "retired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "label",
+          "retired"
+        ]
+      }
+    }
+  },
+  "batch": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:paymentplan:batch:v1",
+    "title": "PaymentPlan decrypted batch v1",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "schemaVersion": {
+        "const": 1
+      },
+      "vaultId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "batchId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "deviceId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "operations": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:paymentplan:operation:v1"
+        },
+        "maxItems": 1000,
+        "minItems": 1
+      }
+    },
+    "required": [
+      "schemaVersion",
+      "vaultId",
+      "batchId",
+      "deviceId",
+      "operations"
+    ]
+  },
+  "encrypted-block": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:paymentplan:encrypted-block:v1",
+    "title": "PaymentPlan encrypted block v1",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "schemaVersion": {
+        "const": 1
+      },
+      "vaultId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "keyId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "blockId": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "not": {
+          "const": "00000000-0000-0000-0000-000000000000"
+        }
+      },
+      "purpose": {
+        "enum": [
+          "batch",
+          "snapshot",
+          "dataKeyWrap",
+          "recoveryKeyWrap"
+        ]
+      },
+      "algorithm": {
+        "const": "AES-256-GCM"
+      },
+      "ivBase64": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9+/]{16}$"
+      },
+      "ciphertextBase64": {
+        "type": "string",
+        "minLength": 24,
+        "maxLength": 1400000,
+        "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+      },
+      "kdf": {
+        "anyOf": [
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "algorithm": {
+                    "const": "PBKDF2-SHA256"
+                  },
+                  "iterations": {
+                    "type": "integer",
+                    "minimum": 600000,
+                    "maximum": 2000000
+                  },
+                  "saltBase64": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9+/]{22}==$"
+                  }
+                },
+                "required": [
+                  "algorithm",
+                  "iterations",
+                  "saltBase64"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "algorithm": {
+                    "const": "Argon2id"
+                  },
+                  "version": {
+                    "const": 19
+                  },
+                  "memoryKiB": {
+                    "type": "integer",
+                    "minimum": 19456,
+                    "maximum": 65536
+                  },
+                  "passes": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 6
+                  },
+                  "parallelism": {
+                    "const": 1
+                  },
+                  "saltBase64": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9+/]{22}==$"
+                  }
+                },
+                "required": [
+                  "algorithm",
+                  "version",
+                  "memoryKiB",
+                  "passes",
+                  "parallelism",
+                  "saltBase64"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "schemaVersion",
+      "vaultId",
+      "keyId",
+      "blockId",
+      "purpose",
+      "algorithm",
+      "ivBase64",
+      "ciphertextBase64",
+      "kdf"
+    ],
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "purpose": {
+              "const": "dataKeyWrap"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "kdf": {
+              "type": "object"
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "kdf": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    ]
+  }
+};

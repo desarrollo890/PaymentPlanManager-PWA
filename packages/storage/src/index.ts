@@ -19,3 +19,5 @@ export interface EncryptedLocalStore {
   pending(vaultId: Uuid): Promise<ReadonlyArray<EncryptedBlock>>;
   acknowledge(vaultId: Uuid, blockId: Uuid): Promise<void>;
 }
+
+export * from './vault-store.ts';

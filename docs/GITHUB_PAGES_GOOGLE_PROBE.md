@@ -1,5 +1,7 @@
 # Prueba local web de Google Drive
 
+> Este documento conserva la prueba de viabilidad inicial. La implementación operativa y su aceptación pendiente se describen en [Seguimiento](GITHUB_PAGES_TRACKING.md).
+
 La prueba F0 verifica autorización y lectura/escritura cifrada con datos sintéticos. Es una herramienta local independiente de la cartera y no forma parte del sitio publicado. El usuario completó la prueba real web el 6 de octubre de 2026 y reportó listado e integridad correctos del archivo sintético. La interoperabilidad Android y la sincronización de la cartera siguen pendientes.
 
 1. Instalar dependencias desde la raíz y detener el servidor React si ocupa 5173.

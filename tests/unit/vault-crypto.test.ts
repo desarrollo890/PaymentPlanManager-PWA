@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createVault, unlockVault, recoverVault, encodeJson, decodeJson } from '@paymentplan/crypto';
+import { randomUUID } from 'node:crypto';
+test('password and independent recovery unlock the same nonextractable key; lock and tampering are enforced', async () => {
+  const password = 'Synthetic fixture password 2026';
+  const created = await createVault(password), context = { vaultId: created.header.vaultId, keyId: created.header.keyId, blockId: randomUUID(), purpose: 'batch' as const };
+  const original = { synthetic: true, principalCents: 12345 };
+  const block = await created.cipher.seal(encodeJson(original), context);
+  const reopened = await unlockVault(created.header, password); assert.deepEqual(decodeJson(await reopened.open(block, context)), original);
+  await assert.rejects(unlockVault(created.header, 'Incorrect synthetic password'));
+  await assert.rejects(reopened.open({ ...block, blockId: randomUUID() }, context));
+  await assert.rejects(reopened.open({ ...block, ciphertextBase64: block.ciphertextBase64.slice(0, -4) + 'AAAA' }, context));
+  const recovered = await recoverVault(created.header, created.recoveryKey, 'New synthetic password 2026');
+  assert.deepEqual(decodeJson(await recovered.cipher.open(block, context)), original);
+  await assert.rejects(unlockVault(recovered.header, password));
+  const after = await unlockVault(recovered.header, 'New synthetic password 2026'); assert.deepEqual(decodeJson(await after.open(block, context)), original);
+  created.cipher.lock(); assert.throws(() => created.cipher.seal(encodeJson(original), context), /bloqueada/);
+  after.lock(); reopened.lock(); recovered.cipher.lock();
+});

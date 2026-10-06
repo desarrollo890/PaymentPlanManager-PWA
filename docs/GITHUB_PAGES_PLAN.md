@@ -1,6 +1,6 @@
 # Plan de implementación para GitHub Pages
 
-La aplicación ejecutará sus reglas financieras en el navegador y guardará localmente una cartera cifrada en IndexedDB. Google Drive appDataFolder servirá para sincronizar operaciones cifradas entre dispositivos. La vista previa actual permite validar la estructura y el despliegue; aún no implementa el registro financiero ni el almacenamiento de una cartera.
+La implementación financiera, la cartera cifrada en IndexedDB y la sincronización con Drive están conectadas a la PWA. El código se comprueba automáticamente con datos sintéticos; las pruebas de cuenta real, teléfono físico y cuadre personal se mantienen abiertas en el seguimiento. Las condiciones de aceptación de este plan siguen vigentes.
 
 ## Funcionalidad prevista
 

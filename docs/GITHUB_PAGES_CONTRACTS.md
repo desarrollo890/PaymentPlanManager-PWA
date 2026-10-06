@@ -1,87 +1,67 @@
-# Contratos y referencia financiera web
+# Contratos y almacenamiento web v1
 
-Los contratos v1 definen trece entidades y revisiones financieras. El motor TypeScript y la sincronización del producto siguen pendientes. La [referencia financiera](../tests/fixtures/financial-reference.v1.json) es una exportación sintética independiente de datos personales; se usa para preservar reglas durante la implementación.
+Los contratos normativos son JSON Schema 2020-12. El producto implementa su validación, revisiones causales, persistencia cifrada y transporte. Los prototipos de `tools/architecture` siguen separados. Cambiar un contrato persistido exige una versión nueva y migración explícita.
 
-Incluye ocho escenarios: deuda inicial del periodo actual, deuda libre para dividir, edición/pagos de MSI/MCI, compra y reclasificación, plazo de Plata, objetivo bancario confirmado, saldo a favor e intereses futuros y préstamos/presupuesto. Incluye además 240 fechas de quincena, 120 cuotas y tres amortizaciones. La aplicación no necesita proyectos .NET para compilar ni ejecutar las pruebas de este repositorio.
+- [operation.schema.json](../contracts/v1/operation.schema.json): trece entidades y revisiones.
+- [batch.schema.json](../contracts/v1/batch.schema.json): hasta 1000 operaciones por lote físico.
+- [encrypted-block.schema.json](../contracts/v1/encrypted-block.schema.json): envoltura cifrada y metadatos autenticados.
 
-## Formato de datos v1
+El [generador normativo](../tools/architecture/generate-contracts.mjs) produce los esquemas. Los scripts de workspace generan tipos y datos de validación; CI verifica que coincidan. El validador de navegador interpreta solo los criterios usados por estos contratos, sin generar o ejecutar código. Las pruebas comparan decisiones con Ajv para acciones, cargas financieras y mutaciones inválidas.
 
-Los archivos normativos son JSON Schema 2020-12:
+## Datos
 
-- [operation.schema.json](../contracts/v1/operation.schema.json): operaciones y trece tipos de entidad.
-- [batch.schema.json](../contracts/v1/batch.schema.json): lote descifrado de hasta 1000 operaciones.
-- [encrypted-block.schema.json](../contracts/v1/encrypted-block.schema.json): envoltura autenticada de un bloque.
-
-El generador [generate-contracts.mjs](../tools/architecture/generate-contracts.mjs) produce los tres archivos. Cambiar un contrato persistido exige una nueva versión y migración explícita. Se rechazan propiedades desconocidas y versiones que el cliente no comprende antes de aplicar cambios.
-
-Los importes son enteros de centavos MXN, dentro del rango seguro de JavaScript. Saldos y cierres admiten valores negativos para representar saldo a favor. Los límites de negocio actuales, relaciones y sumas se validarán además en el dominio: un esquema no comprueba capacidad de deuda, sobrepagos, tabla de amortización ni solapamientos de cierres. Se usarán operaciones decimales exactas para tasas y se comprobará desbordamiento de sumas; no se calcularán intereses con flotantes binarios. Las tasas son porcentajes en cadenas decimales, por ejemplo `"2"` y `"16"`, sin exponente y con hasta ocho decimales.
-
-Las fechas financieras son `YYYY-MM-DD`; no se convertirán a medianoche UTC para determinar el día. Los instantes terminan en `Z`. Se conservará como texto la precisión original de `RegistradoEnUtc`, incluidos siete decimales de .NET: convertirla únicamente a `Date` perdería precisión relevante para ordenar hechos del mismo día. En registros antiguos sin ese instante, `recordedAt` será null y `legacyOrdinal` será obligatorio, conservando posición dentro de la colección original. No se inventará una cronología común entre colecciones; F2 conservará los criterios de compatibilidad del motor actual.
-
-| Entidad | Datos persistidos y criterio |
+| Entidad | Hechos persistidos |
 | --- | --- |
-| `card` | Identidad, banco, límite, corte, plazo, color y origen de deuda; saldo separado. |
-| `balance` | Ancla inicial o conciliada: disponible, deuda neta, fecha, movimientos incorporados e intereses incorporados. |
-| `movement` | Gasto/pago/interés/comisión, fecha, programación, conciliación, corte, atribuciones a cuotas y referencia de importación. |
-| `installment` | Capital, plazo, interés, primera cuota, compra original, amortización e intereses ya incorporados. |
-| `statement` | Objetivo, mínimo, ya pagado, apartado, estimado/confirmado y pagos incluidos en el importe. |
-| `loan`, `loanPayment` | Persona, saldo base, vencimiento, ingreso recibido y abonos reales/programados, sin interés. |
-| `income`, `budget` | Ingresos habituales y excepciones por quincena, gastos esenciales y reserva. |
-| `reminderPreferences`, `reminderState` | Preferencias y aviso atendido; fecha de posposición null significa atendido sin posponer. |
-| `closure` | Importes históricos, comparación bancaria opcional y huella del historial normalizada a hexadecimal minúsculo. |
-| `device` | Identidad del dispositivo, etiqueta y retiro lógico; retirarlo no revoca por sí solo una clave copiada. |
+| card | Banco, nombre, límite, corte/vencimiento, color y origen de deuda. |
+| balance | Ancla inicial/conciliada, deuda neta, disponible e IDs de movimientos incorporados. |
+| movement | Gasto/pago/interés/comisión, programación, conciliación, corte y atribuciones. |
+| installment | Capital, interés, meses, fechas, compra, amortización e interés incorporado. |
+| statement | Objetivo, mínimo, pagado inicial, apartado, origen estimado/confirmado y pagos incluidos. |
+| loan / loanPayment | Persona, capital, saldo, vencimiento y abonos sin interés. |
+| income / budget | Ingresos habituales y excepciones por quincena, gastos y reserva. |
+| reminderPreferences / reminderState | Preferencias y avisos atendidos/pospuestos. |
+| closure | Importes históricos, comparación bancaria y huella del historial. |
+| device | Contrato de identidad/etiqueta/retiro; la sesión usa una identidad local, sin interfaz de retiro remoto. |
 
-Los estados anulado/cancelado se representan mediante revisiones `void`, conservando la última propuesta y su historial. `restore` referencia la revisión anulada y aporta el contenido completo validado. La migración creará una revisión inicial y una anulación posterior cuando corresponda. El saldo base neto incorporará `SaldoAFavorInicial`; totales derivados de movimientos no se volverán a sumar como parte de esa base.
+Importes en centavos enteros seguros de JavaScript; las sumas rechazan desbordamientos. Las tasas son porcentajes como cadenas decimales, con hasta ocho decimales, sin exponente. El motor usa BigInt/racionales para intereses y redondeo. Los saldos negativos representan saldo a favor. La deuda a meses no se suma dos veces a la deuda total.
 
-Solo se sincronizan hechos y decisiones persistidas. Cuotas calculadas, deuda actual, cortes puramente proyectados, quincenas y resúmenes se recalculan. Una confirmación bancaria se conserva como `statement` explícito; recalcular no altera su objetivo. IDs nuevos para registros antiguos sin ID se asignarán mediante una estrategia de importación estable en F7. Ingresos/preferencias y presupuestos tendrán identidad lógica única por almacén o fecha, respectivamente; la importación no generará duplicados cada vez.
+Fechas económicas `YYYY-MM-DD` e instantes UTC terminados en `Z`. Se conserva la precisión de los instantes .NET y se normaliza solo su comparación; no se convierten a `Date` para ordenar ticks. Registros antiguos sin instante tienen ordinal estable. Los cálculos no dependen de la zona horaria del dispositivo.
 
-## Operaciones, dependencias y grupos
+## Revisiones y atomicidad
 
-`entityId` identifica el registro; `operationId` identifica una revisión inmutable. Una revisión lleva `vaultId`, `deviceId`, `deviceSequence`, padres, dependencias, acción, `updatedAt` y contenido completo. Padres son revisiones de la misma entidad; dependencias pueden pertenecer a otras entidades. Una creación no tiene padres. Una resolución enumera al menos las dos ramas conocidas que resuelve. El contador se asignará transaccionalmente en F3; el reloj sirve para información, no para decidir qué importe gana.
+`entityId` identifica el registro y `operationId` una revisión inmutable. Incluye padres de la misma entidad, dependencias de otras entidades, autor, secuencia del dispositivo y acción. El reloj informa; no elige un ganador financiero.
 
-Un comando que cambia varias entidades comparte `groupId`, autor, `groupSize` e índices únicos desde cero. Ejemplos: compra con plan, pago con atribuciones, conciliación con movimientos incorporados. El grupo admite hasta 10000 operaciones y puede cruzar lotes de 1000 y bloques físicos. Ninguna parte se aplica antes de recibir el grupo completo y sus dependencias. La transacción local guardará grupo y outbox juntos; esto aún corresponde a F3.
+Acciones `create`, `replace`, `void`, `restore` y `resolve`. Una resolución enumera las ramas observadas; las ramas desconocidas no se descartan. Una importación de un registro anulado crea primero su carga histórica y después un tombstone. Los IDs iguales con contenido diferente son errores; los reintentos exactos se deduplican.
 
-Se deduplican reintentos por `operationId`. El mismo ID con contenido diferente es un error; almacenes distintos no se mezclan. Orden de llegada o `updatedAt` no sustituyen relaciones causales. Operaciones con padres ausentes quedan pendientes; ciclos, versiones desconocidas y contenido inválido deben diagnosticarse antes de afectar saldos.
+Un comando puede contener hasta 10 000 revisiones en un grupo atómico y cruzar lotes de 1000 operaciones. Los lotes se dividen además por tamaño para mantener el bloque claro bajo 1 MiB. IndexedDB guarda todos los bloques, el contador y el outbox en la misma transacción CAS. Ninguna parte de un grupo recibido se materializa antes de completar el grupo y sus dependencias.
 
-## Política de conflictos
+La cartera admite hasta 100 000 operaciones en esta versión. No hay compactación/snapshots de producto. Se rechazan versiones no comprendidas y ciclos; padres ausentes quedan pendientes para la siguiente sincronización.
 
-| Situación | Política de implementación |
-| --- | --- |
-| Dos pagos distintos, cada uno con su ID | Conservar ambos; validar juntos sus atribuciones y reglas. |
-| Reintento de la misma operación | Aplicar una sola vez. |
-| Edición que referencia la revisión vigente | Aplicar si es válida, aunque el reloj sea anterior. |
-| Cambios independientes de presentación | Fusión de tres vías contra ancestro común, solo si los campos no se contradicen. |
-| Dos cambios financieros del mismo registro | Mantener ambas propuestas; pedir resolución explícita. |
-| Anulación frente a edición | Conflicto explícito; no resucitar ni eliminar por fecha. |
-| Plan editado mientras otro dispositivo paga cuotas anteriores | Validar dependencias y proteger historial; resolución entre entidades. |
-| Dos planes consumen la misma deuda disponible, o dos pagos sobreasignan una cuota | Conflicto financiero conjunto, aunque los IDs sean distintos. |
-| Resolución concurrente con una rama todavía desconocida | Conservar el nuevo conflicto; no descartar la rama tardía. |
+## Fusión y coherencia
 
-Importe, fecha, tipo, tarjeta, corte, programación y atribuciones se tratarán como un conjunto financiero coherente. No se compondrá un pago con importe de una propuesta y cuota de otra. Descripción o color pueden fusionarse por separado cuando existe una base común y no hay contradicción. La resolución produce una nueva operación que referencia las ramas; no sobrescribe el historial.
+Cambios financieros concurrentes del mismo registro conservan propuestas y ancestro aceptado. Descripción/color pueden fusionarse por campos si existe una base común y no hay contradicción. No se combina el importe de una propuesta con la cuota de otra. Dos movimientos nuevos con IDs diferentes se conservan ambos.
 
-[revisions.mjs](../tools/architecture/revisions.mjs) demuestra deduplicación, causalidad, grupos incompletos y conservación de conflictos. Es un prototipo conservador: dos cabezas conservan el ancestro común cuando es único, o ninguna propuesta aceptada cuando no hay base única. No implementa todavía fusión de campos, validación financiera entre entidades, almacenamiento/outbox, protección de ciclos entre grupos ni el flujo visual de resolución. Esas funciones son F3/F5. El receptor debe validar esquemas antes de invocarlo.
+El dominio comprueba capacidad de deuda, propiedad de compras, sumas/atribuciones, capital de préstamos, cortes repetidos y cierres. La aplicación detecta edición de planes/préstamos concurrente con pagos y cambios del historial cerrado. La revisión permite elegir versiones, conservar/revertir una corrección revisada o anular un registro preservando el historial. Una decisión no omite la validación financiera: si sigue habiendo incoherencia, la edición continúa bloqueada.
 
-## Bloques cifrados y claves
+## Cifrado y descubrimiento
 
-Cada envoltura identifica versión, almacén, clave, bloque, propósito, algoritmo, IV, texto cifrado y parámetros de derivación. El límite de lectura del prototipo es 1 MiB de texto claro por bloque. AES-256-GCM usa IV aleatorio nuevo de 12 bytes y etiqueta de 16 bytes. La autenticación incluye exactamente esta matriz serializada con `JSON.stringify` y codificada UTF-8:
+`paymentplan-vault-v1` identifica la cabecera pública: cartera, clave, fecha y dos envolturas de la misma clave de datos aleatoria. Una usa contraseña y otra una clave de recuperación independiente de 32 bytes. AES-256-GCM utiliza IV nuevo de 12 bytes y tag de 16 bytes. La clave de datos se importa como CryptoKey no extraíble y permanece en memoria.
+
+La envoltura de contraseña usa PBKDF2-SHA256: 600 000 iteraciones y sal aleatoria de 16 bytes. Se rechazan valores fuera de 600 000–2 000 000 antes de derivar. Argon2id está definido y probado en el prototipo, pero la PWA no acepta esa derivación en sus cabeceras de producto.
+
+AAD exacto, serializado con JSON.stringify y UTF-8:
 
 ```text
 ["paymentplan-encrypted-block-v1", schemaVersion, vaultId, keyId,
  blockId, purpose, algorithm, parameters]
 ```
 
-`parameters` es null para datos/recuperación, `["PBKDF2-SHA256", iterations, saltBase64]` o `["Argon2id", version, memoryKiB, passes, parallelism, saltBase64]` para envolver la clave de datos con contraseña. Se verifica el contexto esperado antes de descifrar y se rechazan parámetros fuera de límites antes de derivar. El cuerpo de snapshots y el manifiesto de descubrimiento del almacén se especificarán en F3/F5; admitir su propósito no implica que esos formatos estén implementados.
+`parameters` es null para lotes/recuperación o `["PBKDF2-SHA256", iterations, saltBase64]` para la contraseña. El contexto de cartera, clave, bloque y propósito se verifica antes de aceptar datos. La lectura clara se limita a 1 MiB por bloque.
 
-La clave de datos aleatoria se envuelve con una clave derivada de contraseña; una clave de recuperación aleatoria independiente puede envolver la misma clave de datos. Cambiar contraseña no requiere volver a cifrar todos los movimientos. Las pruebas verifican ambos caminos, integridad y límites de recursos. No existe aún interfaz de recuperación. [Web Crypto](https://www.w3.org/TR/webcrypto/), [Argon2 y vector de referencia](https://www.rfc-editor.org/rfc/rfc9106.html).
+Drive guarda lotes y cabeceras como archivos inmutables en appDataFolder, con metadatos de identificación sin nombres financieros. No se sobrescribe un JSON global. Un upload se reconoce solo después de éxito; una respuesta perdida conserva el outbox y el siguiente listado evita duplicación. La sincronización nunca publica cargas claras o tokens.
 
+Cambiar contraseña vuelve a envolver la clave; los datos conservan su cifrado. Las copias antiguas de la cabecera o claves siguen pudiendo desbloquear sus datos. El formato de respaldo `paymentplan-encrypted-backup-v1` incluye cabecera y bloques autenticados; se verifica antes de fusionar.
 
-## Reproducir comprobaciones
+## Referencia y aceptación
 
-```sh
-npm ci --ignore-scripts
-npm ci --prefix tools/architecture --ignore-scripts
-npm run check
-npm run test:architecture
-```
-
-La referencia financiera es una entrada sintética versionada, no una cartera de usuario. Node se usa para desarrollo y CI; Pages sirve solamente JavaScript, CSS, HTML y assets estáticos.
+La referencia .NET sintética cubre ocho escenarios completos, 240 quincenas, 120 cuotas y tres amortizaciones. Los scripts prueban dos dispositivos aislados con IndexedDB y REST de Drive simulado. La [aceptación personal](PERSONAL_ACCEPTANCE.md) requiere la cuenta real, el teléfono y el cuadre de datos del usuario.

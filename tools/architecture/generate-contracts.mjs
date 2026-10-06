@@ -16,7 +16,7 @@ const date = { type: 'string', format: 'date', pattern: '^(19[0-9]{2}|[2-9][0-9]
 const instant = { type: 'string', format: 'date-time', pattern: 'Z$' };
 const ids = { ...array(uuid), uniqueItems: true };
 const legacyOrdinal = nullable({ type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER });
-const rate = { type: 'string', pattern: '^(?:(?:[0-9]|[1-9][0-9])(?:\\.[0-9]{1,8})?|100(?:\\.0{1,8})?)$' };
+const rate = { type: 'string', pattern: '^(?:(?:[0-9]|[1-9][0-9])(?:\.[0-9]{1,8})?|100(?:\.0{1,8})?)$' };
 const defs = {
   uuid, date, instant, money, signedMoney,
   allocation: object({ planId: uuid, quotaNumber: { type: 'integer', minimum: 1, maximum: 120 }, principalCents: money, interestCents: money }),

@@ -41,3 +41,7 @@ local.properties
 *.user
 .DS_Store
 Thumbs.db
+
+# User downloads
+/paymentplan-respaldo*.json
+/paymentplan-clave-recuperacion*.txt

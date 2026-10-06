@@ -1,5 +1,7 @@
 # Viabilidad de la implementación web
 
+> Este documento conserva la prueba de viabilidad inicial. La implementación operativa y su aceptación pendiente se describen en [Seguimiento](GITHUB_PAGES_TRACKING.md).
+
 Los prototipos prueban contratos, revisiones, cifrado e interoperabilidad para la aplicación web. Trabajan con datos sintéticos y no constituyen el motor financiero ni un sincronizador completo.
 
 La referencia contiene ocho escenarios, 240 fechas de quincena, 120 cuotas y tres amortizaciones. Las pruebas de arquitectura cubren esquemas, revisiones causales, dependencias, grupos incompletos, deduplicación, AES-GCM, derivación y recuperación básica. Faltan fusión de campos y validación financiera entre entidades.

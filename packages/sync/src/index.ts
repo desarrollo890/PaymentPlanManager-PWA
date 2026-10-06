@@ -24,3 +24,7 @@ export class TransportError extends Error {
     this.failure = failure;
   }
 }
+
+export * from './revisions.ts';
+
+export * from './drive.ts';
