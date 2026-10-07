@@ -28,7 +28,7 @@ Revisión del 6 de octubre de 2026. La referencia es la versión privada WPF y A
 
 ## Diferencias deliberadas
 
-- Incluir/excluir se representa con anular/restaurar; una fecha programada necesita confirmación real. No se inventan pagos ni tarjetas de prueba.
+- Incluir/excluir y eliminar movimientos de WPF se representan con anular/restaurar y conservación de historial; una fecha programada necesita confirmación real. No se inventan pagos ni tarjetas de prueba.
 - La eliminación conserva versiones cifradas anuladas para que otro dispositivo no resucite registros. No equivale a borrar físicamente datos de Drive ni tiene restauración masiva en la interfaz.
 - La cartera sustituye el inicio de sesión del servidor por desbloqueo local. Google autoriza únicamente sincronización. No hay backend .NET, cron ni notificaciones con la app cerrada.
 - Los cierres solo cubren hasta 366 días transcurridos con saldo base conocido; el resumen de actividad admite hasta 3660 días y operaciones futuras contadas por separado.
@@ -43,3 +43,5 @@ Revisión del 6 de octubre de 2026. La referencia es la versión privada WPF y A
 Se contrastaron tres niveles: rutas y formularios de la aplicación anterior; reglas de sus servicios frente al dominio y comandos TypeScript; acceso real a los flujos nuevos desde la interfaz de PC y móvil. Las comprobaciones anteriores `.NET WebChecks` se ejecutan con datos sintéticos aislados. La PWA conserva los ocho escenarios de referencia, incluyendo quincenas, amortización, Plata, conciliación y préstamos; las nuevas pruebas cubren omisiones de interfaz y operaciones adicionales.
 
 Esta equivalencia funcional no garantiza ausencia absoluta de errores. La cartera personal no se abre en las pruebas automáticas. El usuario considera correcta su revisión de la migración; resta la confirmación explícita de coincidencia final del conflicto entre ambos dispositivos y el seguimiento de uso cotidiano.
+
+Verificación de entrega: [CI y publicación aprobadas](https://github.com/desarrollo890/PaymentPlanManager-PWA/actions/runs/37578055635), implementación `59f6ba1`. El recorrido sintético contra HTTPS pasó en PC y móvil, incluyendo pagos por cuota, atribuciones múltiples, amortización bancaria, cancelados, cierres, educación, análisis, simulación y eliminación causal. El repositorio anterior permanece sin cambios en esta revisión.

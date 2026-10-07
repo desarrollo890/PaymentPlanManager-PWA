@@ -27,4 +27,4 @@ El cuadre personal de importación fue aprobado por el usuario. La confirmación
 
 ## Estado de la primera entrega
 
-E0–E3 implementadas. Comprobaciones: suite anterior .NET aprobada, 62 pruebas unitarias PWA, cuatro pruebas Google, 17 de arquitectura y recorridos sintéticos de PC/móvil. Se comprobó la equivalencia de fechas Excel 1900/1904 y se revisaron capturas de educación y simulación. E4 se completa con CI y verificación del sitio publicado. E5–E7 son mejoras posteriores, no funciones entregadas.
+E0–E4 implementadas y verificadas. Comprobaciones: suite anterior .NET aprobada, 62 pruebas unitarias PWA, cuatro pruebas Google, 17 de arquitectura y recorridos sintéticos de PC/móvil. Se comprobó la equivalencia de fechas Excel 1900/1904 y se revisaron capturas de educación y simulación. [CI y publicación aprobadas](https://github.com/desarrollo890/PaymentPlanManager-PWA/actions/runs/37578055635), implementación `59f6ba1`; el recorrido PC/móvil también pasó contra la URL HTTPS publicada. E5–E7 son mejoras posteriores, no funciones entregadas.
