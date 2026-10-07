@@ -20,6 +20,8 @@ test('bank import converts exact cents, previews duplicates and repeats idempote
 test('same-valued independent rows survive without IDs; ambiguous numeric values and unknown kinds fail',async()=>{
   const p=fixture(),id=p.cards[0]!.id,rows=readCsv('Fecha,Descripción,Importe,Tipo\n03/10/2026,Compra,"1.234,56",Gasto\n03/10/2026,Compra,"1.234,56",Gasto');
   const preview=await prepareBankImport(p,id,rows,{...mapping,reference:-1,dateFormat:'dmy',decimalComma:true},'2026-10-03');assert.equal(new Set(preview.map(r=>r.change!.entityId)).size,2);
-  await assert.rejects(prepareBankImport(p,id,[rows[0]!,['2026-10-03','Purchase','1.001','Gasto']],mapping,'2026-10-03'),/importe/);
-  await assert.rejects(prepareBankImport(p,id,[rows[0]!,['2026-10-03','Purchase','1.00','Unknown']],mapping,'2026-10-03'),/tipo/);
+  const invalidAmount = await prepareBankImport(p,id,[rows[0]!,['2026-10-03','Purchase','1.001','Gasto']],mapping,'2026-10-03');
+  assert.match(invalidAmount[0]!.error!,/importe/); assert.equal(invalidAmount[0]!.change,null);
+  const invalidKind = await prepareBankImport(p,id,[rows[0]!,['2026-10-03','Purchase','1.00','Unknown']],mapping,'2026-10-03');
+  assert.match(invalidKind[0]!.error!,/tipo/);
 });

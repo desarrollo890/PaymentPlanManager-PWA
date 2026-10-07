@@ -61,6 +61,27 @@ export class FinancialCommands {
     if (action === 'realize') this.editableDate(m.cardId, this.context.today);
     return this.checked([{ entityType: 'movement', entityId: id, payload: action === 'realize' ? { ...m, scheduled: false, date: this.context.today } : m, voided: action === 'void' }]);
   }
+  assignPayment(id: string, allocations: Movement['allocations']): Change[] {
+    const row = record(this.portfolio.movements, id);
+    if (row.voided || row.value.kind !== 'payment') throw Error('Selecciona un pago vigente.');
+    this.editableDate(row.value.cardId, row.value.date);
+    return this.checked([{ entityType: 'movement', entityId: id, payload: { ...row.value, allocations }, voided: false }]);
+  }
+  deleteCard(id: string): Change[] {
+    const card = record(this.portfolio.cards, id);
+    if (card.voided) throw Error('La tarjeta ya está eliminada.');
+    const changes: Change[] = [{ entityType: 'card', entityId: id, payload: card.value, voided: true }];
+    const collections = [['balance', this.portfolio.balances], ['movement', this.portfolio.movements], ['installment', this.portfolio.installments],
+      ['statement', this.portfolio.statements], ['closure', this.portfolio.closures]] as const;
+    for (const [entityType, rows] of collections) for (const row of live(rows as readonly FinancialRecord<{ cardId: string }> []))
+      if (row.value.cardId === id) changes.push({ entityType, entityId: row.id, payload: row.value, voided: true } as Change);
+    return this.checked(changes);
+  }
+  deleteLoan(id: string): Change[] {
+    const loan = record(this.portfolio.loans, id);
+    if (loan.voided || this.portfolio.loanPayments.some(a => a.value.loanId === id)) throw Error('Solo puedes eliminar un préstamo sin historial de abonos.');
+    return this.checked([{ entityType: 'loan', entityId: id, payload: loan.value, voided: true }]);
+  }
   savePlan(input: Omit<Installment, 'recordedAt' | 'legacyOrdinal' | 'interestIncorporatedThrough'>, id?: string, newPurchase = false): Change[] {
     const card = record(this.portfolio.cards, input.cardId), previous = id ? record(this.portfolio.installments, id) : null;
     const inputPlan: Installment = { ...input, description: input.description.trim(), interestIncorporatedThrough: previous?.value.interestIncorporatedThrough ?? null,

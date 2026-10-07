@@ -91,6 +91,32 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
         await page.getByRole('dialog').getByRole('button',{name:'Cancelar',exact:true}).click();await Promise.all([page.waitForEvent('load'),page.getByRole('button',{name:'Actualizar aplicación'}).click()]);await page.getByRole('heading',{name:'Desbloquea tu cartera'}).waitFor();
         await fill(page,'password','synthetic-recovered-password');await page.getByRole('button',{name:'Desbloquear',exact:true}).click();await page.locator('.credit-card').first().waitFor();assert.equal(await page.locator('.credit-card').count(),4,'Update retains encrypted financial data');
       }
+
+      await page.getByRole('navigation').getByRole('link',{name:'Calendario',exact:true}).click();await page.getByLabel('Días de anticipación del pago').selectOption('10');assert.equal(await page.evaluate(()=>localStorage.getItem('paymentplan-margin')),'10');await page.getByRole('columnheader',{name:'Pago sugerido',exact:true}).waitFor();
+      // Extra parity flows and education run against synthetic encrypted state.
+      await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();
+      await page.getByRole('button',{name:'Planes (1) →',exact:true}).click();await page.locator('.installment-detail summary').click();
+      await page.getByRole('button',{name:'Pagar cuota',exact:true}).first().click();assert.equal(await page.locator('select[name="kind"]').inputValue(),'payment');
+      await fill(page,'amount','20');await fill(page,'capitalPaid','10');await save(page);
+      await page.getByRole('navigation').getByRole('link',{name:'Movimientos',exact:true}).click();
+      await page.getByRole('row').filter({has:page.getByRole('cell',{name:'Pago de cuota',exact:true})}).getByRole('button',{name:'Distribuir entre cuotas'}).click();
+      await fill(page,'capital0','10');await fill(page,'capital1','10');await save(page);
+      await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();await page.getByRole('button',{name:'Planes (1) →',exact:true}).click();await page.getByRole('button',{name:'Dividir deuda',exact:true}).click();
+      await fill(page,'description','Plan bancario sintético');await fill(page,'capital','100');await fill(page,'months','3');await page.getByLabel('Cálculo del interés').selectOption('bankPayment');await fill(page,'bankPayment','35');
+      await page.getByRole('button',{name:'Previsualizar amortización'}).click();await page.getByRole('dialog').locator('table').waitFor();assert.equal(await page.getByRole('dialog').locator('tbody tr').count(),3);await save(page);
+      await page.getByRole('button',{name:'Planes (2) →',exact:true}).click();const bankPlan=page.locator('.installment-detail').filter({hasText:'Plan bancario sintético'});await bankPlan.locator('summary').click();await bankPlan.getByRole('button',{name:'Deshacer plan'}).click();
+      await bankPlan.getByText(/Cancelado/).waitFor();assert.equal(await bankPlan.getByRole('button',{name:'Editar plan'}).count(),0);await page.getByRole('button',{name:'Cerrar ventana'}).click();
+      await page.getByRole('navigation').getByRole('link',{name:'Periodos',exact:true}).click();await page.getByRole('button',{name:'Ver resumen',exact:true}).click();await page.getByRole('button',{name:'Cerrar periodo',exact:true}).click();await page.locator('details.plan-detail summary').click();
+      assert.equal(await page.getByRole('button',{name:'Exportar cierre CSV',exact:true}).count(),2);await page.getByRole('button',{name:'Reabrir',exact:true}).click();
+      await page.getByRole('navigation').getByRole('link',{name:'Aprender',exact:true}).click();await page.getByRole('button',{name:'El pago para no generar intereses del corte',exact:true}).click();await page.getByText(/Correcto. La app organiza/).waitFor();
+      assert.equal(await page.locator('.lesson').count(),7);await page.screenshot({path:path.join(output,name+'-educacion.png'),fullPage:true});
+      await page.getByRole('navigation').getByRole('link',{name:'Análisis',exact:true}).click();await page.getByRole('heading',{name:'Gastos y costo del crédito'}).waitFor();assert.equal(await page.locator('tbody tr').count(),4);
+      await page.getByRole('navigation').getByRole('link',{name:'Simulador',exact:true}).click();await fill(page,'budget','50');await fill(page,'name1','Deuda sintética');await fill(page,'balance1','100');await fill(page,'minimum1','10');await fill(page,'rate1','0');await page.getByRole('button',{name:'Comparar estrategias'}).click();
+      assert.equal(await page.getByText('2 meses',{exact:true}).count(),2);assert.equal(await page.locator('svg.payoff-chart').count(),2);await page.screenshot({path:path.join(output,name+'-simulador.png'),fullPage:true});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Growth views fit viewport');
+      await page.getByRole('navigation').getByRole('link',{name:'Preferencias',exact:true}).click();await page.getByRole('button',{name:'Activar notificaciones',exact:true}).waitFor();await context.grantPermissions(['notifications']);await page.getByRole('button',{name:'Activar notificaciones',exact:true}).click();await page.getByRole('button',{name:'Desactivar notificaciones',exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('paymentplan-browser-alerts')),'enabled');await page.getByRole('button',{name:'Desactivar notificaciones',exact:true}).click();
+      await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();const disposable=page.locator('.credit-card').filter({has:page.getByRole('heading',{name:'Tarjeta 4',exact:true})});await disposable.locator('.card-menu summary').click();page.once('dialog',dialog=>dialog.accept());await disposable.getByRole('button',{name:'Eliminar tarjeta e historial',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.credit-card').length===3);
+      console.log('PASS: '+name+', quota payments, multiple allocations, bank monthly preview, cancelled history, period close/reopen, offline education/insights/simulator and atomic card removal.');
       assert.deepEqual(errors,[],'No browser errors'); assert(requests.every(r=>r.startsWith(url)),'No external requests without authorization'); await context.close();
       console.log(`PASS: ${name}, encrypted creation, four cards, MSI/edit/free debt/full horizon, CSV import/dedup, backup, recovery, offline reload/write and safe update.`);
     }

@@ -55,3 +55,7 @@ El workflow valida las pull requests y publica `apps/pwa/dist` cuando `main` sup
 Este repositorio mantiene un historial independiente con identidad genérica. Los Client IDs son configuración pública. Datos personales, tokens, contraseñas, claves, respaldos y exportaciones deben permanecer fuera de Git.
 
 [Plan](docs/GITHUB_PAGES_PLAN.md) · [Seguimiento](docs/GITHUB_PAGES_TRACKING.md) · [Prueba personal pendiente](docs/PERSONAL_ACCEPTANCE.md) · [Motor financiero](docs/FINANCIAL_ENGINE.md) · [Contratos](docs/GITHUB_PAGES_CONTRACTS.md)
+
+## Equivalencia y evolución
+
+La [revisión de equivalencia](docs/PARITY_REVIEW.md) compara procesos con la versión anterior y explica las diferencias deliberadas. Consulta la [guía de funciones](docs/FEATURE_GUIDE.md), la [investigación de mejoras](docs/PRODUCT_RESEARCH.md) y el [plan de evolución](docs/ENHANCEMENT_PLAN.md). Aprender, Análisis y Simulador funcionan sin conexión y no necesitan servicios nuevos.

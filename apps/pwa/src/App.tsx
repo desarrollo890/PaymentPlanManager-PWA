@@ -16,13 +16,15 @@ import { Dialog, Field, MoneyField, Icon, Check, download, money, parseMoney, sh
 import oauth from '../../../config/google-oauth.json';
 import { applyUpdate } from './offline.ts';
 import { BankImport } from './bank-import.tsx';
+import { BrowserReminders } from './browser-reminders.tsx';
+import { EducationView, InsightsView, PayoffView } from './growth-views.tsx';
 import { ConflictReview } from './conflicts.tsx';
 
 const google = new GoogleAccess(oauth.web.clientId);
 const sections = [ ['inicio', 'Inicio', 'home', 'Tu espacio financiero'], ['tarjetas', 'Tarjetas', 'card', 'Tus tarjetas'],
   ['movimientos', 'Movimientos', 'activity', 'Tus movimientos'], ['plan', 'Calendario', 'calendar', 'Tu calendario de pagos'],
   ['presupuesto', 'Presupuesto', 'report', 'Tu presupuesto'], ['prestamos', 'Préstamos', 'people', 'Préstamos de personas'],
-  ['periodos', 'Periodos', 'report', 'Tus resúmenes'], ['preferencias', 'Preferencias', 'settings', 'A tu manera'] ] as const;
+  ['periodos', 'Periodos', 'report', 'Tus resúmenes'], ['analisis', 'Análisis', 'report', 'Gastos y costos'], ['simulador', 'Simulador', 'activity', 'Explora cómo reducir tu deuda'], ['aprender', 'Aprender', 'report', 'Educación financiera'], ['preferencias', 'Preferencias', 'settings', 'A tu manera'] ] as const;
 type Section = typeof sections[number][0];
 const selectedSection = (): Section => sections.find(s => s[0] === window.location.hash.slice(2))?.[0] ?? 'inicio';
 const message = (error: unknown): string => error instanceof Error ? error.message : 'No se pudo completar la operación.';
@@ -170,8 +172,12 @@ export function App() {
           {view && section === 'tarjetas' && <CardsView view={view} session={session} modal={m => { if (!blocked) setModal(m); }} act={act} />}
           {section === 'movimientos' && <><div className="section-heading"><span className="caption">Tus registros y movimientos bancarios</span><button className="secondary" disabled={busy || blocked || !view?.cards.length} onClick={() => setBankOpen(true)}>Importar CSV / Excel</button></div><MovementsView session={session} today={today} modal={m => { if (!blocked) setModal(m); }} act={act} /></>}
           {view && section === 'plan' && <CalendarView view={view} modal={m => { if (!blocked) setModal(m); }} />}
-          {view && section === 'presupuesto' && <BudgetView view={view} modal={m => { if (!blocked) setModal(m); }} />}
+          {view && section === 'presupuesto' && <BudgetView view={view} p={session.portfolio} modal={m => { if (!blocked) setModal(m); }} />}
           {view && section === 'prestamos' && <LoansView session={session} view={view} modal={m => { if (!blocked) setModal(m); }} act={act} />}
+          {view && <BrowserReminders p={session.portfolio} view={view} controls={section === 'preferencias'} />}
+          {view && section === 'aprender' && <EducationView view={view} />}
+          {view && section === 'analisis' && <InsightsView p={session.portfolio} today={today} view={view} />}
+          {section === 'simulador' && <PayoffView />}
           {section === 'periodos' && <PeriodsView session={session} today={today} act={act} />}
           {section === 'preferencias' && <><section className="panel"><h2>Ingresos y reserva</h2><p className="caption">Recibes ingresos el 15 y el último día del mes. La reserva es dinero para imprevistos que se descuenta del presupuesto disponible para pagar.</p>
             <form key={revision} className="form-grid" onSubmit={e => { e.preventDefault(); const data = new FormData(e.currentTarget); act(() => session.commands(today).saveIncome({ income15Cents: parseMoney(data.get('income15')), incomeEndCents: parseMoney(data.get('incomeEnd')), expensesCents: parseMoney(data.get('expenses')), reserveCents: parseMoney(data.get('reserve')) })); }}>

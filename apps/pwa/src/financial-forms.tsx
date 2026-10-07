@@ -1,26 +1,30 @@
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import type { Change } from '@paymentplan/domain';
-import { cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
+import { safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
 import type { CutView } from '@paymentplan/domain';
 import type { Installment } from '@paymentplan/contracts';
+import { PaymentAllocation } from './payment-allocation.tsx';
 import { Check, Field, FormDialog, MoneyField, SelectField, amount, money, optionalMoney, parseMoney, str } from './ui.tsx';
 
-export type FinancialModal = { type: 'card'; id?: string } | { type: 'movement'; id?: string; cardId?: string } | { type: 'plan'; id?: string; cardId: string; purchaseId?: string }
+export type FinancialModal = { type: 'card'; id?: string } | { type: 'movement'; id?: string; cardId?: string; planId?: string; quotaNumber?: number; capitalCents?: number; interestCents?: number } | { type: 'plan'; id?: string; cardId: string; purchaseId?: string }
   | { type: 'loan'; id?: string } | { type: 'loanPayment'; loanId: string } | { type: 'reconcile'; cardId: string }
-  | { type: 'cut'; cardId: string; cut: CutView } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string };
-export function FinancialForm({ modal, session, today, close, save }: {
-  modal: FinancialModal; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void>;
+  | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string };
+export function FinancialForm(props: FinancialFormProps) { return props.modal.type === 'allocation' ? <PaymentAllocation id={props.modal.id} session={props.session} today={props.today} close={props.close} save={props.save} /> : <FinancialEditor {...props} modal={props.modal} />; }
+type FinancialFormProps = { modal: FinancialModal; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void> };
+function FinancialEditor({ modal, session, today, close, save }: {
+  modal: Exclude<FinancialModal, { type: 'allocation' }>; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void>;
 }) {
   const p = session.portfolio, cmd = session.commands(today), [error, setError] = useState(''), [busy, setBusy] = useState(false);
-  const [kind, setKind] = useState(modal.type === 'movement' ? p.movements.find(m => m.id === modal.id)?.value.kind ?? 'expense' : 'expense');
+  const [kind, setKind] = useState(modal.type === 'movement' ? p.movements.find(m => m.id === modal.id)?.value.kind ?? (modal.planId ? 'payment' : 'expense') : 'expense');
   const oldMovement = modal.type === 'movement' ? p.movements.find(m => m.id === modal.id)?.value : null;
-  const [selectedPlan, setSelectedPlan] = useState(oldMovement && oldMovement.allocations.length > 1 ? 'preserve' : oldMovement?.allocations[0]?.planId ?? '');
+  const [selectedPlan, setSelectedPlan] = useState(oldMovement && oldMovement.allocations.length > 1 ? 'preserve' : oldMovement?.allocations[0]?.planId ?? (modal.type === 'movement' ? modal.planId : '') ?? '');
   const [selectedStatement, setSelectedStatement] = useState(oldMovement?.statementId ?? '');
   const [selectedCard, setSelectedCard] = useState(oldMovement?.cardId ?? (modal.type === 'movement' ? modal.cardId : undefined) ?? live(p.cards).find(c => !c.value.archived)?.id ?? '');
   const view = financeView(p, today);
   const [planSource, setPlanSource] = useState(modal.type === 'plan' && modal.purchaseId ? 'existing' : 'debt');
   const [amortization, setAmortization] = useState(modal.type === 'plan' ? p.installments.find(r => r.id === modal.id)?.value.amortization?.method ?? 'total' : 'total');
+  const [planPreview, setPlanPreview] = useState<ReturnType<typeof installmentQuotas> | null>(null);
   const [balanceWarning, setBalanceWarning] = useState('');
   function checkBalance(data: FormData) {
     if (modal.type !== 'reconcile' && !(modal.type === 'card' && !modal.id)) return;
@@ -30,7 +34,7 @@ export function FinancialForm({ modal, session, today, close, save }: {
       setBalanceWarning(debt && credit ? 'Captura deuda o saldo a favor, no ambos.' : Math.abs(difference) > 1 ? `Los saldos difieren del límite por ${money(Math.abs(difference))}. Puedes guardarlos para revisar el cuadre con tu banco.` : debt > limit ? 'La deuda supera el límite de esta tarjeta.' : '');
     } catch { setBalanceWarning(''); }
   }
-  async function submit(data: FormData) {
+  async function submit(data: FormData, previewOnly = false) {
     setBusy(true); setError('');
     try {
       let changes: Change[];
@@ -60,10 +64,10 @@ export function FinancialForm({ modal, session, today, close, save }: {
           });
           const input: Omit<Installment, 'recordedAt' | 'legacyOrdinal' | 'interestIncorporatedThrough'> = {
             cardId: modal.cardId, description: str(data, 'description'), principalCents: parseMoney(data.get('capital')), months: Number(str(data, 'months')),
-            interestCents: parseMoney(data.get('interest')), startDate: previous?.startDate ?? (planSource === 'purchase' ? str(data, 'purchaseDate') : today),
+            interestCents: amortization === 'bankPayment' ? safeInteger(BigInt(parseMoney(data.get('bankPayment'))) * BigInt(str(data, 'months')) - BigInt(parseMoney(data.get('capital')))) : parseMoney(data.get('interest')), startDate: previous?.startDate ?? (planSource === 'purchase' ? str(data, 'purchaseDate') : today),
             firstCutDate: str(data, 'firstCut'), cutDay: previous?.cutDay ?? p.cards.find(c => c.id === modal.cardId)!.value.cutDay,
             purchaseId: previous?.purchaseId ?? (planSource === 'existing' ? str(data, 'purchaseId') || null : null),
-            interestIncludedInDebt: data.has('interestIncluded'), amortization: amortization === 'total' ? null : {
+            interestIncludedInDebt: data.has('interestIncluded'), amortization: amortization === 'total' || amortization === 'bankPayment' ? null : {
               method: amortization as 'fixedPayment' | 'fixedPrincipal' | 'bankTable', monthlyRate: str(data, 'monthlyRate') || '0', interestTaxRate: str(data, 'taxRate') || '0', table },
           };
           changes = cmd.savePlan(input, modal.id, planSource === 'purchase' && !modal.id); break;
@@ -80,12 +84,12 @@ export function FinancialForm({ modal, session, today, close, save }: {
           changes = cmd.reconcile(modal.cardId, { date: str(data, 'date'), debtCents: debt - credit, availableCents: parseMoney(data.get('available')) }); break;
         }
         case 'cut': changes = cmd.saveStatement(modal.cardId, { cutDate: str(data, 'date'), dueDate: str(data, 'dueDate'), targetCents: parseMoney(data.get('target')),
-          minimumCents: parseMoney(data.get('minimum')), initialPaidCents: parseMoney(data.get('paid')) }, modal.cut.estimated && parseMoney(data.get('target')) === modal.cut.targetCents, modal.cut.id); break;
+          minimumCents: parseMoney(data.get('minimum')), initialPaidCents: parseMoney(data.get('paid')) }, !modal.create && modal.cut.estimated && parseMoney(data.get('target')) === modal.cut.targetCents, modal.create ? undefined : modal.cut.id); break;
         case 'reserve': changes = cmd.reserve(modal.cardId, modal.cut.cutDate, parseMoney(data.get('reserved'))); break;
         case 'budget': changes = cmd.saveBudget({ payday: modal.payday, expectedIncomeCents: parseMoney(data.get('income')), receivedIncomeCents: optionalMoney(data, 'receivedIncome'),
           expensesCents: parseMoney(data.get('expenses')), reserveCents: parseMoney(data.get('reserve')), note: str(data, 'note') }); break;
       }
-      await save(changes); close();
+      if (previewOnly) { const candidate = applyChanges(p, changes), changed = changes.find(c => c.entityType === 'installment')!; setPlanPreview(installmentQuotas(candidate.installments.find(r => r.id === changed.entityId)!.value)); } else { await save(changes); close(); }
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo guardar.'); } finally { setBusy(false); }
   }
   let title = '', fields;
@@ -105,9 +109,9 @@ export function FinancialForm({ modal, session, today, close, save }: {
     title = m ? 'Editar movimiento' : 'Registrar movimiento';
     fields = <><label className="field"><span>Tarjeta</span><select name="cardId" value={selectedCard} onChange={e => { setSelectedCard(e.target.value); setSelectedPlan(''); setSelectedStatement(''); }}>{live(p.cards).filter(c => !c.value.archived).map(c => <option key={c.id} value={c.id}>{c.value.name}</option>)}</select></label>
       <label className="field"><span>Tipo de movimiento</span><select name="kind" value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="expense">Gasto / compra</option><option value="payment">Pago</option><option value="interest">Interés</option><option value="fee">Comisión</option></select></label>
-      <Field label="Fecha del movimiento" name="date" type="date" value={m?.date ?? today} /><MoneyField label="Importe" name="amount" value={m?.amountCents ?? null} /><Field label="Descripción" name="description" value={m?.description} />
+      <Field label="Fecha del movimiento" name="date" type="date" value={m?.date ?? today} /><MoneyField label="Importe" name="amount" value={m?.amountCents ?? (modal.planId ? (modal.capitalCents ?? 0) + (modal.interestCents ?? 0) : null)} /><Field label="Descripción" name="description" value={m?.description ?? (modal.planId ? 'Pago de cuota' : undefined)} />
       {kind === 'payment' && <><label className="field"><span>Corte al que aplicas el pago</span><select name="statementId" value={selectedStatement} onChange={e => setSelectedStatement(e.target.value)}><option value="">Automático, corte vigente</option>{live(p.statements).filter(s => s.value.cardId === selectedCard).toSorted((a, b) => b.value.cutDate.localeCompare(a.value.cutDate)).map(s => <option key={s.id} value={s.id}>{s.value.cutDate} · {s.value.estimated ? 'Estimado' : 'Confirmado'}</option>)}</select></label><label className="field"><span>Atribución a un plan (opcional)</span><select name="planId" value={selectedPlan} onChange={e => setSelectedPlan(e.target.value)}><option value="">Distribución estimada automática</option>{oldMovement && oldMovement.allocations.length > 1 && <option value="preserve">Conservar las atribuciones de este pago</option>}{live(p.installments).filter(r => r.value.cardId === selectedCard).map(plan => <option key={plan.id} value={plan.id}>{plan.value.description}</option>)}</select></label>
-        {selectedPlan && selectedPlan !== 'preserve' && <><SelectField label="Número de cuota" name="quota" value={String(oldMovement?.allocations[0]?.quotaNumber ?? 1)}>{installmentQuotas(p.installments.find(r => r.id === selectedPlan)!.value).map(q => <option key={q.number} value={q.number}>{q.number} · {q.cutDate} · {money(q.principalCents + q.interestCents)}</option>)}</SelectField><MoneyField label="Capital de la cuota que cubres" name="capitalPaid" value={oldMovement?.allocations[0]?.principalCents ?? 0} /><MoneyField label="Interés de la cuota que cubres" name="interestPaid" value={oldMovement?.allocations[0]?.interestCents ?? 0} /></>}</>}
+        {selectedPlan && selectedPlan !== 'preserve' && <><SelectField label="Número de cuota" name="quota" value={String(oldMovement?.allocations[0]?.quotaNumber ?? modal.quotaNumber ?? 1)}>{installmentQuotas(p.installments.find(r => r.id === selectedPlan)!.value).map(q => <option key={q.number} value={q.number}>{q.number} · {q.cutDate} · {money(q.principalCents + q.interestCents)}</option>)}</SelectField><MoneyField label="Capital de la cuota que cubres" name="capitalPaid" value={oldMovement?.allocations[0]?.principalCents ?? modal.capitalCents ?? 0} /><MoneyField label="Interés de la cuota que cubres" name="interestPaid" value={oldMovement?.allocations[0]?.interestCents ?? modal.interestCents ?? 0} /></>}</>}
       <p className="form-note">Una fecha futura crea un movimiento programado. No reduce tu deuda hasta que lo marques realizado. Las atribuciones explícitas permiten registrar anticipos a cuotas futuras.</p></>;
   } else if (modal.type === 'plan') {
     const plan = p.installments.find(r => r.id === modal.id)?.value, card = p.cards.find(c => c.id === modal.cardId)!.value;
@@ -119,10 +123,12 @@ export function FinancialForm({ modal, session, today, close, save }: {
       <Field label="Meses restantes" name="months" type="number" value={plan?.months ?? 3} min={2} max={120} /><Field label="Primer corte de las cuotas restantes" name="firstCut" type="date" value={plan?.firstCutDate ?? cutOnOrAfter(card.cutDay, today)} />
       {planSource === 'purchase' && !plan && <Field label="Fecha de la compra" name="purchaseDate" type="date" value={today} max={today} />}
       {planSource === 'existing' && !plan && <SelectField label="Compra registrada" name="purchaseId" value={modal.purchaseId}>{live(p.movements).filter(m => m.value.cardId === modal.cardId && m.value.kind === 'expense' && !m.value.scheduled).map(m => <option key={m.id} value={m.id}>{m.value.description} · {money(m.value.amountCents)}</option>)}</SelectField>}
-      <label className="field"><span>Cálculo del interés</span><select value={amortization} onChange={e => setAmortization(e.target.value)}><option value="total">MSI / interés total informado</option><option value="fixedPayment">MCI · cuota fija</option><option value="fixedPrincipal">MCI · capital fijo</option><option value="bankTable">MCI · tabla del banco</option></select></label>
+      <label className="field"><span>Cálculo del interés</span><select value={amortization} onChange={e => setAmortization(e.target.value)}><option value="total">MSI / interés total informado</option><option value="bankPayment">Mensualidad fija informada por el banco</option><option value="fixedPayment">MCI · cuota fija</option><option value="fixedPrincipal">MCI · capital fijo</option><option value="bankTable">MCI · tabla del banco</option></select></label>
       <MoneyField label="Interés total informado" name="interest" value={plan?.interestCents ?? 0} hint={amortization === 'total' ? '0 para meses sin intereses.' : 'Se calcula desde la tasa o tabla; este campo se sustituirá por el total calculado.'} />
-      {amortization !== 'total' && <><Field label="Tasa mensual (%)" name="monthlyRate" value={plan?.amortization?.monthlyRate ?? '0'} /><Field label="IVA del interés (%)" name="taxRate" value={plan?.amortization?.interestTaxRate ?? '0'} hint="Usa el impuesto reportado por el banco; no se aplica por defecto." /></>}
+      {amortization === 'bankPayment' && <MoneyField label="Mensualidad total del banco" name="bankPayment" value={null} hint="Incluye los cargos de financiación que quieres distribuir. El costo total será mensualidad × meses − capital." />}
+      {amortization !== 'total' && amortization !== 'bankPayment' && <><Field label="Tasa mensual (%)" name="monthlyRate" value={plan?.amortization?.monthlyRate ?? '0'} /><Field label="IVA del interés (%)" name="taxRate" value={plan?.amortization?.interestTaxRate ?? '0'} hint="Usa el impuesto reportado por el banco; no se aplica por defecto." /></>}
       {amortization === 'bankTable' && <label className="field wide"><span>Tabla bancaria: capital;interés por cuota (MXN)</span><textarea name="table" rows={6} required defaultValue={plan?.amortization?.table?.map(q => `${amount(q.principalCents)};${amount(q.interestCents)}`).join('\n')} /></label>}
+      <button type="button" className="secondary wide" disabled={busy} onClick={e => void submit(new FormData(e.currentTarget.form!), true)}>Previsualizar amortización</button>{planPreview && <div className="wide table-wrap"><p className="caption">Vista previa. Si modificas campos, vuelve a calcularla antes de guardar.</p><table><thead><tr><th>Cuota</th><th>Corte</th><th>Capital</th><th>Interés</th><th>Total</th></tr></thead><tbody>{planPreview.map(q => <tr key={q.number}><td>{q.number}</td><td>{q.cutDate}</td><td>{money(q.principalCents)}</td><td>{money(q.interestCents)}</td><td>{money(q.principalCents + q.interestCents)}</td></tr>)}</tbody></table></div>}
       <Check name="interestIncluded" label="El interés de estas cuotas ya forma parte de la deuda registrada" checked={plan?.interestIncludedInDebt} />
       <p className="form-note">Dividir deuda reclasifica lo que ya debes. Una nueva compra registra también un gasto, una sola vez. Para deuda inicial a meses, captura únicamente el capital y las cuotas restantes.</p></>;
   } else if (modal.type === 'loan') {
@@ -145,7 +151,7 @@ export function FinancialForm({ modal, session, today, close, save }: {
     title = 'Dinero apartado para el corte'; fields = <><MoneyField label="Importe apartado" name="reserved" value={modal.cut.reservedCents} /><p className="form-note">Es dinero que tienes listo para pagar esta tarjeta. Apartarlo no registra un pago ni reduce tu deuda. Pendiente del corte: {money(modal.cut.pendingCents)}.</p></>;
   } else if (modal.type === 'cut') {
     const c = modal.cut, stored = p.statements.find(s => s.id === c.id)?.value;
-    title = 'Revisar y confirmar corte'; fields = <><p className="form-note">Estimado del sistema: {money(c.targetCents)}. Confirma únicamente cuando lo hayas comparado con tu banco; puedes editarlo.</p>
+    title = modal.create ? 'Registrar otro corte' : 'Revisar y confirmar corte'; fields = <><p className="form-note">Estimado del sistema: {money(c.targetCents)}. Confirma únicamente cuando lo hayas comparado con tu banco; puedes editarlo.</p>
       <Field label="Fecha del corte" name="date" type="date" value={c.cutDate} max={today} /><Field label="Fecha límite de pago" name="dueDate" type="date" value={c.dueDate} />
       <MoneyField label="Pago para no generar intereses" name="target" value={c.targetCents} /><MoneyField label="Pago mínimo reportado" name="minimum" value={stored?.minimumCents ?? 0} />
       <MoneyField label="Pagado antes de registrarlo aquí" name="paid" value={stored?.initialPaidCents ?? 0} /></>;

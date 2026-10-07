@@ -33,3 +33,7 @@ Repite la importación sin cambiar el archivo y verifica que se indique «ya exi
 ## Cierre de fases
 
 F6 se cierra con la sincronización real de dos navegadores y la renovación de autorización. F7 requiere el cuadre del piloto y recuperación aprobados por el usuario. F8 requiere el recorrido en HTTPS y la comprobación del teléfono físico. Las pruebas sintéticas automatizadas no sustituyen esas evidencias.
+
+## Evidencia recibida al 6 de octubre de 2026
+
+El usuario reportó correcta su revisión de la migración, respaldo sin duplicación, rechazo de respaldo alterado, recuperación con datos iguales, uso offline físico y sincronización del gasto de prueba. Se eligió una versión de un conflicto; falta confirmar expresamente que ambos dispositivos terminaron con el mismo importe. Esa comprobación permanece pendiente y no se considera suplida por pruebas automáticas.

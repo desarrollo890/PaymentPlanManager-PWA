@@ -1,5 +1,5 @@
 import { readCsv } from '@paymentplan/application';
-export interface Sheet { readonly name: string; readonly rows: string[][] }
+export interface Sheet { readonly name: string; readonly rows: string[][]; readonly dateSystem?: '1900' | '1904' }
 function xml(text: string): Document {
   if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw Error('El Excel contiene declaraciones XML no admitidas.');
   const result = new DOMParser().parseFromString(text, 'application/xml'); if (result.querySelector('parsererror')) throw Error('El Excel contiene XML inválido.'); return result;
@@ -37,6 +37,7 @@ export async function readBankFile(file: File): Promise<Sheet[]> {
   }
   const shared = entries.has('xl/sharedStrings.xml') ? [...xml(await read('xl/sharedStrings.xml')).getElementsByTagName('si')].map(si => [...si.getElementsByTagName('t')].map(t => t.textContent).join('')) : [];
   const sheets: Sheet[] = [];
+  const dateSystem = entries.has('xl/workbook.xml') && ['1', 'true'].includes(xml(await read('xl/workbook.xml')).getElementsByTagName('workbookPr')[0]?.getAttribute('date1904') ?? '') ? '1904' : '1900';
   for (const name of [...entries.keys()].filter(name => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort()) {
     const rows: string[][] = [];
     for (const row of [...xml(await read(name)).getElementsByTagName('row')]) {
@@ -51,7 +52,7 @@ export async function readBankFile(file: File): Promise<Sheet[]> {
       }
       if (cells.some(c => c.trim())) rows.push(Array.from({ length: cells.length }, (_, i) => cells[i] ?? '')); if (rows.length > 10001) throw Error('Se admiten hasta 10 000 filas.');
     }
-    sheets.push({ name: name.split('/').at(-1)!, rows });
+    sheets.push({ name: name.split('/').at(-1)!, rows, dateSystem });
   }
   if (!sheets.length) throw Error('No se encontraron hojas en el Excel.'); return sheets;
 }
