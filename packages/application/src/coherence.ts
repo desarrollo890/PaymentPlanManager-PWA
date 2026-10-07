@@ -33,6 +33,23 @@ export async function historyIssues(state: RevisionState, portfolio: Portfolio, 
       }
     }
   }
+  for (const entity of state.entities.filter(e => e.status !== 'void' && e.status !== 'conflict' && ['cashAccount', 'savingsGoal'].includes(e.entityType))) {
+    for (const head of entity.heads) {
+      if (head.action !== 'replace' || head.parentRevisionIds.length !== 1 || !head.payload) continue;
+      const parent = operations.get(head.parentRevisionIds[0]!);if (!parent?.payload) continue;
+      const fields = entity.entityType === 'cashAccount' ? ['openingDate', 'openingCents'] : ['accountId'];
+      if (!fields.some(f => canonical((head.payload as unknown as Record<string, unknown>)[f]) !== canonical((parent.payload as unknown as Record<string, unknown>)[f]))) continue;
+      const concurrent = state.entities.filter(e => e.status !== 'void').flatMap(e => e.heads).filter(op => {
+        if (entity.entityType === 'cashAccount') {
+          if (op.entityType !== 'cashEntry' || !op.payload || (op.payload.accountId !== entity.entityId && op.payload.toAccountId !== entity.entityId)) return false;
+        } else if (op.entityType !== 'savingsEntry' || !op.payload || op.payload.goalId !== entity.entityId) return false;
+        return !observes(op, head) && !observes(head, op);
+      });
+      if (concurrent.length) issues.push({ message: entity.entityType === 'cashAccount'
+        ? 'Se corrigió el saldo inicial de una cuenta mientras otro dispositivo registraba movimientos. Revisa el saldo inicial y el historial juntos.'
+        : 'Se cambió la cuenta de una meta mientras otro dispositivo modificaba su reserva. Revisa dónde debe quedar ese dinero.', entityIds: [entity.entityId, ...concurrent.map(op => op.entityId)] });
+    }
+  }
   for (const closure of live(portfolio.closures)) {
     try { const report = periodReport(portfolio, closure.value.cardId, closure.value.from, closure.value.to, today);
       if (await sha256(report.fingerprintInput) !== closure.value.historyHash) issues.push({ message: 'El historial de un periodo cerrado cambió en otro dispositivo. Revisa los movimientos; reabre el cierre antes de volver a cerrarlo.', entityIds: [closure.id] });

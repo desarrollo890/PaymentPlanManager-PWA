@@ -112,5 +112,6 @@ export function extensionIssues(p: Portfolio, today: string): FinancialIssue[] {
     if (g.value.archived && goalSaved(p, g.id, today) !== 0) issue('Libera la reserva antes de archivar la meta.', g.id);
     if (g.value.targetDate !== null && g.value.targetDate > addMonths(today, 120)) issue('La fecha objetivo admite hasta diez años de proyección.', g.id);
   }
+  if (!issues.length) cashView(p, today);
   return issues;
 }

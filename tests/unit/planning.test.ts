@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { FinancialCommands, portfolioFromRevisions } from '@paymentplan/application';
+import { historyIssues } from '../../packages/application/src/coherence.ts';
 import { applyChanges, cashBalance, cashView, emptyPortfolio, recurrenceDates, financeView, categorySpending, categorySuggestions, portfolioIssues, goalSaved } from '@paymentplan/domain';
 import type { Change, Portfolio } from '@paymentplan/domain';
 import type { Operation, Recurrence } from '@paymentplan/contracts';
@@ -43,8 +44,10 @@ test('a cash-funded card payment changes both balances once and rejects inconsis
   assert.equal(cashBalance(h.p,a,today),70000);assert.equal(financeView(h.p,today).debtCents,970000);
   const e=h.p.cashEntries[0]!,m=h.p.movements[0]!;
   assert.throws(()=>h.cmd.recordMovement({...m.value,amountCents:40000},m.id),/coincidir/);
-  assert.throws(()=>h.cmd.changeMovement(m.id,'void'),/coincidir/);
+  assert.throws(()=>h.cmd.changeMovement(m.id,'void'),/vinculado/);
   h.commit(h.cmd.voidExtension('cashEntry',e.id));assert.equal(cashBalance(h.p,a,today),100000);assert.equal(financeView(h.p,today).debtCents,1000000);
+  assert.throws(()=>h.cmd.changeMovement(m.id,'restore'),/vinculado/);
+  h.commit(h.cmd.restoreCashEntry(e.id));assert.equal(cashBalance(h.p,a,today),70000);assert.equal(financeView(h.p,today).debtCents,970000);
 });
 test('categories classify independently of money and rules expose ambiguity without choosing a winner', async () => {
   const h=harness(),cardId=h.card();for(const name of ['Comida','Compras'])h.commit(h.cmd.saveCategory({name,color:'#123456',archived:false}));
@@ -78,4 +81,18 @@ test('independent offline expenses that jointly overdraw a reserved account beco
   const one=h.cmd.saveCashEntry({accountId:a,toAccountId:null,cardMovementId:null,date:today,amountCents:30000,kind:'expense',description:'Uno',categoryId:null});
   const two=h.cmd.saveCashEntry({accountId:a,toAccountId:null,cardMovementId:null,date:today,amountCents:30000,kind:'expense',description:'Dos',categoryId:null});
   assert.ok(portfolioIssues(applyChanges(h.p,[...one,...two]),today).some(i=>i.message.includes('Libera')));
+});
+
+test('concurrent initial cash corrections and independent movements require explicit historical review', async () => {
+  const h=harness(),accountId=h.account(100000),vaultId=randomUUID(),row=h.p.cashAccounts[0]!;
+  const initial=ops([{entityType:'cashAccount',entityId:accountId,payload:row.value,voided:false}],vaultId,randomUUID());
+  const correction=ops(h.cmd.saveCashAccount({...row.value,openingCents:120000},accountId),vaultId,randomUUID(),initial);
+  const expense=ops(h.cmd.saveCashEntry({accountId,toAccountId:null,cardMovementId:null,date:today,amountCents:10000,kind:'expense',description:'Offline',categoryId:null}),vaultId,randomUUID());
+  const merged=mergeRevisions([...initial,...correction,...expense]),p=portfolioFromRevisions(merged);
+  assert.equal(portfolioIssues(p,today).length,0);
+  assert.equal((await historyIssues(merged,p,today)).length,1);
+  // A causal acknowledgment names the concurrent movement dependency; no clock decides the winner.
+  const reviewed=ops([{entityType:'cashAccount',entityId:accountId,payload:p.cashAccounts[0]!.value,voided:false}],vaultId,randomUUID(),correction);
+  const state=mergeRevisions([...initial,...correction,...expense,...reviewed.map(op=>({...op,dependencyOperationIds:expense.map(e=>e.operationId)}))]);
+  assert.equal((await historyIssues(state,portfolioFromRevisions(state),today)).length,0);
 });

@@ -8,5 +8,11 @@
     ]
   },
   "scope": "https://www.googleapis.com/auth/drive.appdata",
-  "localOriginsConfirmed": true
+  "localOriginsConfirmed": true,
+  "android": {
+    "clientId": "29363704791-u6b0nm3gcjfl7moehsa4m0lrancbfrvj.apps.googleusercontent.com",
+    "packageName": "com.sardeip.PaymentPlanManager",
+    "certificateSha1": "A7:30:70:40:99:C6:26:69:76:C8:C5:73:20:2A:56:29:31:0D:6B:B8",
+    "configurationConfirmed": true
+  }
 }

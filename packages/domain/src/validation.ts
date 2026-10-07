@@ -121,5 +121,5 @@ export function assertPortfolio(p: Portfolio, today: string): void {
 export function portfolioIssues(p: Portfolio, today: string): FinancialIssue[] {
   try { const issues = structuralIssues(p, today); if (!issues.length) financeView(p, today); return issues; }
   catch (e) { return [{ message: e instanceof Error ? e.message : 'No se pueden calcular los registros recibidos.',
-    entityIds: [...p.balances, ...p.movements, ...p.installments, ...p.loans, ...p.loanPayments, ...p.budgets, ...p.incomes].filter(r => !r.voided).map(r => r.id) }]; }
+    entityIds: Object.values(entityTables).flatMap(table => p[table].filter(r => !r.voided).map(r => r.id)) }]; }
 }

@@ -56,6 +56,7 @@ export class FinancialCommands {
   }
   changeMovement(id: string, action: 'void' | 'restore' | 'realize'): Change[] {
     const movement = record(this.portfolio.movements, id), m = movement.value;
+    if (this.portfolio.cashEntries.some(e => e.value.cardMovementId === id)) throw Error('Este pago está vinculado a una cuenta. Anúlalo o restáuralo desde Cuentas para actualizar ambos saldos.');
     this.editableDate(m.cardId, m.date);
     if (m.reconciled || this.portfolio.balances.some(b => b.value.includedMovementIds.includes(id))) throw Error('Un movimiento conciliado conserva su historial.');
     if (activePlans(this.portfolio, m.cardId).some(p => p.value.purchaseId === id)) throw Error('Deshaz el plan antes de modificar su compra.');
@@ -179,7 +180,7 @@ export class FinancialCommands {
   reminders(payload: ReminderPreferences): Change[] { return this.checked([{ entityType: 'reminderPreferences', entityId: live(this.portfolio.reminderPreferences)[0]?.id ?? '22222222-2222-4222-8222-222222222222', payload, voided: false }]); }
   dismissReminder(payload: ReminderState): Change[] { return this.checked([{ entityType: 'reminderState', entityId: live(this.portfolio.reminderStates).find(r => r.value.reminderKey === payload.reminderKey)?.id ?? this.context.newId(), payload, voided: false }]); }
 
-  saveExtension<K extends FinancialEntityType>(entityType: K, payload: EntityPayloads[K], id?: string): Change[] {
+  private saveExtension<K extends FinancialEntityType>(entityType: K, payload: EntityPayloads[K], id?: string): Change[] {
     if (id) record(this.portfolio[extensionTable(entityType)] as readonly FinancialRecord<EntityPayloads[K]>[], id);
     return this.checked([{ entityType, entityId: id ?? this.context.newId(), payload, voided: false } as Change]);
   }
@@ -224,6 +225,7 @@ export class FinancialCommands {
   }
   saveCashAccount(payload: CashAccount, id?: string) { return this.saveExtension('cashAccount', { ...payload, name: payload.name.trim() }, id); }
   saveCashEntry(payload: CashEntry, id?: string) {
+    if (id && record(this.portfolio.cashEntries, id).value.kind === 'cardPayment') throw Error('El pago vinculado conserva ambos saldos. Anúlalo desde Cuentas antes de registrarlo de nuevo.');
     if (record(this.portfolio.cashAccounts, payload.accountId).value.archived || (payload.toAccountId && record(this.portfolio.cashAccounts, payload.toAccountId).value.archived)) throw Error('Selecciona cuentas activas.');
     return this.saveExtension('cashEntry', { ...payload, description: payload.description.trim() }, id);
   }
@@ -252,6 +254,17 @@ export class FinancialCommands {
       const m = record(this.portfolio.movements, row.value.cardMovementId as string); this.editableDate(m.value.cardId, m.value.date);
       if (m.value.reconciled || this.portfolio.balances.some(b => b.value.includedMovementIds.includes(m.id))) throw Error('El pago conciliado conserva su historial.');
       changes.push({ entityType: 'movement', entityId: m.id, payload: m.value, voided: true });
+    }
+    return this.checked(changes);
+  }
+  restoreCashEntry(id: string): Change[] {
+    const row = record(this.portfolio.cashEntries, id);
+    if (!row.voided) throw Error('El movimiento de cuenta ya está vigente.');
+    const changes: Change[] = [{ entityType: 'cashEntry', entityId: id, payload: row.value, voided: false }];
+    if (row.value.cardMovementId !== null) {
+      const m = record(this.portfolio.movements, row.value.cardMovementId);this.editableDate(m.value.cardId, m.value.date);
+      if (m.value.reconciled || this.portfolio.balances.some(b => b.value.includedMovementIds.includes(m.id))) throw Error('El pago conciliado conserva su historial.');
+      changes.push({ entityType: 'movement', entityId: m.id, payload: m.value, voided: false });
     }
     return this.checked(changes);
   }

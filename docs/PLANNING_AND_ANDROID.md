@@ -20,7 +20,7 @@ Dos dispositivos generan los mismos IDs por recurrencia y fecha, incluyendo movi
 
 En **Cuentas**, registra efectivo o débito, saldo inicial real y fecha. Agrega ingresos recibidos, gastos y transferencias. Una transferencia es un único registro que resta en origen y suma en destino, conservando el total. Las fechas deben ser reales y posteriores a los saldos iniciales.
 
-**Pagar tarjeta desde esta cuenta** registra el pago de tarjeta y el cargo de cuenta en el mismo grupo atómico. No registres ese pago otra vez en Movimientos. Anularlo desde Cuentas anula ambos lados, salvo si la conciliación o cierre ya protege el pago. Cambiar unilateralmente el importe o fecha del pago vinculado se rechaza. Los pagos ya registrados en la cartera anterior no se descuentan automáticamente de una cuenta nueva: el saldo inicial de la cuenta debe reflejar lo que tienes a su fecha.
+**Pagar tarjeta desde esta cuenta** registra el pago de tarjeta y el cargo de cuenta en el mismo grupo atómico. No registres ese pago otra vez en Movimientos. Anular o restaurar desde Cuentas actualiza ambos lados, salvo si la conciliación o cierre ya protege el pago. Cambiar unilateralmente el importe, fecha o vigencia del pago vinculado se rechaza. Los pagos ya registrados en la cartera anterior no se descuentan automáticamente de una cuenta nueva: el saldo inicial de la cuenta debe reflejar lo que tienes a su fecha. Corregir el saldo inicial mientras otro dispositivo registra movimientos genera una revisión conjunta, aunque el cuadre numérico todavía sea válido.
 
 Los ingresos estimados de Preferencias no se convierten en depósitos reales. El saldo de Cuentas se basa en sus registros; el presupuesto estima ingresos y obligaciones. No se suman otra vez transferencias, saldos iniciales o pagos a los gastos esenciales presupuestados. Exportar CSV de cuentas produce información legible; el respaldo cifrado conserva todas las nuevas entidades.
 
@@ -62,3 +62,9 @@ La APK requiere Google Play Services para Drive. Sin ellos, puedes trabajar loca
 6. Exportar/importar un respaldo desde el selector Android. Probar bloquear, reabrir, rotar pantalla y volver después de quince minutos; confirmar formularios utilizables y que no quedan tokens accesibles tras bloqueo.
 
 El código y pruebas sintéticas no acreditan estas pruebas físicas de OAuth, selector Android y ciclo de vida: requieren tu teléfono y configuración Google Cloud.
+
+## Certificado y evidencia de entrega
+
+El usuario confirmó que configuró el cliente Android y la siguiente huella SHA-1: `A7:30:70:40:99:C6:26:69:76:C8:C5:73:20:2A:56:29:31:0D:6B:B8`, paquete `com.sardeip.PaymentPlanManager`. Es un certificado con identidad genérica PaymentPlan. Se verificaron alineación y firmas APK v2/v3 con las herramientas oficiales de Android; la clave privada se conserva únicamente en archivos locales ignorados.
+
+Pruebas sintéticas: paridad financiera anterior, 70 pruebas unitarias de la PWA, cuatro del probe Google y 17 de arquitectura, recorridos de PC/móvil y sincronización/respaldos cifrados. La URL HTTPS fue comprobada con carteras sintéticas en perfiles aislados. La compilación Java/Android y lint aprobaron. Estas evidencias no implican autorización Google real desde la APK ni aceptación física.
