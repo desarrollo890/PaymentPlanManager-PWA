@@ -30,7 +30,7 @@ Las pruebas automáticas no acceden a la cuenta Google del usuario ni a sus dato
 - Recorridos sintéticos contra la URL HTTPS publicada: PC y móvil emulado; cartera cifrada, cuatro tarjetas, planes, importación sin duplicados, respaldo, recuperación, recarga y registro sin conexión. La actualización protegida del service worker se comprobó en el servidor local controlado.
 - El sitio publicado carga el SDK real de Google Identity Services respetando su CSP. Esta comprobación no abre sesión ni concede acceso a Drive.
 - Revisión previa a publicación: 106 archivos candidatos y seis commits, sin detecciones de secretos mediante Gitleaks; identidad de autor y committer genérica. Esta revisión automática no equivale a una auditoría de seguridad independiente.
-- El repositorio privado original conserva su código e historial sin cambios de esta entrega. Los archivos de evidencia local y los datos sintéticos no se publican.
+- Los proyectos de escritorio y servidor permanecen en el repositorio privado original; no se trasladaron al público. Los archivos de evidencia local y los datos sintéticos de los recorridos de navegador no se publican.
 
 ## Aceptación reportada por el usuario
 
