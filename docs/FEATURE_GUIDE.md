@@ -39,3 +39,7 @@ Se añadieron cuatro secciones: Categorías, Recurrencias, Cuentas y Metas. [Ins
 El menú y la barra superior permanecen visibles al desplazarte. La lista de opciones tiene su propio desplazamiento cuando no cabe en pantalla. En escritorio y tablet, el botón junto al logo permite «Reducir menú» a una columna de iconos y «Expandir menú» para mostrar los nombres; la elección se conserva en este navegador. En teléfono, las opciones se recorren horizontalmente.
 
 Cuando aparezca «Actualizar aplicación», púlsalo para activar la versión descargada. La cartera se bloqueará y podrás volver a abrirla con tu contraseña. El aviso de actualización permanece visible encima del contenido.
+
+## Apariencia
+
+La interfaz usa azul intenso, azul marino y superficies blancas. Los colores personalizados de tus registros se conservan. [Paleta y criterios de uso](COLOR_PALETTE.md).

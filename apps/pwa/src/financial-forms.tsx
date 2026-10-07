@@ -103,7 +103,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
     const card = p.cards.find(c => c.id === modal.id)?.value;
     title = card ? 'Editar tarjeta' : 'Registrar tarjeta';
     fields = <><Field label="Nombre de la tarjeta" name="name" value={card?.name} /><Field label="Banco" name="bank" value={card?.bank} />
-      <MoneyField label="Límite de crédito" name="limit" value={card?.limitCents ?? null} /><Field label="Color de tu tarjeta" name="color" type="color" value={card?.color ?? '#234E70'} />
+      <MoneyField label="Límite de crédito" name="limit" value={card?.limitCents ?? null} /><Field label="Color de tu tarjeta" name="color" type="color" value={card?.color ?? '#0067D8'} />
       <Field label="Día de corte" name="cutDay" type="number" value={card?.cutDay ?? 11} min={1} max={31} /><Field label="Día límite de pago" name="dueDay" type="number" value={card?.dueDay ?? 25} min={1} max={31} />
       <SelectField label="Mes del vencimiento" name="dueOffset" value={card?.dueMonthOffset == null ? 'auto' : String(card.dueMonthOffset)}><option value="auto">Automático, después del corte</option><option value="0">Mismo mes del corte</option><option value="1">Mes siguiente al corte (ej. Plata)</option><option value="2">Dos meses después del corte</option></SelectField>
       <SelectField label="Origen de la deuda inicial" name="origin" value={card?.initialDebtOrigin ?? 'currentPeriod'}><option value="currentPeriod">Al periodo en curso / próximo corte</option><option value="previousStatement">Incluye deuda de un corte anterior</option><option value="unknown">No estoy seguro</option></SelectField>

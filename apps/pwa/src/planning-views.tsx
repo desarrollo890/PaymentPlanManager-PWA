@@ -55,7 +55,7 @@ function PlanningEditor({ session, today, save, editor, close }: Props & { edito
   const category = (optional: boolean) => <SelectField label="Categoría" name="categoryId" value={editor.type === 'classification' ? movementCategory(p, editor.id!) ?? '' : v('categoryId')}><option value="">{optional ? 'Sin categoría' : 'Selecciona una categoría'}</option>{categories.map(c => <option key={c.id} value={c.id}>{c.value.name}</option>)}</SelectField>;
   const account = (name = 'accountId', label = 'Cuenta') => <SelectField label={label} name={name} value={v(name, editor.type === 'cashEntry' ? editor.related ?? '' : '')}><option value="">Selecciona una cuenta</option>{live(p.cashAccounts).filter(a => !a.value.archived || a.id === v(name)).map(a => <option key={a.id} value={a.id}>{a.value.name}</option>)}</SelectField>;
   const card = (optional = false) => <SelectField label="Tarjeta" name="cardId" value={v('cardId')}><option value="">{optional ? 'Todas las tarjetas' : 'Selecciona una tarjeta'}</option>{live(p.cards).filter(c => !c.value.archived).map(c => <option key={c.id} value={c.id}>{c.value.name}</option>)}</SelectField>;
-  const color = <Field label="Color" name="color" type="color" value={v('color','#0F766E')} />;
+  const color = <Field label="Color" name="color" type="color" value={v('color','#0067D8')} />;
   const name = <Field label="Nombre" name="name" value={v('name')} />;
   const description = <Field label="Descripción" name="description" value={v('description')} />;
   const date = <Field label="Fecha real" name="date" type="date" value={v('date',today)} max={today} />;
