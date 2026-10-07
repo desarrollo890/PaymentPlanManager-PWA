@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 export function todayInMexico(): string {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -47,10 +47,11 @@ export function SelectField({ label, name, value, children }: { label: string; n
 export function Check({ name, label, checked = false }: { name: string; label: string; checked?: boolean | undefined }) {
   return <label className="check"><input type="checkbox" name={name} defaultChecked={checked} /><span>{label}</span></label>;
 }
-export function Dialog({ title, children, close }: { title: string; children: ReactNode; close: () => void }) {
+export function Dialog({ title, children, close, className = '' }: { title: string; children: ReactNode; close: () => void; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => { const dialog = ref.current!; dialog.showModal(); return () => { if (dialog.open) dialog.close(); }; }, []);
-  return <dialog ref={ref} className="dialog" onCancel={event => { event.preventDefault(); close(); }}><div className="dialog-heading"><h2>{title}</h2><button className="icon-button" onClick={close} aria-label="Cerrar ventana">×</button></div>{children}</dialog>;
+  return <dialog ref={ref} className={`dialog ${className}`} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); close(); }}><div className="dialog-heading"><h2 id={titleId}>{title}</h2><button className="icon-button" onClick={close} aria-label="Cerrar ventana">×</button></div>{children}</dialog>;
 }
 export function FormDialog({ title, children, close, submit, busy = false, error = '', onInput }: {
   title: string; children: ReactNode; close: () => void; submit: (data: FormData) => void; busy?: boolean; error?: string; onInput?: (data: FormData) => void;

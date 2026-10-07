@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import { live, periodReport, quotaBalances } from '@paymentplan/domain';
 import type { CardView, Change, FinanceView, Portfolio } from '@paymentplan/domain';
-import { csvCell, download, Empty, Field, Icon, money, shortDate, str } from './ui.tsx';
+import { csvCell, Dialog, download, Empty, Field, Icon, money, shortDate, str } from './ui.tsx';
 import type { FinancialModal } from './financial-forms.tsx';
 type Modal = (modal: FinancialModal) => void;
 type Act = (prepare: () => Change[] | Promise<Change[]>) => void;
@@ -27,7 +27,7 @@ export function Dashboard({ view, modal, p }: { view: FinanceView; modal: Modal;
 }
 function PlanDetails({ card, p, today, modal, act, session }: { card: CardView; p: Portfolio; today: string; modal: Modal; act: Act; session: VaultSession }) {
   const balances = quotaBalances(p, card.id, today);
-  return <section className="panel card-detail"><div className="section-heading"><div><h2>Planes de {card.name}</h2><p className="caption">Deuda actual a meses: {money(card.installmentDebtCents)} · saldo libre para dividir: {money(card.freeDebtCents)}</p></div><button className="secondary" onClick={() => modal({ type: 'plan', cardId: card.id })}>Dividir deuda</button></div>
+  return <section className="card-detail"><div className="section-heading"><p className="caption">Deuda actual a meses: {money(card.installmentDebtCents)} · saldo libre para dividir: {money(card.freeDebtCents)}</p><button className="secondary" onClick={() => modal({ type: 'plan', cardId: card.id })}>Dividir deuda</button></div>
     {!card.plans.filter(r => !r.cancelled).length && <p className="muted">Esta tarjeta todavía no tiene planes a meses.</p>}
     <details className="plan-detail"><summary><strong>Resúmenes al corte</strong><span className="caption">{card.cuts.length} periodos registrados / estimados</span></summary><div className="table-wrap"><table><thead><tr><th>Corte</th><th>Vencimiento</th><th>Objetivo</th><th>Pagado</th><th>Apartado</th><th>Pendiente</th><th /></tr></thead><tbody>{card.cuts.map(c => <tr key={c.id}><td>{shortDate(c.cutDate)}<small>{c.estimated ? 'Estimado' : 'Confirmado'}</small></td><td>{shortDate(c.dueDate)}</td><td>{money(c.targetCents)}</td><td>{money(c.paidCents)}</td><td>{money(c.reservedCents)}</td><td>{money(c.pendingCents)}</td><td><button className="text-button" disabled={c.cutDate > today} onClick={() => modal({ type: 'cut', cardId: card.id, cut: c })}>Revisar</button></td></tr>)}</tbody></table></div></details>
     {card.plans.filter(plan => !plan.cancelled).map(plan => <details className="plan-detail installment-detail" key={plan.id}><summary><span><strong>{plan.description}</strong><small>{plan.months} cuotas · último pago {shortDate(plan.quotas.at(-1)!.dueDate)}</small></span><span className="numeric"><small>Saldo restante estimado</small><strong>{money(plan.remainingCents)}</strong></span></summary>
@@ -39,10 +39,9 @@ function PlanDetails({ card, p, today, modal, act, session }: { card: CardView; 
 }
 export function CardsView({ view, session, modal, act }: { view: FinanceView; session: VaultSession; modal: Modal; act: Act }) {
   const [selected, setSelected] = useState<string | null>(null), p = session.portfolio;
-  const planDetails = useRef<HTMLDivElement>(null);
-  function revealPlans() { planDetails.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); planDetails.current?.focus({ preventScroll: true }); }
-  useEffect(() => { if (selected) revealPlans(); }, [selected]);
-  function openPlans(cardId: string) { if (selected === cardId) revealPlans(); else setSelected(cardId); }
+  const selectedCard = view.cards.find(c => c.id === selected);
+  function openPlans(cardId: string) { setSelected(cardId); }
+  function editFromPlans(next: FinancialModal) { setSelected(null); modal(next); }
   return <><div className="section-heading"><p className="muted">Ordenadas por mayor deuda · {view.cards.length} tarjetas</p><button className="primary" onClick={() => modal({ type: 'card' })}><Icon name="plus" size={16} /> Agregar tarjeta</button></div>
     {!view.cards.length && <Empty title="Registra tus tarjetas" text="Tus tarjetas tendrán sus propios saldos, color, corte y plan de pagos." />}
     <div className="credit-grid">{view.cards.map(c => {
@@ -57,7 +56,7 @@ export function CardsView({ view, session, modal, act }: { view: FinanceView; se
         <div className="credit-footer"><span>Corta {data.cutDay} · paga {data.dueDay}</span><button onClick={() => selected === c.id ? setSelected(null) : openPlans(c.id)}>Planes ({c.plans.filter(r => !r.cancelled).length}) →</button></div>
         {c.alerts.length > 0 && <span className="card-warning">{c.alerts.some(a => a.code !== 'creditBalance') ? 'Revisar cuadre de saldos' : 'Saldo a favor'}</span>}</article>;
     })}</div>
-    {selected && view.cards.find(c => c.id === selected) && <div ref={planDetails} tabIndex={-1} className="selected-card-plans"><PlanDetails card={view.cards.find(c => c.id === selected)!} p={p} today={view.today} modal={modal} act={act} session={session} /></div>}
+    {selectedCard && <Dialog title={`Planes de ${selectedCard.name}`} close={() => setSelected(null)} className="plans-dialog"><PlanDetails card={selectedCard} p={p} today={view.today} modal={editFromPlans} act={act} session={session} /></Dialog>}
     {live(p.cards).filter(c => c.value.archived).length > 0 && <details className="panel"><summary>Tarjetas archivadas</summary>{live(p.cards).filter(c => c.value.archived).map(c => <div className="settings-row" key={c.id}><span>{c.value.name}</span><button className="text-button" onClick={() => act(() => session.commands(view.today).saveCard({ ...c.value, archived: false }, undefined, c.id))}>Reactivar</button></div>)}</details>}</>;
 }
 export function MovementsView({ session, today, modal, act }: { session: VaultSession; today: string; modal: Modal; act: Act }) {

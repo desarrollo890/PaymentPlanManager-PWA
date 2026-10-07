@@ -10,7 +10,7 @@ Actualizado el 6 de octubre de 2026. La implementación financiera, el almacenam
 | F3 · IndexedDB y cifrado | Implementado y verificado automáticamente | Persistencia real en navegador; CAS, cambios/outbox atómicos, grupos de 1001 operaciones en lotes acotados, bloqueo, respaldo y recuperación. Versiones desconocidas se rechazan; existe migración del JSON anterior a v1. |
 | F4 · PWA funcional | Implementado y verificado automáticamente | Tarjetas, movimientos, MSI/MCI, cortes, préstamos, presupuesto, avisos y periodos. CSV/XLSX, exportaciones, recarga/registro offline y actualización protegida. |
 | F5 · Fusión y conflictos | Implementado y verificado automáticamente | Revisiones causales, reintentos, grupos incompletos, ramas conservadas, fusión de presentación y decisiones visibles. Validación de capacidad, atribuciones y cambios de historia entre entidades. |
-| F6 · Drive web | Sincronización real comprobada; conflicto pendiente de confirmación | El usuario confirmó que un gasto de $10 registrado offline en el teléfono se conservó y sincronizó. Falta confirmar convergencia después de elegir una versión del gasto editado en ambos dispositivos. |
+| F6 · Drive web | Sincronización y elección de versión comprobadas; coincidencia final pendiente | El usuario confirmó un gasto offline conservado y sincronizado y la elección de una versión del gasto en conflicto. Falta confirmar que ambos dispositivos muestran el mismo importe final. |
 | F7 · Importación y piloto | Respaldo y recuperación aprobados; cuadre personal pendiente | Importación repetida sin duplicados, respaldo alterado rechazado y recuperación con datos iguales, reportados por el usuario. Falta el cuadre de la importación desde la aplicación anterior y su piloto personal. |
 | F8 · Publicación funcional | Publicado; recorrido físico aprobado por el usuario | CI y HTTPS verificados. En teléfono físico con Chrome: apertura offline correcta, gasto conservado y sincronizado, desbloqueo aproximadamente inmediato. El cierre global sigue sujeto a F6/F7. |
 
@@ -38,10 +38,12 @@ Las pruebas automáticas no acceden a la cuenta Google del usuario ni a sus dato
 - La copia alterada del respaldo fue rechazada.
 - Recuperación con clave independiente y nueva contraseña: datos iguales.
 - Teléfono físico con Chrome: apertura sin conexión correcta; gasto de prueba de $10 conservado y sincronizado; desbloqueo aproximadamente inmediato.
-- La revisión de versiones apareció en la laptop durante la prueba de edición concurrente. No se ha recibido aún confirmación de la resolución y coincidencia final de ambos dispositivos.
+- La revisión de versiones apareció en la laptop y el usuario confirmó que eligió una versión. No se ha recibido aún confirmación de la coincidencia final de ambos dispositivos.
 - No se ha recibido aún el cuadre de importación de datos de la aplicación anterior. Estas evidencias no equivalen a una auditoría de seguridad ni a aceptación para producción.
 
-Durante la revisión de la migración se corrigieron dos omisiones de presentación: las tarjetas muestran el límite de crédito importado y al abrir sus planes se desplaza y enfoca el detalle, que antes quedaba debajo de la lista sin indicación. Build y recorridos PC/móvil comprueban el límite, cuatro tarjetas por fila y el acceso visible a los planes. La revisión del cuadre por el usuario continúa.
+Durante la revisión de la migración se corrigieron dos omisiones de presentación: las tarjetas muestran el límite de crédito importado y sus planes se consultan en un modal por tarjeta, solicitado por el usuario, con saldos, cuotas, edición y resúmenes al corte. Build y recorridos PC/móvil comprueban el límite, cuatro tarjetas por fila, apertura del modal desde ambos botones, foco, edición y cierre con X/Escape. La prueba de actualización espera la recarga real antes de desbloquear para evitar una carrera del navegador. La revisión del cuadre por el usuario continúa.
+
+Se corrigió también, por separado en el repositorio privado original, el menú lateral que ocultaba la exportación en pantallas bajas. Una prueba de HTML/CSS sin datos personales verifica el acceso al botón a 1280×600 y 1280×1000. El código de escritorio y servidor continúa fuera del repositorio público PWA.
 
 ## Evidencia previa de Google
 

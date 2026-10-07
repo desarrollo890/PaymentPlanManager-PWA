@@ -33,9 +33,13 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       assert.equal(await page.locator('.credit-limit span').textContent(),'Límite de crédito'); assert.match(await page.locator('.credit-limit strong').textContent(),/20,000/);
       await page.getByRole('button',{name:'Planes (0) →'}).click(); await page.getByRole('button',{name:'Dividir deuda',exact:true}).click();
       assert.equal(await page.locator('input[name="capital"]').inputValue(),'10000.00'); await fill(page,'capital','6000'); await fill(page,'description','Plan MSI sintético'); await fill(page,'months','14'); await save(page);
+      await page.getByRole('button',{name:'Planes (1) →',exact:true}).click();
       await page.getByRole('button',{name:'Dividir deuda',exact:true}).click(); assert.equal(await page.locator('input[name="capital"]').inputValue(),'4000.00'); await page.getByRole('dialog').getByRole('button',{name:'Cancelar',exact:true}).click();
+      await page.getByRole('button',{name:'Planes (1) →',exact:true}).click();
       await page.locator('.installment-detail summary').click(); await page.getByRole('button',{name:'Editar plan',exact:true}).click(); await fill(page,'description','Plan corregido'); await save(page);
+      await page.getByRole('button',{name:'Planes (1) →',exact:true}).click();
       assert.equal(await page.locator('.installment-detail').count(),1); await page.screenshot({path:path.join(output,`${name}-tarjetas.png`),fullPage:true});
+      await page.getByRole('dialog',{name:'Planes de Tarjeta sintética',exact:true}).getByRole('button',{name:'Cerrar ventana'}).click();
       await page.getByRole('button',{name:'Registrar movimiento',exact:true}).click(); const today = await page.locator('input[name="date"]').inputValue(); await fill(page,'amount','250'); await fill(page,'description','Compra local sintética'); await save(page);
       for (const [label,title] of [['Movimientos','Tus movimientos'],['Calendario','Tu calendario de pagos'],['Presupuesto','Tu presupuesto'],['Préstamos','Préstamos de personas'],['Periodos','Tus resúmenes'],['Preferencias','A tu manera']]) {
         await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click(); await page.getByRole('heading',{name:title,exact:true,level:1}).waitFor();
@@ -73,15 +77,18 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await page.getByRole('button',{name:'Registrar movimiento',exact:true}).click(); await fill(page,'amount','100'); await fill(page,'description','Compra sin conexión'); await save(page);
       for(let i=2;i<=4;i++){await page.getByRole('button',{name:'Agregar tarjeta',exact:true}).click();await fill(page,'name',`Tarjeta ${i}`);await fill(page,'bank','Banco sintético');await fill(page,'limit','10000');await fill(page,'available',10000-i*1000);await fill(page,'debt',i*1000);await save(page);}
       if(name==='desktop'){const boxes=await page.locator('.credit-card').evaluateAll(cards=>cards.map(c=>c.getBoundingClientRect().top));assert.equal(new Set(boxes).size,1,'Four cards fit one desktop row');}
-      if(await page.locator('.selected-card-plans').count()) await page.getByRole('button',{name:'Planes (1) →',exact:true}).click();
       await page.getByRole('button',{name:'Planes (1) →',exact:true}).click();
-      await page.waitForFunction(()=>document.activeElement?.classList.contains('selected-card-plans')&&document.activeElement.getBoundingClientRect().top>=0&&document.activeElement.getBoundingClientRect().top<innerHeight,null,{timeout:15000});
-      assert.equal(await page.locator('.selected-card-plans .installment-detail').count(),1,'Plans remain visible after navigating from a multi-card grid');
+      const plansDialog=page.getByRole('dialog',{name:'Planes de Tarjeta sintética',exact:true});await plansDialog.waitFor();
+      assert.equal(await plansDialog.locator('.installment-detail').count(),1,'Plans open in the selected card modal');
+      assert(await plansDialog.evaluate(dialog=>dialog.contains(document.activeElement)),'Modal receives focus');
+      await page.keyboard.press('Escape');await plansDialog.waitFor({state:'hidden'});assert.equal(await page.locator('.card-detail').count(),0,'Closing the modal leaves the card grid clear');
+      const firstCard=page.locator('.credit-card').filter({has:page.getByRole('heading',{name:'Tarjeta sintética',exact:true})});await firstCard.locator('.card-menu summary').click();await firstCard.getByRole('button',{name:'Ver planes',exact:true}).click();await plansDialog.waitFor();
+      await plansDialog.getByRole('button',{name:'Cerrar ventana'}).click();await plansDialog.waitFor({state:'hidden'});
       await page.screenshot({path:path.join(output,`${name}-offline.png`),fullPage:true});
       if(name==='desktop'&&!process.env.PAYMENTPLAN_BROWSER_BASE_URL){
         await context.setOffline(false);workerRevision++;await page.evaluate(async()=>{const registration=await navigator.serviceWorker.getRegistration();await registration.update()});
         await page.getByRole('button',{name:'Actualizar aplicación'}).waitFor();await page.getByRole('button',{name:'Registrar movimiento',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Actualizar aplicación'}).isDisabled(),true,'Update must protect an open financial form');
-        await page.getByRole('dialog').getByRole('button',{name:'Cancelar',exact:true}).click();await page.getByRole('button',{name:'Actualizar aplicación'}).click();await page.getByRole('heading',{name:'Desbloquea tu cartera'}).waitFor();
+        await page.getByRole('dialog').getByRole('button',{name:'Cancelar',exact:true}).click();await Promise.all([page.waitForEvent('load'),page.getByRole('button',{name:'Actualizar aplicación'}).click()]);await page.getByRole('heading',{name:'Desbloquea tu cartera'}).waitFor();
         await fill(page,'password','synthetic-recovered-password');await page.getByRole('button',{name:'Desbloquear',exact:true}).click();await page.locator('.credit-card').first().waitFor();assert.equal(await page.locator('.credit-card').count(),4,'Update retains encrypted financial data');
       }
       assert.deepEqual(errors,[],'No browser errors'); assert(requests.every(r=>r.startsWith(url)),'No external requests without authorization'); await context.close();
