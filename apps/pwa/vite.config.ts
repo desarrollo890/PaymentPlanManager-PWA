@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { createHash } from 'node:crypto';
-const base = '/PaymentPlanManager-PWA/';
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+const native = mode === 'android', base = native ? '/' : '/PaymentPlanManager-PWA/';
+return {
   plugins: [react(), {
     name: 'paymentplan-offline-shell',
     generateBundle(_, bundle) {
+      if (native) return;
       const names = Object.keys(bundle), hash = createHash('sha256').update(names.join('|')).digest('hex').slice(0, 16);
       const files = ['index.html', 'favicon.svg', 'icon-192.png', 'icon-512.png', 'manifest.webmanifest', ...names.filter(n => /\.(js|css)$/.test(n))].map(n => base + n);
       const source = `const CACHE='paymentplan-shell-${hash}',FILES=${JSON.stringify(files)},BASE=${JSON.stringify(base)};
@@ -18,5 +20,5 @@ if(FILES.includes(url.pathname))event.respondWith(caches.open(CACHE).then(cache=
       this.emitFile({ type: 'asset', fileName: 'service-worker.js', source });
     },
   }],
-  base, build: { sourcemap: false },
-});
+  base, build: { sourcemap: false, outDir: native ? 'dist-native' : 'dist' },
+}; });

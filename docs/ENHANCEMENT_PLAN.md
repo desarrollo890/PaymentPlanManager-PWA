@@ -28,3 +28,7 @@ El cuadre personal de importación fue aprobado por el usuario. La confirmación
 ## Estado de la primera entrega
 
 E0–E4 implementadas y verificadas. Comprobaciones: suite anterior .NET aprobada, 62 pruebas unitarias PWA, cuatro pruebas Google, 17 de arquitectura y recorridos sintéticos de PC/móvil. Se comprobó la equivalencia de fechas Excel 1900/1904 y se revisaron capturas de educación y simulación. [CI y publicación aprobadas](https://github.com/desarrollo890/PaymentPlanManager-PWA/actions/runs/37578055635), implementación `59f6ba1`; el recorrido PC/móvil también pasó contra la URL HTTPS publicada. E5–E7 son mejoras posteriores, no funciones entregadas.
+
+## Segunda entrega: 7 de octubre de 2026
+
+El usuario autorizó E5–E7 y eligió efectivo/débito con metas vinculadas y APK de instalación personal. E5 implementa categorías, reglas revisables y límites por quincena; E6, propuestas recurrentes idempotentes y cuentas/transferencias/metas respaldadas. Los contratos v2 amplían las entidades conservando v1, cifrado y recuperación. E7 incluye proyecto Android, autorización nativa Google, almacenamiento temporal protegido por Keystore, documentos por selector y compilación CI para firma local. La aceptación final de APK/OAuth físico permanece pendiente hasta confirmar teléfono y certificado. [Guía, arquitectura y pasos](PLANNING_AND_ANDROID.md).

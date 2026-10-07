@@ -23,14 +23,27 @@
     "test:architecture": "npm --prefix tools/architecture test",
     "build": "npm run typecheck && npm run build --workspace @paymentplan/pwa && node scripts/check-static-build.mjs",
     "check": "npm run contracts:check && npm run check:boundaries && npm run test && npm run test:google-probe && npm run build",
-    "test:browser": "node scripts/pwa-browser-checks.cjs && node scripts/session-browser-checks.cjs && node tools/google-probe/browser-checks.cjs",
-    "test:session-browser": "node scripts/session-browser-checks.cjs"
+    "test:browser": "node scripts/pwa-browser-checks.cjs && node scripts/session-browser-checks.cjs && node tools/google-probe/browser-checks.cjs && node scripts/planning-browser-checks.cjs",
+    "test:session-browser": "node scripts/session-browser-checks.cjs",
+    "build:android:web": "npm run typecheck && npm run build --workspace @paymentplan/pwa -- --mode android",
+    "android:sync": "npm run build:android:web && cap sync android",
+    "test:planning-browser": "node scripts/planning-browser-checks.cjs"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.5.2",
     "@types/node": "24.19.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "typescript": "7.0.2",
-    "playwright": "1.63.0"
+    "playwright": "1.63.0",
+    "typescript": "7.0.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/core": "8.5.2"
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "11.1.1"
+    }
   }
 }

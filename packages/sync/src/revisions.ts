@@ -6,6 +6,14 @@ export interface RevisionEntity {
 }
 export interface RevisionState { readonly operations: readonly Operation[]; readonly entities: readonly RevisionEntity[]; readonly pendingOperationIds: readonly string[] }
 const financialBundles: Partial<Record<Operation['entityType'], readonly string[]>> = {
+  cashAccount: ['openingDate', 'openingCents', 'archived'],
+  cashEntry: ['accountId', 'toAccountId', 'cardMovementId', 'date', 'amountCents', 'kind'],
+  savingsGoal: ['accountId', 'targetCents', 'targetDate', 'archived'],
+  savingsEntry: ['goalId', 'date', 'amountCents', 'direction'],
+  recurrence: ['cardId', 'kind', 'amountCents', 'startDate', 'endDate', 'frequency', 'enabled', 'categoryId'],
+  occurrence: ['recurrenceId', 'date', 'movementId'],
+  classification: ['movementId', 'categoryId'],
+  categoryBudget: ['categoryId', 'payday', 'limitCents'],
   movement: ['cardId', 'date', 'amountCents', 'kind', 'scheduled', 'reconciled', 'statementId', 'allocations'],
   installment: ['cardId', 'principalCents', 'months', 'interestCents', 'startDate', 'firstCutDate', 'cutDay', 'purchaseId', 'interestIncludedInDebt', 'interestIncorporatedThrough', 'amortization'],
   balance: ['cardId', 'date', 'availableCents', 'debtCents', 'includedMovementIds', 'interestIncluded'],
@@ -95,6 +103,9 @@ export function mergeRevisions(input: readonly Operation[]): RevisionState {
     const replaced = new Set(revisions.flatMap(op => op.parentRevisionIds));
     const heads = revisions.filter(op => !replaced.has(op.operationId)).sort((a, b) => a.operationId.localeCompare(b.operationId));
     if (heads.length === 1) { entities.push({ entityId, entityType: heads[0]!.entityType, status: heads[0]!.action === 'void' ? 'void' : 'accepted', accepted: heads[0]!, heads }); continue; }
+    if (heads.every(h => h.action !== 'void' && canonical(h.payload) === canonical(heads[0]!.payload))) {
+      entities.push({ entityId, entityType: heads[0]!.entityType, status: 'merged', accepted: heads[0]!, heads }); continue;
+    }
     const ancestors = heads.map(ancestry), common = [...ancestors[0]!].filter(id => ancestors.every(set => set.has(id)));
     const commonParents = new Set(common.flatMap(id => applied.get(id)!.parentRevisionIds));
     const bases = common.filter(id => !commonParents.has(id));

@@ -58,3 +58,7 @@ Se completaron tres pasadas de revisión: inventario de procesos anteriores, reg
 Aprender, Análisis y Simulador implementan la primera fase del [plan de evolución](ENHANCEMENT_PLAN.md). Los nuevos reportes y cálculos no cambian el contrato de datos v1. Las cuentas y datos reales no se utilizan en las pruebas.
 
 Implementación `59f6ba1`: [CI y despliegue aprobados](https://github.com/desarrollo890/PaymentPlanManager-PWA/actions/runs/37578055635). El recorrido contra HTTPS pasó en PC y móvil con datos sintéticos aislados. Contratos, tipos, 62 pruebas unitarias, cuatro Google, 17 de arquitectura y recorridos de sincronización aprobaron. Gitleaks no detectó secretos en los 116 archivos candidatos ni en el historial público; autores y committers mantienen identidad genérica. La suite anterior .NET también aprobó. La última revisión incorporó anticipación 0–10 días al calendario sin cambiar la quincena de ingreso.
+
+## Categorías, recurrencias, cuentas, metas y APK
+
+Se incorporó la entrega autorizada E5–E7 con contratos v2, respaldos compatibles y firma Android local. Se conservan las pruebas de paridad anteriores y se agregan pruebas unitarias de conservación de dinero, reservas, pago vinculado, categorías, recurrencias offline y coherencia combinada; recorridos PC/móvil y respaldo cifrado v2 entre perfiles. [Guía de aceptación](PLANNING_AND_ANDROID.md). El OAuth nativo y la prueba física no se dan por aceptados automáticamente.

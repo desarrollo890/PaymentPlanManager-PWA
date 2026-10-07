@@ -9,3 +9,5 @@ export * from './validation.ts';
 export * from './periods.ts';
 export * from './reminders.ts';
 export * from './payoff.ts';
+
+export * from './extensions.ts';

@@ -59,3 +59,7 @@ Este repositorio mantiene un historial independiente con identidad genérica. Lo
 ## Equivalencia y evolución
 
 La [revisión de equivalencia](docs/PARITY_REVIEW.md) compara procesos con la versión anterior y explica las diferencias deliberadas. Consulta la [guía de funciones](docs/FEATURE_GUIDE.md), la [investigación de mejoras](docs/PRODUCT_RESEARCH.md) y el [plan de evolución](docs/ENHANCEMENT_PLAN.md). Aprender, Análisis y Simulador funcionan sin conexión y no necesitan servicios nuevos.
+
+### Categorías, recurrencias, cuentas y metas; APK personal
+
+La [guía de la entrega](docs/PLANNING_AND_ANDROID.md) explica categorías y límites por quincena, propuestas recurrentes, efectivo/débito, transferencias, pagos vinculados y reservas con respaldo real. Actualiza todos los dispositivos antes de sincronizar extensiones v2. Android incluye OAuth nativo y exportación por selector de documentos; su aceptación física requiere instalar la APK firmada y configurar su SHA-1 en Google Cloud.

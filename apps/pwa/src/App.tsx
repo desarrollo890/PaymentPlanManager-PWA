@@ -7,7 +7,8 @@ import { IndexedVaultStore, LocalRevisionError } from '@paymentplan/storage';
 import type { VaultMetadata } from '@paymentplan/storage';
 import { DriveTransport, mergeRevisions, GoogleAuthorizationError } from '@paymentplan/sync';
 import type { Change } from '@paymentplan/domain';
-import { live, addDays, remindersFor } from '@paymentplan/domain';
+import { live, addDays, addMonths, remindersFor } from '@paymentplan/domain';
+import { isNative } from './native.ts';
 import { GoogleAccess } from './google.ts';
 import { FinancialForm } from './financial-forms.tsx';
 import type { FinancialModal } from './financial-forms.tsx';
@@ -18,18 +19,21 @@ import { applyUpdate } from './offline.ts';
 import { BankImport } from './bank-import.tsx';
 import { BrowserReminders } from './browser-reminders.tsx';
 import { EducationView, InsightsView, PayoffView } from './growth-views.tsx';
+import { PlanningView, GoalBudget } from './planning-views.tsx';
 import { ConflictReview } from './conflicts.tsx';
 
 const google = new GoogleAccess(oauth.web.clientId);
 const sections = [ ['inicio', 'Inicio', 'home', 'Tu espacio financiero'], ['tarjetas', 'Tarjetas', 'card', 'Tus tarjetas'],
   ['movimientos', 'Movimientos', 'activity', 'Tus movimientos'], ['plan', 'Calendario', 'calendar', 'Tu calendario de pagos'],
   ['presupuesto', 'Presupuesto', 'report', 'Tu presupuesto'], ['prestamos', 'Préstamos', 'people', 'Préstamos de personas'],
+  ['categorias', 'Categorías', 'report', 'Tus categorías de gastos'], ['recurrencias', 'Recurrencias', 'calendar', 'Cargos recurrentes'], ['cuentas', 'Cuentas', 'card', 'Tu efectivo y débito'], ['metas', 'Metas', 'shield', 'Tus metas de ahorro'],
   ['periodos', 'Periodos', 'report', 'Tus resúmenes'], ['analisis', 'Análisis', 'report', 'Gastos y costos'], ['simulador', 'Simulador', 'activity', 'Explora cómo reducir tu deuda'], ['aprender', 'Aprender', 'report', 'Educación financiera'], ['preferencias', 'Preferencias', 'settings', 'A tu manera'] ] as const;
 type Section = typeof sections[number][0];
 const selectedSection = (): Section => sections.find(s => s[0] === window.location.hash.slice(2))?.[0] ?? 'inicio';
 const message = (error: unknown): string => error instanceof Error ? error.message : 'No se pudo completar la operación.';
 
 export function App() {
+  useEffect(() => { if (isNative) document.body.classList.add('native'); }, []);
   const [store] = useState(() => new IndexedVaultStore());
   const [vaults, setVaults] = useState<VaultMetadata[]>([]), [loaded, setLoaded] = useState(false);
   const [session, setSession] = useState<VaultSession | null>(null), sessionRef = useRef<VaultSession | null>(null);
@@ -52,6 +56,12 @@ export function App() {
   useEffect(() => { void refreshVaults().catch(e => { setError(message(e)); setLoaded(true); }); }, [refreshVaults]);
   useEffect(() => { const update = () => setSection(selectedSection()); window.addEventListener('hashchange', update); return () => window.removeEventListener('hashchange', update); }, []);
   const lock = useCallback(() => { sessionRef.current?.lock(); sessionRef.current = null; setSession(null); google.forget(); setAuthorized(false); setModal(null); setBankOpen(false); setBackup(null); setMigration(null); setRemoteHeaders([]); setError(''); setNotice('Cartera bloqueada.'); }, []);
+  useEffect(() => {
+    const nativeError = (event: Event) => setError((event as CustomEvent<string>).detail);
+    const resume = () => { if (sessionRef.current && Date.now() - lastActivity.current > 15 * 60_000) lock(); };
+    window.addEventListener('paymentplan-native-error', nativeError); window.addEventListener('paymentplan-native-resume', resume);
+    return () => { window.removeEventListener('paymentplan-native-error', nativeError); window.removeEventListener('paymentplan-native-resume', resume); };
+  }, [lock]);
   useEffect(() => {
     const touch = () => { lastActivity.current = Date.now(); };
     for (const event of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(event, touch, { passive: true });
@@ -126,6 +136,15 @@ export function App() {
   const problems = session?.issues(today) ?? [];
   const view = session && !problems.length ? session.view(today) : null;
   const blocked = Boolean(session?.hasRevisionConflicts || problems.length);
+  useEffect(() => {
+    if (!session || blocked || busyRef.current || !live(session.portfolio.recurrences).some(r => r.value.enabled)) return;
+    const timer = setTimeout(() => { if (busyRef.current || !session.unlocked) return;
+      void run(async () => { const changes = await session.commands(today).prepareRecurrences(addMonths(today, 12));
+        if (changes.length) { await session.commit(changes, today); setRevision(v => v + 1); channel.current?.postMessage({ vaultId: session.header.vaultId }); }
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [session, revision, today, blocked]);
   const googleButtons = <div className="inline-actions">{!googleReady ? <button className="secondary" disabled={busy} onClick={() => void run(async () => { await google.prepare(); setGoogleReady(true); })}>Preparar Google Drive</button> : <button className="secondary" disabled={busy} onClick={authorize}>{authorized ? 'Renovar autorización' : 'Autorizar Google Drive'}</button>}{authorized && <button className="text-button" disabled={busy} onClick={() => { google.forget(); setAuthorized(false); setRemoteHeaders([]); setNotice('Google desconectado de esta sesión.'); }}>Desconectar</button>}</div>;
   return <div className="app-layout"><a className="skip-link" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Ir al contenido</a>
     <aside className="sidebar"><a className="brand" href="#/inicio"><span className="brand-symbol">P</span><span>Payment<span className="brand-light">Plan</span></span></a><p className="nav-label">MI ESPACIO</p>
@@ -173,6 +192,8 @@ export function App() {
           {section === 'movimientos' && <><div className="section-heading"><span className="caption">Tus registros y movimientos bancarios</span><button className="secondary" disabled={busy || blocked || !view?.cards.length} onClick={() => setBankOpen(true)}>Importar CSV / Excel</button></div><MovementsView session={session} today={today} modal={m => { if (!blocked) setModal(m); }} act={act} /></>}
           {view && section === 'plan' && <CalendarView view={view} modal={m => { if (!blocked) setModal(m); }} />}
           {view && section === 'presupuesto' && <BudgetView view={view} p={session.portfolio} modal={m => { if (!blocked) setModal(m); }} />}
+          {(['categorias', 'recurrencias', 'cuentas', 'metas'] as const).some(s => s === section) && <PlanningView key={section} section={section as 'categorias' | 'recurrencias' | 'cuentas' | 'metas'} session={session} today={today} blocked={blocked} save={save} />}
+          {view && section === 'presupuesto' && <GoalBudget p={session.portfolio} today={today} />}
           {view && section === 'prestamos' && <LoansView session={session} view={view} modal={m => { if (!blocked) setModal(m); }} act={act} />}
           {view && <BrowserReminders p={session.portfolio} view={view} controls={section === 'preferencias'} />}
           {view && section === 'aprender' && <EducationView view={view} />}

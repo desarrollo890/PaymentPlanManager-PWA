@@ -1,3 +1,4 @@
+import { isNative, NativeAccess } from './native.ts';
 import { useEffect, useId, useRef } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 export function todayInMexico(): string {
@@ -17,6 +18,7 @@ export function parseMoney(value: FormDataEntryValue | null, allowNegative = fal
 export const str = (data: FormData, name: string): string => String(data.get(name) ?? '');
 export const optionalMoney = (data: FormData, name: string, signed = false): number | null => str(data, name).trim() ? parseMoney(data.get(name), signed) : null;
 export function download(name: string, content: string, type = 'application/json'): void {
+  if (isNative) { void NativeAccess.saveDocument({ name, content, mime: type }).catch(error => window.dispatchEvent(new CustomEvent('paymentplan-native-error', { detail: error instanceof Error ? error.message : 'No se pudo guardar el archivo.' }))); return; }
   const url = URL.createObjectURL(new Blob([content], { type })), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 export function csvCell(value: string | number): string {

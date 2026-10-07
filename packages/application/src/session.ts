@@ -1,4 +1,4 @@
-import { assertBatch, assertBlock, assertPayload, canonical } from '@paymentplan/contracts';
+import { assertBatch, assertBlock, assertPayload, canonical, operationVersion } from '@paymentplan/contracts';
 import type { Batch, Operation } from '@paymentplan/contracts';
 import { applyChanges, assertPortfolio, emptyPortfolio, entityTables, financeView, portfolioIssues } from '@paymentplan/domain';
 import type { Change, FinancialEntityType, Portfolio } from '@paymentplan/domain';
@@ -106,7 +106,7 @@ export class VaultSession {
       const parents = importedSeed ? [importedSeed.id] : entity?.heads.map(op => op.operationId) ?? [];
       const referenced = new Set<string>();
       const payload = change.payload as unknown as Record<string, unknown>;
-      for (const key of ['cardId', 'loanId', 'purchaseId', 'statementId']) if (typeof payload[key] === 'string') referenced.add(payload[key]);
+      for (const key of ['cardId', 'loanId', 'purchaseId', 'statementId', 'categoryId', 'movementId', 'recurrenceId', 'accountId', 'toAccountId', 'goalId', 'cardMovementId']) if (typeof payload[key] === 'string') referenced.add(payload[key]);
       if (Array.isArray(payload.allocations)) for (const allocation of payload.allocations as { planId: string }[]) referenced.add(allocation.planId);
       if (Array.isArray(payload.includedMovementIds)) for (const id of payload.includedMovementIds) referenced.add(id);
       const dependencies = [...referenced].flatMap(id => operationIds.has(id) ? [operationIds.get(id)!] : this.revisionState.entities.find(e => e.entityId === id)?.heads.map(op => op.operationId) ?? []);
@@ -114,7 +114,7 @@ export class VaultSession {
         const reviewed = new Set(this.issues(today).flatMap(issue => issue.entityIds));
         dependencies.push(...this.revisionState.entities.filter(e => reviewed.has(e.entityId)).flatMap(e => e.heads.map(op => op.operationId)));
       }
-      return { schemaVersion: 1, vaultId: this.header.vaultId, operationId: id, entityId: change.entityId,
+      return { schemaVersion: operationVersion(change.entityType), vaultId: this.header.vaultId, operationId: id, entityId: change.entityId,
         entityType: change.entityType, deviceId: this.deviceId, deviceSequence: ++sequence, parentRevisionIds: parents,
         dependencyOperationIds: [...new Set(dependencies)].filter(dependency => dependency !== id), groupId, groupIndex: index, groupSize: steps.length,
         updatedAt: now, action: change.voided ? 'void' : parents.length === 0 ? 'create' : parents.length > 1 && resolution ? 'resolve' : entity?.status === 'void' ? 'restore' : 'replace',
@@ -130,7 +130,7 @@ export class VaultSession {
     }
     if (chunk.length) chunks.push(chunk);
     for (const operations of chunks) {
-      const batchId = crypto.randomUUID(), batch: Batch = { schemaVersion: 1, vaultId: this.header.vaultId, batchId, deviceId: this.deviceId, operations };
+      const batchId = crypto.randomUUID(), batch: Batch = { schemaVersion: operations.some(op => op.schemaVersion === 2) ? 2 : 1, vaultId: this.header.vaultId, batchId, deviceId: this.deviceId, operations };
       assertBatch(batch); blocks.push(await this.cipher.seal(encodeJson(batch), { vaultId: this.header.vaultId, keyId: this.header.keyId, blockId: batchId, purpose: 'batch' })); this.ensureUnlocked();
     }
     await this.store.commit(this.header.vaultId, this.stored.metadata.version, sequence, blocks, true); await this.refresh();

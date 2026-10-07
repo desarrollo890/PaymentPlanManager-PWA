@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PaymentPlan</string>
+    <string name="title_activity_main">PaymentPlan</string>
+    <string name="package_name">com.sardeip.PaymentPlanManager</string>
+    <string name="custom_url_scheme">com.sardeip.PaymentPlanManager</string>
+</resources>

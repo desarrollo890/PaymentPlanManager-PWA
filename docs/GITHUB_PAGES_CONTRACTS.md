@@ -65,3 +65,7 @@ Cambiar contraseña vuelve a envolver la clave; los datos conservan su cifrado. 
 ## Referencia y aceptación
 
 La referencia .NET sintética cubre ocho escenarios completos, 240 quincenas, 120 cuotas y tres amortizaciones. Los scripts prueban dos dispositivos aislados con IndexedDB y REST de Drive simulado. La [aceptación personal](PERSONAL_ACCEPTANCE.md) requiere la cuenta real, el teléfono y el cuadre de datos del usuario.
+
+## Extensiones v2
+
+Las nuevas entidades y lotes mixtos se describen en `contracts/v2`. Los contratos v1 no cambian y el contenedor cifrado sigue siendo v1. Actualiza todos los dispositivos: clientes v1 rechazan lotes v2 sin incorporación parcial. Categoría y origen recurrente son entidades separadas, sin añadir campos a movimientos históricos. [Semántica y aceptación](PLANNING_AND_ANDROID.md).

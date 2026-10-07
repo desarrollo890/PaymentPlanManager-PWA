@@ -71,13 +71,15 @@ function matches(value: unknown, schema: Schema, root: Schema): boolean {
   return true;
 }
 export function assertOperation(value: unknown): asserts value is Operation {
-  if (!matches(value, schemas.operation!, schemas.operation!)) throw Error('Operación inválida o versión de datos no compatible.');
+  const root = object(value) && value.schemaVersion === 2 ? schemas.operationV2! : schemas.operation!;
+  if (!matches(value, root, root)) throw Error('Operación inválida o versión de datos no compatible.');
   const op = value as Operation;
   if (op.groupId === null && (op.groupIndex !== 0 || op.groupSize !== 1)) throw Error('Grupo atómico inválido.');
   if (op.groupIndex >= op.groupSize) throw Error('Posición de grupo inválida.');
 }
 export function assertBatch(value: unknown): asserts value is Batch {
-  if (!matches(value, schemas.batch!, schemas.batch!)) throw Error('Lote inválido o versión de datos no compatible.');
+  const root = object(value) && value.schemaVersion === 2 ? schemas.batchV2! : schemas.batch!;
+  if (!matches(value, root, root)) throw Error('Lote inválido o versión de datos no compatible.');
   const batch = value as Batch;
   for (const operation of batch.operations) {
     assertOperation(operation);
@@ -88,6 +90,7 @@ export function assertBlock(value: unknown): asserts value is EncryptedBlock {
   if (!matches(value, schemas['encrypted-block']!, schemas['encrypted-block']!)) throw Error('Bloque cifrado inválido o versión no compatible.');
 }
 export function assertPayload<K extends EntityType>(type: K, value: unknown): asserts value is EntityPayloads[K] {
-  const schema = schemas.operation!.$defs?.[type];
-  if (!schema || !matches(value, schema, schemas.operation!)) throw Error(`Datos inválidos: ${type}.`);
+  const root = schemas.operation!.$defs?.[type] ? schemas.operation! : schemas.operationV2!;
+  const schema = root.$defs?.[type];
+  if (!schema || !matches(value, schema, root)) throw Error(`Datos inválidos: ${type}.`);
 }

@@ -1,3 +1,4 @@
+import { isNative, NativeAccess } from './native.ts';
 import { DRIVE_SCOPE } from '@paymentplan/sync';
 interface TokenResponse { access_token?: string; expires_in?: string | number; scope?: string; error?: string }
 interface GoogleSdk {
@@ -14,9 +15,9 @@ export class GoogleAccess {
   private preparation: Promise<void> | null = null;
   readonly clientId: string;
   constructor(clientId: string) { this.clientId = clientId; }
-  get ready(): boolean { return Boolean(window.google?.accounts.oauth2); }
+  get ready(): boolean { return isNative || Boolean(window.google?.accounts.oauth2); }
   getToken = (): string | null => Date.now() < this.expiresAt - 30_000 ? this.token : null;
-  forget(): void { this.generation++; this.token = null; this.expiresAt = 0; }
+  forget(): void { this.generation++; this.token = null; this.expiresAt = 0; if (isNative) void NativeAccess.clear().catch(() => {}); }
   prepare(): Promise<void> {
     if (this.ready) return Promise.resolve();
     if (this.preparation) return this.preparation;
@@ -30,6 +31,7 @@ export class GoogleAccess {
   authorize(): Promise<void> {
     if (!this.ready) return Promise.reject(Error('Prepara Google antes de autorizar.'));
     const generation = this.generation;
+    if (isNative) return this.authorizeNative(generation);
     return new Promise((resolve, reject) => {
       const client = window.google!.accounts.oauth2.initTokenClient({ client_id: this.clientId, scope: DRIVE_SCOPE, include_granted_scopes: false,
         callback: response => {
@@ -43,7 +45,14 @@ export class GoogleAccess {
       client.requestAccessToken({ prompt: 'select_account' });
     });
   }
+  private async authorizeNative(generation: number): Promise<void> {
+    const response = await NativeAccess.authorize();
+    if (generation !== this.generation) { await NativeAccess.clear(); throw Error('La cartera fue bloqueada o desconectada.'); }
+    if (!response.accessToken || !response.scope.split(' ').includes(DRIVE_SCOPE) || !Number.isFinite(response.expiresIn) || response.expiresIn <= 30) { this.forget(); throw Error('Google no concedió acceso a la carpeta privada.'); }
+    this.token = response.accessToken; this.expiresAt = Date.now() + Math.min(response.expiresIn, 3600) * 1000;
+  }
   async revoke(): Promise<void> {
+    if (isNative) { try { await NativeAccess.revoke(); } finally { this.forget(); } return; }
     const token = this.getToken(); if (!token || !window.google) { this.forget(); return; }
     try { await new Promise<void>((resolve, reject) => window.google!.accounts.oauth2.revoke(token, result => result.successful ? resolve() : reject(Error('Google no confirmó la revocación.')))); }
     finally { this.forget(); }

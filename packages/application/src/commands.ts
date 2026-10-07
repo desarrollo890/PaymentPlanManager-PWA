@@ -1,8 +1,8 @@
 import { canonical } from '@paymentplan/contracts';
-import type { Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
+import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
-  live, periodReport, planEditReason, statementsFor, sumCents } from '@paymentplan/domain';
-import type { Change, FinancialRecord, Portfolio } from '@paymentplan/domain';
+  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents } from '@paymentplan/domain';
+import type { FinancialEntityType, Change, FinancialRecord, Portfolio } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 
 export interface CommandContext { readonly today: string; readonly now: string; readonly newId: () => string }
@@ -47,6 +47,8 @@ export class FinancialCommands {
         if (!this.portfolio.statements.some(s => s.id === statementId)) changes.push({ entityType: 'statement', entityId: statementId, payload: cut.value, voided: false });
       }
     }
+    if (id && input.kind === 'payment') for (const classification of live(this.portfolio.classifications).filter(c => c.value.movementId === id))
+      changes.push({ entityType: 'classification', entityId: classification.id, payload: classification.value, voided: true });
     changes.push({ entityType: 'movement', entityId: id ?? this.context.newId(), payload: { ...input, description: input.description.trim(), statementId,
       scheduled: input.date > this.context.today, reconciled: false, importReference: previous?.value.importReference ?? null,
       ...(previous ? { recordedAt: previous.value.recordedAt, legacyOrdinal: previous.value.legacyOrdinal } : this.stamp()) }, voided: false });
@@ -71,6 +73,12 @@ export class FinancialCommands {
     const card = record(this.portfolio.cards, id);
     if (card.voided) throw Error('La tarjeta ya está eliminada.');
     const changes: Change[] = [{ entityType: 'card', entityId: id, payload: card.value, voided: true }];
+    const movementIds = new Set(this.portfolio.movements.filter(m => m.value.cardId === id).map(m => m.id));
+    if (live(this.portfolio.cashEntries).some(e => e.value.cardMovementId !== null && movementIds.has(e.value.cardMovementId))) throw Error('La tarjeta tiene pagos vinculados a cuentas. Conserva su historial archivándola al liquidarla.');
+    for (const row of live(this.portfolio.recurrences).filter(r => r.value.cardId === id)) changes.push({ entityType: 'recurrence', entityId: row.id, payload: row.value, voided: true });
+    for (const row of live(this.portfolio.occurrences).filter(r => movementIds.has(r.value.movementId))) changes.push({ entityType: 'occurrence', entityId: row.id, payload: row.value, voided: true });
+    for (const row of live(this.portfolio.classifications).filter(r => movementIds.has(r.value.movementId))) changes.push({ entityType: 'classification', entityId: row.id, payload: row.value, voided: true });
+    for (const row of live(this.portfolio.categoryRules).filter(r => r.value.cardId === id)) changes.push({ entityType: 'categoryRule', entityId: row.id, payload: row.value, voided: true });
     const collections = [['balance', this.portfolio.balances], ['movement', this.portfolio.movements], ['installment', this.portfolio.installments],
       ['statement', this.portfolio.statements], ['closure', this.portfolio.closures]] as const;
     for (const [entityType, rows] of collections) for (const row of live(rows as readonly FinancialRecord<{ cardId: string }> []))
@@ -170,6 +178,84 @@ export class FinancialCommands {
   saveBudget(payload: Budget): Change[] { return this.checked([{ entityType: 'budget', entityId: live(this.portfolio.budgets).find(b => b.value.payday === payload.payday)?.id ?? this.context.newId(), payload, voided: false }]); }
   reminders(payload: ReminderPreferences): Change[] { return this.checked([{ entityType: 'reminderPreferences', entityId: live(this.portfolio.reminderPreferences)[0]?.id ?? '22222222-2222-4222-8222-222222222222', payload, voided: false }]); }
   dismissReminder(payload: ReminderState): Change[] { return this.checked([{ entityType: 'reminderState', entityId: live(this.portfolio.reminderStates).find(r => r.value.reminderKey === payload.reminderKey)?.id ?? this.context.newId(), payload, voided: false }]); }
+
+  saveExtension<K extends FinancialEntityType>(entityType: K, payload: EntityPayloads[K], id?: string): Change[] {
+    if (id) record(this.portfolio[extensionTable(entityType)] as readonly FinancialRecord<EntityPayloads[K]>[], id);
+    return this.checked([{ entityType, entityId: id ?? this.context.newId(), payload, voided: false } as Change]);
+  }
+  saveCategory(payload: Category, id?: string) { return this.saveExtension('category', { ...payload, name: payload.name.trim() }, id); }
+  saveCategoryRule(payload: CategoryRule, id?: string) { return this.saveExtension('categoryRule', { ...payload, contains: payload.contains.trim() }, id); }
+  async setCategory(movementId: string, categoryId: string | null): Promise<Change[]> {
+    const movement = record(this.portfolio.movements, movementId);
+    if (movement.value.kind === 'payment') throw Error('Los pagos no son gastos nuevos.');
+    const existing = this.portfolio.classifications.find(r => r.value.movementId === movementId);
+    if (categoryId === null) return existing && !existing.voided ? this.checked([{ entityType: 'classification', entityId: existing.id, payload: existing.value, voided: true }]) : [];
+    if (record(this.portfolio.categories, categoryId).value.archived && existing?.value.categoryId !== categoryId) throw Error('Selecciona una categoría activa.');
+    return this.checked([{ entityType: 'classification', entityId: existing?.id ?? await stableId('classification:' + movementId), payload: { movementId, categoryId }, voided: false }]);
+  }
+  async saveCategoryBudget(payload: CategoryBudget): Promise<Change[]> {
+    return this.checked([{ entityType: 'categoryBudget', entityId: this.portfolio.categoryBudgets.find(b => b.value.categoryId === payload.categoryId && b.value.payday === payload.payday)?.id ?? await stableId('category-budget:' + payload.categoryId + ':' + payload.payday), payload, voided: false }]);
+  }
+  saveRecurrence(payload: Recurrence, id?: string) {
+    if (record(this.portfolio.cards, payload.cardId).value.archived) throw Error('Selecciona una tarjeta activa.');
+    if (payload.startDate < latestBalance(this.portfolio, payload.cardId).value.date) throw Error('La recurrencia debe empezar desde el último saldo bancario.');
+    return this.saveExtension('recurrence', { ...payload, description: payload.description.trim() }, id);
+  }
+  async prepareRecurrences(through: string): Promise<Change[]> {
+    if (through > addMonths(this.context.today, 120)) throw Error('Las propuestas admiten hasta diez años de proyección.');
+    const changes: Change[] = [];
+    for (const recurrence of live(this.portfolio.recurrences)) {
+      const r = recurrence.value;
+      if (!r.enabled || record(this.portfolio.cards, r.cardId).value.archived) continue;
+      const base = latestBalance(this.portfolio, r.cardId).value.date;
+      for (const date of recurrenceDates(r, base, through)) {
+        if (this.portfolio.occurrences.some(o => o.value.recurrenceId === recurrence.id && o.value.date === date)) continue;
+        const movementId = await stableId('recurring-movement:' + recurrence.id + ':' + date);
+        if (this.portfolio.movements.some(m => m.id === movementId)) continue;
+        if (live(this.portfolio.closures).some(c => c.value.cardId === r.cardId && c.value.from <= date && c.value.to >= date)) continue;
+        changes.push({ entityType: 'movement', entityId: movementId, payload: { cardId: r.cardId, date, amountCents: r.amountCents, kind: r.kind, description: r.description,
+          scheduled: true, reconciled: false, statementId: null, allocations: [], importReference: null, recordedAt: date + 'T00:00:00.000Z', legacyOrdinal: null }, voided: false });
+        changes.push({ entityType: 'occurrence', entityId: await stableId('occurrence:' + recurrence.id + ':' + date), payload: { recurrenceId: recurrence.id, date, movementId }, voided: false });
+        if (r.categoryId !== null) changes.push({ entityType: 'classification', entityId: await stableId('classification:' + movementId), payload: { movementId, categoryId: r.categoryId }, voided: false });
+        if (changes.length > 3000) throw Error('Hay demasiadas propuestas. Acorta el horizonte o registra una fecha de inicio más reciente.');
+      }
+    }
+    return this.checked(changes);
+  }
+  saveCashAccount(payload: CashAccount, id?: string) { return this.saveExtension('cashAccount', { ...payload, name: payload.name.trim() }, id); }
+  saveCashEntry(payload: CashEntry, id?: string) {
+    if (record(this.portfolio.cashAccounts, payload.accountId).value.archived || (payload.toAccountId && record(this.portfolio.cashAccounts, payload.toAccountId).value.archived)) throw Error('Selecciona cuentas activas.');
+    return this.saveExtension('cashEntry', { ...payload, description: payload.description.trim() }, id);
+  }
+  payCardFromAccount(accountId: string, cardId: string, date: string, amountCents: number, description: string): Change[] {
+    if (record(this.portfolio.cashAccounts, accountId).value.archived || date > this.context.today) throw Error('Selecciona una cuenta activa y una fecha de pago real.');
+    const changes = this.recordMovement({ cardId, date, amountCents, description, kind: 'payment', statementId: null, allocations: [] });
+    const movement = changes.find(c => c.entityType === 'movement')!;
+    changes.push({ entityType: 'cashEntry', entityId: this.context.newId(), payload: { accountId, toAccountId: null, cardMovementId: movement.entityId, date, amountCents, description: description.trim(), kind: 'cardPayment', categoryId: null }, voided: false });
+    return this.checked(changes);
+  }
+  saveSavingsGoal(payload: SavingsGoal, id?: string) {
+    if (id && record(this.portfolio.savingsGoals, id).value.accountId !== payload.accountId && goalSaved(this.portfolio, id, this.context.today) !== 0) throw Error('Libera la reserva antes de cambiar la cuenta de la meta.');
+    if (record(this.portfolio.cashAccounts, payload.accountId).value.archived) throw Error('Selecciona una cuenta activa.');
+    return this.saveExtension('savingsGoal', { ...payload, name: payload.name.trim() }, id);
+  }
+  saveSavingsEntry(payload: SavingsEntry, id?: string) {
+    if (record(this.portfolio.savingsGoals, payload.goalId).value.archived) throw Error('Reactiva la meta para modificar su reserva.');
+    return this.saveExtension('savingsEntry', { ...payload, description: payload.description.trim() }, id);
+  }
+  voidExtension(entityType: FinancialEntityType, id: string): Change[] {
+    const allowed = ['categoryRule', 'categoryBudget', 'cashEntry', 'savingsEntry'];
+    if (!allowed.includes(entityType)) throw Error('Este registro se archiva para conservar sus relaciones.');
+    const row = record(this.portfolio[extensionTable(entityType)] as readonly FinancialRecord<EntityPayloads[FinancialEntityType]>[], id);
+    const changes: Change[] = [{ entityType, entityId: id, payload: row.value, voided: true } as Change];
+    if (entityType === 'cashEntry' && 'cardMovementId' in row.value && row.value.cardMovementId !== null) {
+      const m = record(this.portfolio.movements, row.value.cardMovementId as string); this.editableDate(m.value.cardId, m.value.date);
+      if (m.value.reconciled || this.portfolio.balances.some(b => b.value.includedMovementIds.includes(m.id))) throw Error('El pago conciliado conserva su historial.');
+      changes.push({ entityType: 'movement', entityId: m.id, payload: m.value, voided: true });
+    }
+    return this.checked(changes);
+  }
+
   async closePeriod(cardId: string, from: string, to: string, bankDebtCents: number | null, bankAvailableCents: number | null): Promise<Change[]> {
     const { fingerprintInput, ...values } = periodReport(this.portfolio, cardId, from, to, this.context.today);
     return this.checked([{ entityType: 'closure', entityId: this.context.newId(), payload: { ...values, bankDebtCents, bankAvailableCents,
@@ -179,3 +265,9 @@ export class FinancialCommands {
 }
 import { amortize } from '@paymentplan/domain';
 const domainAmortization = { amortize };
+
+import { entityTables as extensionTableMap } from '@paymentplan/domain';
+function extensionTable(type: FinancialEntityType) { return extensionTableMap[type]; }
+async function stableId(input: string): Promise<string> {
+  const hash = await sha256(input); return hash.slice(0, 8) + '-' + hash.slice(8, 12) + '-5' + hash.slice(13, 16) + '-8' + hash.slice(17, 20) + '-' + hash.slice(20, 32);
+}

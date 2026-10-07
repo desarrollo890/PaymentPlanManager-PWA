@@ -1,0 +1,52 @@
+name: Android personal APK
+on:
+  push:
+    branches: [main]
+    paths: ['apps/**', 'packages/**', 'contracts/**', 'android/**', 'config/**', 'scripts/**', 'package*.json', 'capacitor.config.ts', '.github/workflows/android.yml']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install dependencies and check financial contracts
+        run: |
+          npm ci --ignore-scripts
+          npm run contracts:check
+          npm test
+          npm run android:sync
+      - name: Install Android target SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Compile, test and lint Android release
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease testReleaseUnitTest lintRelease
+      - name: Record APK checksum
+        run: |
+          mkdir -p artifacts/android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk artifacts/android/
+          sha256sum artifacts/android/app-release-unsigned.apk > artifacts/android/SHA256SUMS
+      - name: Upload unsigned APK for local signing
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: paymentplan-android-unsigned
+          path: artifacts/android/
+          if-no-files-found: error
+          retention-days: 30

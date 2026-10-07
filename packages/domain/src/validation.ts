@@ -5,10 +5,11 @@ import type { FinancialRecord, Portfolio } from './portfolio.ts';
 import { activePlans, cardBalance, planAccruedInterest, quotaBalances, financeView } from './finance.ts';
 import { installmentQuotas } from './installments.ts';
 import { civilDate, cutOnOrAfter, dueDateFor } from './dates.ts';
+import { extensionIssues } from './extensions.ts';
 import { sumCents } from './money.ts';
 
 export const entityTables = { card: 'cards', balance: 'balances', movement: 'movements', installment: 'installments', statement: 'statements', loan: 'loans',
-  loanPayment: 'loanPayments', income: 'incomes', budget: 'budgets', closure: 'closures', reminderPreferences: 'reminderPreferences', reminderState: 'reminderStates' } as const;
+  loanPayment: 'loanPayments', income: 'incomes', budget: 'budgets', category: 'categories', classification: 'classifications', categoryRule: 'categoryRules', categoryBudget: 'categoryBudgets', recurrence: 'recurrences', occurrence: 'occurrences', cashAccount: 'cashAccounts', cashEntry: 'cashEntries', savingsGoal: 'savingsGoals', savingsEntry: 'savingsEntries', closure: 'closures', reminderPreferences: 'reminderPreferences', reminderState: 'reminderStates' } as const;
 export type FinancialEntityType = Exclude<EntityType, 'device'>;
 export type Change = { [K in FinancialEntityType]: { readonly entityType: K; readonly entityId: string; readonly payload: EntityPayloads[K]; readonly voided: boolean } }[FinancialEntityType];
 export interface FinancialIssue { readonly message: string; readonly entityIds: readonly string[] }
@@ -34,7 +35,7 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
   if (issues.length) return issues;
   const cards = live(p.cards), cardIds = new Set(cards.map(c => c.id)), loanIds = new Set(live(p.loans).map(l => l.id));
   for (const [type, table] of Object.entries(entityTables)) for (const row of live(p[table as keyof Portfolio] as readonly FinancialRecord<object>[])) {
-    if ('cardId' in row.value && !cardIds.has(row.value.cardId as string)) issue(`El registro ${type} hace referencia a una tarjeta ausente.`, row.id, row.value.cardId as string);
+    if ('cardId' in row.value && row.value.cardId !== null && !cardIds.has(row.value.cardId as string)) issue(`El registro ${type} hace referencia a una tarjeta ausente.`, row.id, row.value.cardId as string);
     if ('loanId' in row.value && !loanIds.has(row.value.loanId as string)) issue('El abono hace referencia a un préstamo ausente.', row.id, row.value.loanId as string);
   }
   for (const card of cards) {
@@ -106,6 +107,7 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
   for (const type of ['income', 'reminderPreferences'] as const) if (p[entityTables[type]].filter(r => !r.voided).length > 1) issue(`Hay dos configuraciones de ${type}. Resuelve cuál conservar.`, ...p[entityTables[type]].filter(r => !r.voided).map(r => r.id));
   for (const b of live(p.budgets)) if (b.value.payday !== paydayForBudget(b.value.payday)) issue('El presupuesto debe ser del 15 o último día del mes.', b.id);
   if (new Set(live(p.budgets).map(b => b.value.payday)).size !== live(p.budgets).length) issue('Hay presupuestos repetidos para la misma quincena.', ...live(p.budgets).map(b => b.id));
+  issues.push(...extensionIssues(p, today));
   return issues;
 }
 function paydayForBudget(date: string): string {

@@ -29,3 +29,7 @@ Simulador requiere saldo, mínimo fijo y tasa mensual nominal de cada deuda revo
 Preferencias permite activar notificaciones en este navegador. Necesitan permiso del sistema y cartera abierta/desbloqueada. Los mensajes no muestran importes ni nombres. Inicio conserva los avisos aunque el navegador no permita notificaciones.
 
 Eliminar tarjeta e historial necesita confirmación y retira todos sus registros activos de cálculos; las versiones cifradas anuladas se conservan para sincronización. Para conservar consulta, usa Archivar tarjeta liquidada. Un préstamo solo se elimina si nunca tuvo abonos registrados, aunque estén anulados.
+
+## Categorías, recurrencias y ahorro real
+
+Se añadieron cuatro secciones: Categorías, Recurrencias, Cuentas y Metas. [Instrucciones de uso y Android](PLANNING_AND_ANDROID.md). Cuentas lleva movimientos reales; Metas reserva dinero existente; Recurrencias propone cargos para confirmar. Los límites de categorías avisan y no duplican el presupuesto.

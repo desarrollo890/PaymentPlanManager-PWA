@@ -1,4 +1,4 @@
-// Generated from contracts/v1/*.schema.json. Do not edit.
+// Generated from contracts/v1 and contracts/v2 schemas. Do not edit.
 // Runtime validation still enforces ranges, formats, conditional constraints and domain rules.
 
 export type Uuid = string;
@@ -168,8 +168,88 @@ export type Device = {
   readonly "retired": boolean;
 };
 
+export type Category = {
+  readonly "name": string;
+  readonly "color": string;
+  readonly "archived": boolean;
+};
+
+export type Classification = {
+  readonly "movementId": Uuid;
+  readonly "categoryId": Uuid;
+};
+
+export type CategoryRule = {
+  readonly "categoryId": Uuid;
+  readonly "cardId": (Uuid) | (null);
+  readonly "contains": string;
+  readonly "kind": "expense" | "interest" | "fee";
+  readonly "enabled": boolean;
+};
+
+export type CategoryBudget = {
+  readonly "categoryId": Uuid;
+  readonly "payday": Date;
+  readonly "limitCents": Money;
+};
+
+export type Recurrence = {
+  readonly "cardId": Uuid;
+  readonly "description": string;
+  readonly "kind": "expense" | "interest" | "fee";
+  readonly "amountCents": number;
+  readonly "startDate": Date;
+  readonly "endDate": (Date) | (null);
+  readonly "frequency": "weekly" | "monthly" | "paydays";
+  readonly "enabled": boolean;
+  readonly "categoryId": (Uuid) | (null);
+};
+
+export type Occurrence = {
+  readonly "recurrenceId": Uuid;
+  readonly "date": Date;
+  readonly "movementId": Uuid;
+};
+
+export type CashAccount = {
+  readonly "name": string;
+  readonly "kind": "cash" | "debit";
+  readonly "openingDate": Date;
+  readonly "openingCents": Money;
+  readonly "color": string;
+  readonly "archived": boolean;
+};
+
+export type CashEntry = {
+  readonly "accountId": Uuid;
+  readonly "toAccountId": (Uuid) | (null);
+  readonly "cardMovementId": (Uuid) | (null);
+  readonly "date": Date;
+  readonly "amountCents": number;
+  readonly "kind": "income" | "expense" | "transfer" | "cardPayment";
+  readonly "description": string;
+  readonly "categoryId": (Uuid) | (null);
+};
+
+export type SavingsGoal = {
+  readonly "accountId": Uuid;
+  readonly "name": string;
+  readonly "targetCents": number;
+  readonly "targetDate": (Date) | (null);
+  readonly "color": string;
+  readonly "archived": boolean;
+};
+
+export type SavingsEntry = {
+  readonly "goalId": Uuid;
+  readonly "date": Date;
+  readonly "amountCents": number;
+  readonly "direction": "allocate" | "release";
+  readonly "description": string;
+};
+
 export type OperationMetadata = {
-  readonly "schemaVersion": 1;
+  readonly "schemaVersion": 1 | 2;
   readonly "vaultId": string;
   readonly "operationId": string;
   readonly "entityId": string;
@@ -197,6 +277,16 @@ export interface EntityPayloads {
   readonly reminderState: ReminderState;
   readonly closure: Closure;
   readonly device: Device;
+  readonly category: Category;
+  readonly classification: Classification;
+  readonly categoryRule: CategoryRule;
+  readonly categoryBudget: CategoryBudget;
+  readonly recurrence: Recurrence;
+  readonly occurrence: Occurrence;
+  readonly cashAccount: CashAccount;
+  readonly cashEntry: CashEntry;
+  readonly savingsGoal: SavingsGoal;
+  readonly savingsEntry: SavingsEntry;
 }
 
 export type EntityType = keyof EntityPayloads;
@@ -206,7 +296,7 @@ export type Operation = { [K in EntityType]: OperationMetadata & { readonly enti
 ) }[EntityType];
 
 export type Batch = {
-  readonly "schemaVersion": 1;
+  readonly "schemaVersion": 1 | 2;
   readonly "vaultId": string;
   readonly "batchId": string;
   readonly "deviceId": string;
