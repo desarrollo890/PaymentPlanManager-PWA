@@ -33,7 +33,7 @@ jobs:
           npm test
           npm run android:sync
       - name: Install Android target SDK
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+        run: node scripts/setup-android-sdk.mjs
       - name: Compile, test and lint Android release
         working-directory: android
         run: |
