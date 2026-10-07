@@ -117,6 +117,23 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await page.getByRole('navigation').getByRole('link',{name:'Preferencias',exact:true}).click();await page.getByRole('button',{name:'Activar notificaciones',exact:true}).waitFor();await context.grantPermissions(['notifications']);await page.getByRole('button',{name:'Activar notificaciones',exact:true}).click();await page.getByRole('button',{name:'Desactivar notificaciones',exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('paymentplan-browser-alerts')),'enabled');await page.getByRole('button',{name:'Desactivar notificaciones',exact:true}).click();
       await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();const disposable=page.locator('.credit-card').filter({has:page.getByRole('heading',{name:'Tarjeta 4',exact:true})});await disposable.locator('.card-menu summary').click();page.once('dialog',dialog=>dialog.accept());await disposable.getByRole('button',{name:'Eliminar tarjeta e historial',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.credit-card').length===3);
       console.log('PASS: '+name+', quota payments, multiple allocations, bank monthly preview, cancelled history, period close/reopen, offline education/insights/simulator and atomic card removal.');
+      await page.getByRole('navigation').getByRole('link',{name:'Presupuesto',exact:true}).click();
+      const headerRect=await page.locator('.topbar').boundingBox(), menuHeadRect=await page.locator('.sidebar-head').boundingBox();
+      assert(await page.locator('main').evaluate(el=>el.scrollHeight>el.clientHeight),'Budget supplies real scrollable content');
+      await page.locator('main').evaluate(el=>el.scrollTop=el.scrollHeight);await page.waitForTimeout(100);
+      assert.deepEqual(await page.locator('.topbar').boundingBox(),headerRect,'Header stays outside content scroll');
+      assert.deepEqual(await page.locator('.sidebar-head').boundingBox(),menuHeadRect,'Menu logo and toggle stay visible');
+      assert.equal(await page.evaluate(()=>scrollY),0,'Document cannot move the application frame');
+      if(name==='desktop'){
+        await page.getByRole('button',{name:'Reducir menú',exact:true}).click();
+        assert.equal((await page.locator('.sidebar').boundingBox()).width,76,'Compact sidebar keeps icons available');
+        await page.locator('.sidebar nav').evaluate(el=>el.scrollTop=el.scrollHeight);
+        assert.equal((await page.locator('.sidebar-head').boundingBox()).y,menuHeadRect.y,'Long menu does not scroll its controls');
+        await page.reload();await page.getByRole('heading',{name:'Desbloquea tu cartera',exact:true}).waitFor();
+        await page.getByRole('button',{name:'Expandir menú',exact:true}).click();
+        assert.equal((await page.locator('.sidebar').boundingBox()).width,220,'Sidebar preference survives reload and can be restored');
+      }
+      console.log('PASS: '+name+' fixed application frame, real budget scroll and accessible compact navigation.');
       assert.deepEqual(errors,[],'No browser errors'); assert(requests.every(r=>r.startsWith(url)),'No external requests without authorization'); await context.close();
       console.log(`PASS: ${name}, encrypted creation, four cards, MSI/edit/free debt/full horizon, CSV import/dedup, backup, recovery, offline reload/write and safe update.`);
     }

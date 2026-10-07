@@ -38,7 +38,15 @@ export function App() {
   const [vaults, setVaults] = useState<VaultMetadata[]>([]), [loaded, setLoaded] = useState(false);
   const [session, setSession] = useState<VaultSession | null>(null), sessionRef = useRef<VaultSession | null>(null);
   const [revision, setRevision] = useState(0), [section, setSection] = useState<Section>(selectedSection);
-  const contentScroll = useRef<HTMLDivElement>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { const saved = localStorage.getItem('paymentplan-sidebar'); if (saved) return saved === 'collapsed'; } catch { /* Use the responsive default when storage is unavailable. */ }
+    return window.matchMedia('(max-width: 980px)').matches;
+  });
+  function toggleSidebar() {
+    const collapsed = !sidebarCollapsed; setSidebarCollapsed(collapsed);
+    try { localStorage.setItem('paymentplan-sidebar', collapsed ? 'collapsed' : 'expanded'); } catch { /* Navigation remains usable without persisting the preference. */ }
+  }
+  const contentScroll = useRef<HTMLElement>(null);
   useEffect(() => { contentScroll.current?.scrollTo({ top: 0, left: 0 }); }, [section]);
   const [today, setToday] = useState(todayInMexico), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false), busyRef = useRef(false), [modal, setModal] = useState<FinancialModal | null>(null);
@@ -148,17 +156,17 @@ export function App() {
     return () => clearTimeout(timer);
   }, [session, revision, today, blocked]);
   const googleButtons = <div className="inline-actions">{!googleReady ? <button className="secondary" disabled={busy} onClick={() => void run(async () => { await google.prepare(); setGoogleReady(true); })}>Preparar Google Drive</button> : <button className="secondary" disabled={busy} onClick={authorize}>{authorized ? 'Renovar autorización' : 'Autorizar Google Drive'}</button>}{authorized && <button className="text-button" disabled={busy} onClick={() => { google.forget(); setAuthorized(false); setRemoteHeaders([]); setNotice('Google desconectado de esta sesión.'); }}>Desconectar</button>}</div>;
-  return <div className="app-layout"><a className="skip-link" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Ir al contenido</a>
-    <aside className="sidebar"><a className="brand" href="#/inicio"><span className="brand-symbol">P</span><span>Payment<span className="brand-light">Plan</span></span></a><p className="nav-label">MI ESPACIO</p>
-      <nav aria-label="Navegación principal">{sections.map(([id, label, icon]) => <a key={id} href={`#/${id}`} aria-label={label} title={label} className={`nav-item ${section === id ? 'active' : ''}`} aria-current={section === id ? 'page' : undefined}><Icon name={icon} /><span>{label}</span></a>)}</nav>
+  return <div className={`app-layout${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}><a className="skip-link" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Ir al contenido</a>
+    <aside className="sidebar"><div className="sidebar-head"><a className="brand" href="#/inicio" aria-label="PaymentPlan · Inicio"><span className="brand-symbol">P</span><span>Payment<span className="brand-light">Plan</span></span></a><button type="button" className="icon-button sidebar-toggle" aria-label={sidebarCollapsed ? 'Expandir menú' : 'Reducir menú'} title={sidebarCollapsed ? 'Expandir menú' : 'Reducir menú'} aria-expanded={!sidebarCollapsed} aria-controls="primary-navigation" onClick={toggleSidebar}><Icon name={sidebarCollapsed ? 'panel-expand' : 'panel-collapse'} size={18} /></button></div><p className="nav-label">MI ESPACIO</p>
+      <nav id="primary-navigation" aria-label="Navegación principal">{sections.map(([id, label, icon]) => <a key={id} href={`#/${id}`} aria-label={label} title={label} className={`nav-item ${section === id ? 'active' : ''}`} aria-current={section === id ? 'page' : undefined}><Icon name={icon} /><span>{label}</span></a>)}</nav>
       <div className="sidebar-note"><Icon name="shield" /><p>Tu información cifrada.<br />Tu plan, en cada quincena.</p></div></aside>
-    <div className="main-shell" ref={contentScroll}><header className="topbar"><span>Finanzas personales <span className="separator">/</span> <strong>{sectionData[1]}</strong></span>
+    <div className="main-shell"><header className="topbar"><span>Finanzas personales <span className="separator">/</span> <strong>{sectionData[1]}</strong></span>
       {session && <div className="header-actions"><button className="primary" disabled={busy || blocked || !view?.cards.length} onClick={() => setModal({ type: 'movement' })}><Icon name="plus" size={16} /><span>Registrar movimiento</span></button>
         <button className="icon-button" aria-label="Sincronizar" title={authorized ? 'Sincronizar' : 'Autoriza Google en Preferencias'} disabled={busy || !authorized} onClick={() => void run(sync)}><Icon name="sync" /></button>
         <button className="icon-button" aria-label="Bloquear cartera" title="Bloquear cartera" disabled={busy} onClick={lock}><Icon name="lock" /></button></div>}</header>
-      <main id="main" tabIndex={-1}><div className="page-heading"><div><p className="eyebrow">UN PLAN PARA TUS PRÓXIMAS QUINCENAS</p><h1>{sectionData[3]}</h1><p className="subtitle">{session ? 'Tus registros conectados. Tus decisiones, más claras.' : 'Un espacio personal, protegido por tu contraseña.'}</p></div><span className="currency-tag">MXN</span></div>
+      {updateAvailable && <p className="alert shell-update" role="status">Hay una versión nueva disponible. Se bloqueará la cartera para actualizar.<button className="text-button" disabled={busy || Boolean(modal) || bankOpen || Boolean(migration) || Boolean(backup)} onClick={() => { lock(); applyUpdate(); }}>Actualizar aplicación</button></p>}
+      <main id="main" tabIndex={-1} ref={contentScroll}><div className="page-heading"><div><p className="eyebrow">UN PLAN PARA TUS PRÓXIMAS QUINCENAS</p><h1>{sectionData[3]}</h1><p className="subtitle">{session ? 'Tus registros conectados. Tus decisiones, más claras.' : 'Un espacio personal, protegido por tu contraseña.'}</p></div><span className="currency-tag">MXN</span></div>
         {error && <p role="alert" className="alert error">{error}<button className="text-button" onClick={() => setError('')}>Cerrar</button></p>}{notice && <p role="status" className="notice">{notice}</p>}
-        {updateAvailable && <p className="alert">Hay una versión nueva disponible. Se bloqueará la cartera para actualizar.<button className="text-button" disabled={busy || Boolean(modal) || bankOpen || Boolean(migration) || Boolean(backup)} onClick={() => { lock(); applyUpdate(); }}>Actualizar aplicación</button></p>}
         {offlineUnavailable && <p className="alert">No se pudo preparar el acceso sin conexión. Revisa el almacenamiento y vuelve a abrir la aplicación con conexión.</p>}
         {!loaded ? <p>Cargando almacenamiento local…</p> : !session ? <section className="panel unlock-panel"><Icon name="lock" size={30} />
           {creation ? <><h2>Guarda tu clave de recuperación</h2><p>Esta clave permite recuperar tu cartera si olvidas la contraseña. Guárdala por separado del respaldo. No podemos recuperarla por ti.</p><code className="recovery-key">{creation.recoveryKey}</code>

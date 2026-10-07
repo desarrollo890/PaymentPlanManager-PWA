@@ -30,6 +30,7 @@ export function Icon({ name, size = 20 }: { name: string; size?: number }) {
     calendar: 'M3 5h18v16H3ZM7 3v4m10-4v4M3 11h18M7 15h2m6 0h2', settings: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2',
     people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM2 21v-3a7 7 0 0 1 14 0v3m1-17a4 4 0 0 1 0 8m1 3a5 5 0 0 1 4 5v1',
     report: 'M5 3h11l3 3v15H5ZM9 8h5m-5 4h6m-6 4h6', arrow: 'M5 12h14m-5-5 5 5-5 5', shield: 'm12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6ZM8 12l3 3 5-6',
+    'panel-collapse': 'M3 4h18v16H3ZM8 4v16m8-12-4 4 4 4', 'panel-expand': 'M3 4h18v16H3ZM8 4v16m4-12 4 4-4 4',
     plus: 'M12 5v14M5 12h14', lock: 'M6 10h12v11H6ZM8 10V6a4 4 0 1 1 8 0v4', sync: 'M20 8a8 8 0 0 0-14-4L3 7m0-5v5h5M4 16a8 8 0 0 0 14 4l3-3m0 5v-5h-5',
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.card} /></svg>;

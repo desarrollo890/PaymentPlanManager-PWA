@@ -33,3 +33,9 @@ Eliminar tarjeta e historial necesita confirmación y retira todos sus registros
 ## Categorías, recurrencias y ahorro real
 
 Se añadieron cuatro secciones: Categorías, Recurrencias, Cuentas y Metas. [Instrucciones de uso y Android](PLANNING_AND_ANDROID.md). Cuentas lleva movimientos reales; Metas reserva dinero existente; Recurrencias propone cargos para confirmar. Los límites de categorías avisan y no duplican el presupuesto.
+
+## Navegación
+
+El menú y la barra superior permanecen visibles al desplazarte. La lista de opciones tiene su propio desplazamiento cuando no cabe en pantalla. En escritorio y tablet, el botón junto al logo permite «Reducir menú» a una columna de iconos y «Expandir menú» para mostrar los nombres; la elección se conserva en este navegador. En teléfono, las opciones se recorren horizontalmente.
+
+Cuando aparezca «Actualizar aplicación», púlsalo para activar la versión descargada. La cartera se bloqueará y podrás volver a abrirla con tu contraseña. El aviso de actualización permanece visible encima del contenido.
