@@ -4,15 +4,15 @@ Actualizado el 6 de octubre de 2026. La implementación financiera, el almacenam
 
 | Fase | Estado | Evidencia / siguiente paso |
 | --- | --- | --- |
-| F0 · Contratos y viabilidad | Implementado; validación física pendiente | Esquemas estrictos, AES-GCM/PBKDF2, recuperación independiente y pruebas en Chromium. OAuth real del probe previamente reportado por el usuario. Falta rendimiento/recuperación en su teléfono. |
+| F0 · Contratos y viabilidad | Validado con pruebas automáticas y aceptación del usuario | Esquemas estrictos, AES-GCM/PBKDF2 y OAuth del probe. Recuperación con datos iguales y apertura offline en teléfono físico aprobadas; desbloqueo reportado como aproximadamente inmediato. |
 | F1 · Workspace y CI | Implementado | Seis paquetes; tipos estrictos, dominio sin DOM/Node y pipeline de publicación. |
 | F2 · Motor financiero | Completado y verificado | Todas las instantáneas de ocho escenarios .NET, 240 quincenas, 120 cuotas y tres amortizaciones; saldos, cortes, préstamos y horizonte completo. |
 | F3 · IndexedDB y cifrado | Implementado y verificado automáticamente | Persistencia real en navegador; CAS, cambios/outbox atómicos, grupos de 1001 operaciones en lotes acotados, bloqueo, respaldo y recuperación. Versiones desconocidas se rechazan; existe migración del JSON anterior a v1. |
 | F4 · PWA funcional | Implementado y verificado automáticamente | Tarjetas, movimientos, MSI/MCI, cortes, préstamos, presupuesto, avisos y periodos. CSV/XLSX, exportaciones, recarga/registro offline y actualización protegida. |
 | F5 · Fusión y conflictos | Implementado y verificado automáticamente | Revisiones causales, reintentos, grupos incompletos, ramas conservadas, fusión de presentación y decisiones visibles. Validación de capacidad, atribuciones y cambios de historia entre entidades. |
-| F6 · Drive web | Adaptador completo; prueba real pendiente | Dos dispositivos aislados pasan con REST simulado y bloques cifrados. Tokens solo en memoria, autorización explícita, caducidad, desconexión y revocación. Falta autorización real de la aplicación en dos navegadores. |
-| F7 · Importación y piloto | Implementado; aceptación personal pendiente | Importación sintética conserva IDs, saldos, préstamos y horizonte; previsualización, cierres e idempotencia. Falta comparar y recuperar la cartera personal del usuario. |
-| F8 · Publicación funcional | Publicado y verificado en HTTPS; aceptación física pendiente | CI aprobado y aplicación publicada. Recorridos de PC y móvil emulado pasan en el sitio real, con registro offline y recuperación. Falta el teléfono físico. |
+| F6 · Drive web | Sincronización real comprobada; conflicto pendiente de confirmación | El usuario confirmó que un gasto de $10 registrado offline en el teléfono se conservó y sincronizó. Falta confirmar convergencia después de elegir una versión del gasto editado en ambos dispositivos. |
+| F7 · Importación y piloto | Respaldo y recuperación aprobados; cuadre personal pendiente | Importación repetida sin duplicados, respaldo alterado rechazado y recuperación con datos iguales, reportados por el usuario. Falta el cuadre de la importación desde la aplicación anterior y su piloto personal. |
+| F8 · Publicación funcional | Publicado; recorrido físico aprobado por el usuario | CI y HTTPS verificados. En teléfono físico con Chrome: apertura offline correcta, gasto conservado y sincronizado, desbloqueo aproximadamente inmediato. El cierre global sigue sujeto a F6/F7. |
 
 ## Comprobaciones de esta entrega
 
@@ -31,6 +31,15 @@ Las pruebas automáticas no acceden a la cuenta Google del usuario ni a sus dato
 - El sitio publicado carga el SDK real de Google Identity Services respetando su CSP. Esta comprobación no abre sesión ni concede acceso a Drive.
 - Revisión previa a publicación: 106 archivos candidatos y seis commits, sin detecciones de secretos mediante Gitleaks; identidad de autor y committer genérica. Esta revisión automática no equivale a una auditoría de seguridad independiente.
 - El repositorio privado original conserva su código e historial sin cambios de esta entrega. Los archivos de evidencia local y los datos sintéticos no se publican.
+
+## Aceptación reportada por el usuario
+
+- La segunda importación del mismo respaldo no duplicó registros.
+- La copia alterada del respaldo fue rechazada.
+- Recuperación con clave independiente y nueva contraseña: datos iguales.
+- Teléfono físico con Chrome: apertura sin conexión correcta; gasto de prueba de $10 conservado y sincronizado; desbloqueo aproximadamente inmediato.
+- La revisión de versiones apareció en la laptop durante la prueba de edición concurrente. No se ha recibido aún confirmación de la resolución y coincidencia final de ambos dispositivos.
+- No se ha recibido aún el cuadre de importación de datos de la aplicación anterior. Estas evidencias no equivalen a una auditoría de seguridad ni a aceptación para producción.
 
 ## Evidencia previa de Google
 
