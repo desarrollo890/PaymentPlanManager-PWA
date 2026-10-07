@@ -41,6 +41,8 @@ Las pruebas automáticas no acceden a la cuenta Google del usuario ni a sus dato
 - La revisión de versiones apareció en la laptop durante la prueba de edición concurrente. No se ha recibido aún confirmación de la resolución y coincidencia final de ambos dispositivos.
 - No se ha recibido aún el cuadre de importación de datos de la aplicación anterior. Estas evidencias no equivalen a una auditoría de seguridad ni a aceptación para producción.
 
+Durante la revisión de la migración se corrigieron dos omisiones de presentación: las tarjetas muestran el límite de crédito importado y al abrir sus planes se desplaza y enfoca el detalle, que antes quedaba debajo de la lista sin indicación. Build y recorridos PC/móvil comprueban el límite, cuatro tarjetas por fila y el acceso visible a los planes. La revisión del cuadre por el usuario continúa.
+
 ## Evidencia previa de Google
 
 El usuario reportó `integrityVerified: true`, `synthetic: true` y `listedInAppDataFolder: true` desde la herramienta local. No se publican IDs de archivo/bloque, tokens o claves. Eso acredita la prueba del probe, no todavía una cartera sincronizada por esta aplicación. La interoperabilidad Android nativa permanece fuera de la entrega web.

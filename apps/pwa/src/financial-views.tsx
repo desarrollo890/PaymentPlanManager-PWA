@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import { live, periodReport, quotaBalances } from '@paymentplan/domain';
 import type { CardView, Change, FinanceView, Portfolio } from '@paymentplan/domain';
@@ -39,20 +39,25 @@ function PlanDetails({ card, p, today, modal, act, session }: { card: CardView; 
 }
 export function CardsView({ view, session, modal, act }: { view: FinanceView; session: VaultSession; modal: Modal; act: Act }) {
   const [selected, setSelected] = useState<string | null>(null), p = session.portfolio;
+  const planDetails = useRef<HTMLDivElement>(null);
+  function revealPlans() { planDetails.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); planDetails.current?.focus({ preventScroll: true }); }
+  useEffect(() => { if (selected) revealPlans(); }, [selected]);
+  function openPlans(cardId: string) { if (selected === cardId) revealPlans(); else setSelected(cardId); }
   return <><div className="section-heading"><p className="muted">Ordenadas por mayor deuda · {view.cards.length} tarjetas</p><button className="primary" onClick={() => modal({ type: 'card' })}><Icon name="plus" size={16} /> Agregar tarjeta</button></div>
     {!view.cards.length && <Empty title="Registra tus tarjetas" text="Tus tarjetas tendrán sus propios saldos, color, corte y plan de pagos." />}
     <div className="credit-grid">{view.cards.map(c => {
       const data = p.cards.find(r => r.id === c.id)!.value, cut = c.cuts.find(s => s.current)!;
       return <article className="credit-card" key={c.id} style={{ '--card-color': data.color } as React.CSSProperties}><div className="credit-heading"><div><span>{data.bank}</span><h2>{c.name}</h2></div><details className="card-menu"><summary aria-label={`Acciones de ${c.name}`}>•••</summary><div>
         <button onClick={() => modal({ type: 'card', id: c.id })}>Editar tarjeta</button><button onClick={() => modal({ type: 'movement', cardId: c.id })}>Registrar movimiento</button><button onClick={() => modal({ type: 'plan', cardId: c.id })}>Dividir deuda / compra a meses</button>
-        <button onClick={() => { setSelected(c.id); }}>Ver planes</button><button onClick={() => modal({ type: 'reconcile', cardId: c.id })}>Conciliar con el banco</button><button disabled={cut.cutDate > view.today} onClick={() => modal({ type: 'cut', cardId: c.id, cut })}>Revisar corte</button><button onClick={() => modal({ type: 'reserve', cardId: c.id, cut })}>Apartar dinero para el corte</button>
+        <button onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); openPlans(c.id); }}>Ver planes</button><button onClick={() => modal({ type: 'reconcile', cardId: c.id })}>Conciliar con el banco</button><button disabled={cut.cutDate > view.today} onClick={() => modal({ type: 'cut', cardId: c.id, cut })}>Revisar corte</button><button onClick={() => modal({ type: 'reserve', cardId: c.id, cut })}>Apartar dinero para el corte</button>
         <button disabled={c.debtCents !== 0} onClick={() => act(() => session.commands(view.today).saveCard({ ...data, archived: true }, undefined, c.id))}>Archivar tarjeta liquidada</button></div></details></div>
         <div className="credit-chip" /><div className="credit-debt"><span>Deuda actual</span><strong>{money(Math.max(0, c.debtCents))}</strong></div>
         <div className="credit-balances"><div><span>Disponible</span><strong>{money(c.availableCents)}</strong></div><div><span>A meses</span><strong>{money(c.installmentDebtCents)}</strong></div></div>
-        <div className="credit-footer"><span>Corta {data.cutDay} · paga {data.dueDay}</span><button onClick={() => setSelected(selected === c.id ? null : c.id)}>Planes ({c.plans.filter(r => !r.cancelled).length}) →</button></div>
+        <div className="credit-limit"><span>Límite de crédito</span><strong>{money(data.limitCents)}</strong></div>
+        <div className="credit-footer"><span>Corta {data.cutDay} · paga {data.dueDay}</span><button onClick={() => selected === c.id ? setSelected(null) : openPlans(c.id)}>Planes ({c.plans.filter(r => !r.cancelled).length}) →</button></div>
         {c.alerts.length > 0 && <span className="card-warning">{c.alerts.some(a => a.code !== 'creditBalance') ? 'Revisar cuadre de saldos' : 'Saldo a favor'}</span>}</article>;
     })}</div>
-    {selected && view.cards.find(c => c.id === selected) && <PlanDetails card={view.cards.find(c => c.id === selected)!} p={p} today={view.today} modal={modal} act={act} session={session} />}
+    {selected && view.cards.find(c => c.id === selected) && <div ref={planDetails} tabIndex={-1} className="selected-card-plans"><PlanDetails card={view.cards.find(c => c.id === selected)!} p={p} today={view.today} modal={modal} act={act} session={session} /></div>}
     {live(p.cards).filter(c => c.value.archived).length > 0 && <details className="panel"><summary>Tarjetas archivadas</summary>{live(p.cards).filter(c => c.value.archived).map(c => <div className="settings-row" key={c.id}><span>{c.value.name}</span><button className="text-button" onClick={() => act(() => session.commands(view.today).saveCard({ ...c.value, archived: false }, undefined, c.id))}>Reactivar</button></div>)}</details>}</>;
 }
 export function MovementsView({ session, today, modal, act }: { session: VaultSession; today: string; modal: Modal; act: Act }) {
