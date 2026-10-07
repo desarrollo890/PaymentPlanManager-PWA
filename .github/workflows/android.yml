@@ -28,6 +28,7 @@ jobs:
       - name: Install dependencies and check financial contracts
         run: |
           npm ci --ignore-scripts
+          npm ci --prefix tools/architecture --ignore-scripts
           npm run contracts:check
           npm test
           npm run android:sync
