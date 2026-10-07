@@ -38,6 +38,8 @@ export function App() {
   const [vaults, setVaults] = useState<VaultMetadata[]>([]), [loaded, setLoaded] = useState(false);
   const [session, setSession] = useState<VaultSession | null>(null), sessionRef = useRef<VaultSession | null>(null);
   const [revision, setRevision] = useState(0), [section, setSection] = useState<Section>(selectedSection);
+  const contentScroll = useRef<HTMLDivElement>(null);
+  useEffect(() => { contentScroll.current?.scrollTo({ top: 0, left: 0 }); }, [section]);
   const [today, setToday] = useState(todayInMexico), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false), busyRef = useRef(false), [modal, setModal] = useState<FinancialModal | null>(null);
   const [googleReady, setGoogleReady] = useState(google.ready), [authorized, setAuthorized] = useState(false);
@@ -148,9 +150,9 @@ export function App() {
   const googleButtons = <div className="inline-actions">{!googleReady ? <button className="secondary" disabled={busy} onClick={() => void run(async () => { await google.prepare(); setGoogleReady(true); })}>Preparar Google Drive</button> : <button className="secondary" disabled={busy} onClick={authorize}>{authorized ? 'Renovar autorización' : 'Autorizar Google Drive'}</button>}{authorized && <button className="text-button" disabled={busy} onClick={() => { google.forget(); setAuthorized(false); setRemoteHeaders([]); setNotice('Google desconectado de esta sesión.'); }}>Desconectar</button>}</div>;
   return <div className="app-layout"><a className="skip-link" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Ir al contenido</a>
     <aside className="sidebar"><a className="brand" href="#/inicio"><span className="brand-symbol">P</span><span>Payment<span className="brand-light">Plan</span></span></a><p className="nav-label">MI ESPACIO</p>
-      <nav aria-label="Navegación principal">{sections.map(([id, label, icon]) => <a key={id} href={`#/${id}`} className={`nav-item ${section === id ? 'active' : ''}`} aria-current={section === id ? 'page' : undefined}><Icon name={icon} /><span>{label}</span></a>)}</nav>
+      <nav aria-label="Navegación principal">{sections.map(([id, label, icon]) => <a key={id} href={`#/${id}`} aria-label={label} title={label} className={`nav-item ${section === id ? 'active' : ''}`} aria-current={section === id ? 'page' : undefined}><Icon name={icon} /><span>{label}</span></a>)}</nav>
       <div className="sidebar-note"><Icon name="shield" /><p>Tu información cifrada.<br />Tu plan, en cada quincena.</p></div></aside>
-    <div className="main-shell"><header className="topbar"><span>Finanzas personales <span className="separator">/</span> <strong>{sectionData[1]}</strong></span>
+    <div className="main-shell" ref={contentScroll}><header className="topbar"><span>Finanzas personales <span className="separator">/</span> <strong>{sectionData[1]}</strong></span>
       {session && <div className="header-actions"><button className="primary" disabled={busy || blocked || !view?.cards.length} onClick={() => setModal({ type: 'movement' })}><Icon name="plus" size={16} /><span>Registrar movimiento</span></button>
         <button className="icon-button" aria-label="Sincronizar" title={authorized ? 'Sincronizar' : 'Autoriza Google en Preferencias'} disabled={busy || !authorized} onClick={() => void run(sync)}><Icon name="sync" /></button>
         <button className="icon-button" aria-label="Bloquear cartera" title="Bloquear cartera" disabled={busy} onClick={lock}><Icon name="lock" /></button></div>}</header>
