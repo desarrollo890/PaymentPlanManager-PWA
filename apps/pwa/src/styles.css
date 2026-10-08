@@ -114,3 +114,68 @@ html, body, #root { height: 100%; overflow: hidden; }
 .card-warning { font-weight: 600; }
 .payoff-chart polyline { stroke: var(--primary); }
 ::selection { background: var(--soft-strong); color: var(--text); }
+
+/* Card summary follows a clear order: identity, limit, balances, installments. */
+.credit-card { display: grid; gap: 0; }
+.credit-heading { min-height: 42px; align-items: center; margin-bottom: 13px; }
+.credit-heading-name { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 7px; }
+.credit-heading-name > span { flex: none; padding: 4px 8px; border: 1px solid #FFFFFF38; border-radius: 999px; background: #FFFFFF20; color: #FFFFFF; font-size: 9px; font-weight: 700; letter-spacing: .8px; }
+.credit-heading h2 { min-width: 0; margin: 0; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.credit-limit { margin: 0; padding: 0 0 12px; border-bottom: 1px solid #FFFFFF38; font-size: 10px; }
+.credit-limit span { color: #FFFFFFEB; }
+.credit-limit strong { font-weight: 650; color: #FFFFFF; font-variant-numeric: tabular-nums; }
+.credit-balances { margin: 0; padding: 12px 0; align-items: stretch; border-bottom: 1px solid #FFFFFF38; }
+.credit-balance-item { flex: 1; min-width: 0; display: grid; align-content: center; gap: 4px; }
+.credit-balance-item + .credit-balance-item { padding-left: 12px; border-left: 1px solid #FFFFFF38; }
+.credit-balance-item span { color: #FFFFFFEB; font-size: 10px; }
+.credit-balance-item strong { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.credit-balance-debt strong { font-size: 20px; }
+.credit-months { width: 100%; min-width: 0; min-height: 60px; margin-top: 11px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #FFFFFF38; border-radius: 11px; background: #FFFFFF20; color: #FFFFFF; text-align: left; transition: background-color .15s ease, border-color .15s ease; }
+.credit-months:hover { background: #FFFFFF38; border-color: #FFFFFF80; }
+.credit-months:focus-visible { outline-color: #FFFFFF; }
+.credit-months-total { display: grid; min-width: 0; gap: 2px; }
+.credit-months-total > span { color: #FFFFFFEB; font-size: 10px; }
+.credit-months-total > strong { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.credit-months-action { display: inline-flex; flex: none; align-items: center; gap: 3px; color: #FFFFFF; font-size: 9px; font-weight: 600; }
+.credit-footer { margin-top: 10px; padding-top: 0; border: 0; color: #FFFFFFEB; font-size: 9px; }
+.credit-footer > span + span { text-align: right; }
+.credit-card .card-warning { margin-top: 8px; color: #FFFFFF; }
+
+/* A compact native disclosure keeps the card menu easy to scan and keyboard-accessible. */
+.card-menu summary { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; border: 1px solid #FFFFFF38; border-radius: 10px; color: #FFFFFF; font-size: 24px; font-weight: 700; letter-spacing: 0; line-height: 1; }
+.card-menu summary::-webkit-details-marker { display: none; }
+.card-menu summary:hover, .card-menu[open] > summary { background: #FFFFFF20; border-color: #FFFFFF80; }
+.card-menu > div { z-index: 30; width: min(270px, calc(100vw - 32px)); max-height: min(520px, 74dvh); overflow-y: auto; overscroll-behavior: contain; padding: 9px; display: grid; gap: 2px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 16px 42px var(--shadow-menu); }
+.card-menu-group { min-width: 0; }
+.card-menu-group + .card-menu-group { margin-top: 5px; padding-top: 7px; border-top: 1px solid var(--border); }
+.card-menu-group h3 { margin: 2px 9px 5px; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; }
+.card-menu button { min-height: 38px; margin: 1px 0; padding: 9px 10px; border-radius: 8px; color: var(--text); font-size: 11px; line-height: 1.45; }
+.card-menu button:hover:not(:disabled) { background: var(--soft); color: var(--primary); }
+.card-menu button:disabled { color: var(--muted); }
+.card-menu .card-menu-management button.danger { color: var(--nav-bg); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Month plans are separated by payment status; each group can expand independently. */
+.plans-overview { padding: 12px 14px; border: 1px solid var(--border); border-radius: 11px; background: var(--soft); }
+.plans-overview .caption { color: var(--text-secondary); }
+.plan-group { margin: 9px 0; overflow: clip; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.plan-group > summary { min-height: 49px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; cursor: pointer; color: var(--text); font-size: 13px; font-weight: 650; }
+.plan-group > summary::-webkit-details-marker { display: none; }
+.plan-group > summary::after { content: '⌄'; order: 1; margin-left: auto; color: var(--muted); font-size: 15px; }
+.plan-group[open] > summary::after { content: '⌃'; }
+.plan-count { order: 2; min-width: 25px; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--text-secondary); font-size: 11px; font-variant-numeric: tabular-nums; text-align: center; }
+.plan-group-current[open] > summary { color: var(--primary); }
+.plan-group-content { padding: 0 14px 12px; }
+.plan-group-content > .installment-detail { padding: 12px 0; }
+.plan-group-empty { margin: 5px 0 8px; }
+.plans-dialog .plan-group { scroll-margin-block: 12px; }
+@media (max-width: 600px) {
+  .credit-card { padding: 18px; }
+  .credit-balances { gap: 7px; }
+  .credit-balance-item + .credit-balance-item { padding-left: 9px; }
+  .credit-balance-debt strong { font-size: 18px; }
+  .credit-months { padding-inline: 10px; }
+  .credit-months-action { font-size: 8px; }
+  .card-menu > div { width: min(270px, calc(100vw - 28px)); max-height: min(520px, 68dvh); }
+  .plan-group > summary { padding-inline: 11px; }
+  .plan-group-content { padding-inline: 10px; }
+}

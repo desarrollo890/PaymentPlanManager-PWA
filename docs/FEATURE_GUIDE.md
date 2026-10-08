@@ -43,3 +43,5 @@ Cuando aparezca «Actualizar aplicación», púlsalo para activar la versión de
 ## Apariencia
 
 La interfaz usa azul intenso, azul marino y superficies blancas. Los colores personalizados de tus registros se conservan. [Paleta y criterios de uso](COLOR_PALETTE.md).
+
+En Tarjetas, cada tarjeta resume límite, deuda actual, disponible y deuda a meses. Pulsa el último renglón para abrir los planes. Allí se agrupan en «En curso», «Liquidados» y «Cancelados»; cada grupo se despliega por separado. El menú de tres puntos reúne las acciones por tipo.
