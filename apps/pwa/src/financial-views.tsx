@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
-import { live, quotaBalances, suggestedPaymentDate } from '@paymentplan/domain';
+import { addMonths, live, paydaysThrough, quotaBalances, suggestedPaymentDate } from '@paymentplan/domain';
 import type { CardView, Change, FinanceView, Portfolio } from '@paymentplan/domain';
 import { csvCell, Dialog, download, Empty, Icon, money, shortDate } from './ui.tsx';
 import type { FinancialModal } from './financial-forms.tsx';
@@ -9,15 +9,25 @@ type Act = (prepare: () => Change[] | Promise<Change[]>) => void;
 export function Dashboard({ view, modal, p }: { view: FinanceView; modal: Modal; p: Portfolio }) {
   const next = view.budgets.find(b => b.payday > view.today), current = view.budgets.filter(b => b.payday <= view.today).at(-1);
   const budget = current ?? next;
-  return <><div className="metrics"><article><span>Deuda en tarjetas</span><strong>{money(view.debtCents)}</strong><small>{view.cards.length} tarjetas · saldo a favor {money(view.creditCents)}</small></article>
+  const paymentPeriods = paydaysThrough(view.today, addMonths(view.today, 3, 1)).slice(0, 4).map(payday => {
+    const period = view.budgets.find(candidate => candidate.payday === payday);
+    return {
+      payday,
+      pendingCents: period?.pendingCents ?? 0,
+      payments: view.cards.flatMap(card => [...card.cuts.filter(cut => cut.current), ...card.projections]
+      .filter(cut => cut.payday === payday)
+      .map(cut => ({ ...cut, name: card.name }))).sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name)),
+    };
+  });
+  return <><div className="metrics"><a className="metric-link" href="#/plan" aria-label="Ver todo el calendario de pagos"><article><span>Deuda en tarjetas</span><strong>{money(view.debtCents)}</strong><small>{view.cards.length} tarjetas · saldo a favor {money(view.creditCents)}</small></article></a>
     <article><span>Préstamos a personas</span><strong>{money(view.loanDebtCents)}</strong><small>Sin intereses · sin fecha {money(view.undatedLoanDebtCents)}</small></article>
     <article className="highlight"><span>{budget ? `Quincena del ${shortDate(budget.payday)}` : 'Próxima quincena'}</span><strong>{money((budget?.pendingCents ?? 0) + (budget?.loanPendingCents ?? 0))}</strong><small>Tarjetas y préstamos por pagar{next && next !== budget ? ` · próxima ${money(next.pendingCents + next.loanPendingCents)}` : ''}</small></article></div>
-    <section className="panel"><div className="section-heading"><h2>Tu plan vigente por tarjeta</h2><a href="#/plan">Ver todo el calendario →</a></div>
+    <section className="panel"><div className="section-heading"><div><h2>Plan de pagos por quincena</h2><p className="caption">Las próximas cuatro quincenas organizan los pagos estimados y confirmados de tus tarjetas.</p></div></div>
       {!view.cards.length ? <Empty title="Tu cartera empieza aquí" text="Registra el límite, disponible y deuda inicial de tus tarjetas. Después agrega gastos, pagos y planes a meses." action={<button className="primary" onClick={() => modal({ type: 'card' })}>Registrar mi primera tarjeta</button>} /> :
-        <div className="table-wrap"><table><thead><tr><th>Tarjeta</th><th>Corte</th><th>Vencimiento</th><th>Ingreso para pagar</th><th className="numeric">Pendiente</th><th /></tr></thead><tbody>{view.cards.map(c => {
-          const s = c.cuts.find(s => s.current)!;
-          return <tr key={c.id}><td><strong>{c.name}</strong><small>{s.estimated ? 'Estimado' : 'Confirmado por ti'}</small></td><td>{shortDate(s.cutDate)}</td><td>{shortDate(s.dueDate)}</td><td>{shortDate(s.payday)}</td><td className="numeric">{money(s.pendingCents)}</td><td><button className="text-button" disabled={s.cutDate > view.today} onClick={() => modal({ type: 'cut', cardId: c.id, cut: s })}>Revisar corte</button></td></tr>;
-        })}</tbody></table></div>}
+        <div className="payday-groups">{paymentPeriods.map((period, index) => <details className="payday-group" key={period.payday} open={index === 0}>
+          <summary><span><strong>Quincena del {shortDate(period.payday)}</strong><small>{period.payments.length ? `${period.payments.length} ${period.payments.length === 1 ? 'pago de tarjeta' : 'pagos de tarjetas'}` : 'Sin pagos de tarjetas previstos'}</small></span><span className="payday-total"><small>Tarjetas por pagar</small><strong>{money(period.pendingCents)}</strong></span></summary>
+          <div className="payday-group-content">{period.payments.length ? <div className="table-wrap"><table><thead><tr><th>Tarjeta</th><th>Corte</th><th>Vencimiento</th><th>Estado</th><th className="numeric">Pendiente</th><th /></tr></thead><tbody>{period.payments.map(payment => <tr key={payment.id}><td><strong>{payment.name}</strong></td><td>{shortDate(payment.cutDate)}</td><td>{shortDate(payment.dueDate)}</td><td>{payment.estimated ? payment.current ? 'Estimado vigente' : 'Proyección' : 'Confirmado'}</td><td className="numeric">{money(payment.pendingCents)}</td><td>{payment.current && payment.cutDate <= view.today && <button className="text-button" onClick={() => modal({ type: 'cut', cardId: payment.cardId, cut: payment })}>Revisar corte</button>}</td></tr>)}</tbody></table></div> : <p className="caption payday-empty">No tienes pagos de tarjetas previstos para esta quincena.</p>}</div>
+        </details>)}</div>}
       <p className="caption">Los estimados cambian con tus movimientos reales. El banco confirma el importe final y los cargos que aún no hayas registrado.</p></section>
     <section className="panel"><div className="section-heading"><h2>Por revisar</h2><a href="#/movimientos">Ver movimientos →</a></div>
       {view.cards.flatMap(c => c.alerts.map(a => <p className="alert" key={c.id + a.code}>{c.name}: {a.code === 'balanceMismatch' ? 'Disponible y deuda no cuadran con el límite' : a.code === 'limitExceeded' ? 'Se excedió el límite de crédito' : 'Tienes saldo a favor'} · {money(a.amountCents)}. Revisa los saldos con tu banco.</p>))}
