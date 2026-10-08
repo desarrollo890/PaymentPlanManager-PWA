@@ -32,6 +32,7 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click(); await page.locator('.credit-card').waitFor();
       assert.equal(await page.locator('.credit-limit span').textContent(),'Límite de crédito'); assert.match(await page.locator('.credit-limit strong').textContent(),/20,000/);
       await page.locator('.credit-months').first().click();
+      await page.getByRole('button',{name:'Dividir deuda',exact:true}).click();
       assert.equal(await page.locator('input[name="capital"]').inputValue(),'10000.00'); await fill(page,'capital','6000'); await fill(page,'description','Plan MSI sintético'); await fill(page,'months','14'); await save(page);
       await page.locator('.credit-months').first().click();
       await page.getByRole('button',{name:'Dividir deuda',exact:true}).click(); assert.equal(await page.locator('input[name="capital"]').inputValue(),'4000.00'); await page.getByRole('dialog').getByRole('button',{name:'Cancelar',exact:true}).click();
