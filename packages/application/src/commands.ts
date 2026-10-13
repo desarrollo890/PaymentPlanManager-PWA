@@ -108,8 +108,14 @@ export class FinancialCommands {
         const reason = planEditReason(this.portfolio, previous, this.context.today); if (reason) throw Error(reason);
         if (inputPlan.cardId !== previous.value.cardId || inputPlan.startDate !== previous.value.startDate || inputPlan.purchaseId !== previous.value.purchaseId) throw Error('Conserva la tarjeta, compra y fecha original del plan.');
       }
-      if (inputPlan.startDate < latestBalance(this.portfolio, card.id).value.date || inputPlan.startDate > this.context.today || inputPlan.firstCutDate < this.context.today ||
-        inputPlan.firstCutDate !== cutOnOrAfter(card.value.cutDay, inputPlan.firstCutDate)) throw Error('Usa un primer corte de hoy o posterior que coincida con el día de corte de la tarjeta.');
+      const currentCut = statementsFor(this.portfolio, card, this.context.today).find(statement => statement.value.cutDate <= this.context.today);
+      const appliesToCurrentCut = inputPlan.firstCutDate < this.context.today;
+      if (inputPlan.startDate < latestBalance(this.portfolio, card.id).value.date || inputPlan.startDate > this.context.today ||
+        inputPlan.firstCutDate !== cutOnOrAfter(card.value.cutDay, inputPlan.firstCutDate)) throw Error('El primer corte debe coincidir con el día de corte de la tarjeta.');
+      if (appliesToCurrentCut && (!currentCut || !currentCut.value.estimated || currentCut.value.cutDate !== inputPlan.firstCutDate ||
+        inputPlan.startDate !== currentCut.value.cutDate || newPurchase))
+        throw Error('Solo puedes aplicar un diferimiento al corte recién emitido, todavía estimado, y con la primera cuota en ese mismo corte.');
+      if (appliesToCurrentCut) this.editableDate(card.id, inputPlan.firstCutDate);
       const without = previous ? applyChanges(this.portfolio, [{ entityType: 'installment', entityId: id!, payload: previous.value, voided: true }]) : this.portfolio;
       if (!newPurchase && inputPlan.principalCents + (inputPlan.interestIncludedInDebt ? inputPlan.interestCents : 0) > freeDebt(without, card.id, this.context.today))
         throw Error('El importe supera la deuda disponible para dividir.');

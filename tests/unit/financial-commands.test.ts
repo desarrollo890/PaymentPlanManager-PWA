@@ -28,6 +28,17 @@ test('division proposes the current free debt, rejects duplicate financing and p
   h.commit(h.cmd.recordMovement({ cardId, date: h.context.today, amountCents: 50000, kind: 'expense', description: 'Compra', allocations: [], statementId: null }));
   assert.equal(financeView(h.p, h.context.today).cards[0]!.freeDebtCents, 450000);
 });
+test('bank-confirmed deferral can recalculate an unconfirmed current cut but never a confirmed one', () => {
+  const h = harness(), cardId = h.addCard(); h.context.today = '2026-10-13';
+  h.commit(h.cmd.savePlan({ ...terms(cardId), startDate: '2026-10-11', firstCutDate: '2026-10-11' }));
+  const current = financeView(h.p, h.context.today).cards[0]!.cuts.find(cut => cut.current)!;
+  assert.equal(current.cutDate, '2026-10-11'); assert.equal(current.estimated, true); assert.equal(current.targetCents, 600000);
+
+  const confirmed = harness(), confirmedCardId = confirmed.addCard(); confirmed.context.today = '2026-10-11';
+  confirmed.commit(confirmed.cmd.saveStatement(confirmedCardId, { cutDate: '2026-10-11', dueDate: '2026-10-25', targetCents: 1000000, minimumCents: 0, initialPaidCents: 0 }));
+  confirmed.context.today = '2026-10-13';
+  assert.throws(() => confirmed.cmd.savePlan({ ...terms(confirmedCardId), startDate: '2026-10-11', firstCutDate: '2026-10-11' }), /recién emitido/);
+});
 test('plan editing keeps identity and protects payment history while permitting description correction', () => {
   const h = harness(), cardId = h.addCard(); h.commit(h.cmd.savePlan(terms(cardId))); const plan = h.p.installments[0]!;
   h.commit(h.cmd.savePlan({ ...terms(cardId), principalCents: 900000 }, plan.id));

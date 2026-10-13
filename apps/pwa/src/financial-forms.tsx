@@ -24,6 +24,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
   const [selectedCard, setSelectedCard] = useState(oldMovement?.cardId ?? (modal.type === 'movement' ? modal.cardId : undefined) ?? live(p.cards).find(c => !c.value.archived)?.id ?? '');
   const view = financeView(p, today);
   const [planSource, setPlanSource] = useState(modal.type === 'plan' && modal.purchaseId ? 'existing' : 'debt');
+  const [planTiming, setPlanTiming] = useState<'next' | 'current'>('next');
   const [amortization, setAmortization] = useState(modal.type === 'plan' ? p.installments.find(r => r.id === modal.id)?.value.amortization?.method ?? 'total' : 'total');
   const [planPreview, setPlanPreview] = useState<ReturnType<typeof installmentQuotas> | null>(null);
   const [balanceWarning, setBalanceWarning] = useState('');
@@ -57,7 +58,10 @@ function FinancialEditor({ modal, session, today, close, save }: {
               principalCents: parseMoney(data.get('capitalPaid')), interestCents: parseMoney(data.get('interestPaid')) }] : [] }, modal.id); break;
         }
         case 'plan': {
-          const previous = p.installments.find(r => r.id === modal.id)?.value;
+          const previous = p.installments.find(r => r.id === modal.id)?.value, cardView = view.cards.find(card => card.id === modal.cardId)!;
+          const currentCut = cardView.cuts.find(cut => cut.current), appliesToCurrentCut = !previous && planTiming === 'current';
+          if (appliesToCurrentCut && (!currentCut || !currentCut.estimated || currentCut.cutDate > today))
+            throw Error('El corte recién emitido ya no puede recibir este diferimiento. Registra las cuotas desde el próximo corte.');
           let table = null;
           if (amortization === 'bankTable') table = str(data, 'table').trim().split(/\r?\n/).map(line => {
             const cells = line.split(';'); if (cells.length !== 2) throw Error('Usa una fila por cuota: capital;interés.');
@@ -65,8 +69,8 @@ function FinancialEditor({ modal, session, today, close, save }: {
           });
           const input: Omit<Installment, 'recordedAt' | 'legacyOrdinal' | 'interestIncorporatedThrough'> = {
             cardId: modal.cardId, description: str(data, 'description'), principalCents: parseMoney(data.get('capital')), months: Number(str(data, 'months')),
-            interestCents: amortization === 'bankPayment' ? safeInteger(BigInt(parseMoney(data.get('bankPayment'))) * BigInt(str(data, 'months')) - BigInt(parseMoney(data.get('capital')))) : parseMoney(data.get('interest')), startDate: previous?.startDate ?? (planSource === 'purchase' ? str(data, 'purchaseDate') : today),
-            firstCutDate: str(data, 'firstCut'), cutDay: previous?.cutDay ?? p.cards.find(c => c.id === modal.cardId)!.value.cutDay,
+            interestCents: amortization === 'bankPayment' ? safeInteger(BigInt(parseMoney(data.get('bankPayment'))) * BigInt(str(data, 'months')) - BigInt(parseMoney(data.get('capital')))) : parseMoney(data.get('interest')), startDate: previous?.startDate ?? (appliesToCurrentCut ? currentCut!.cutDate : planSource === 'purchase' ? str(data, 'purchaseDate') : today),
+            firstCutDate: appliesToCurrentCut ? currentCut!.cutDate : str(data, 'firstCut'), cutDay: previous?.cutDay ?? p.cards.find(c => c.id === modal.cardId)!.value.cutDay,
             purchaseId: previous?.purchaseId ?? (planSource === 'existing' ? str(data, 'purchaseId') || null : null),
             interestIncludedInDebt: data.has('interestIncluded'), amortization: amortization === 'total' || amortization === 'bankPayment' ? null : {
               method: amortization as 'fixedPayment' | 'fixedPrincipal' | 'bankTable', monthlyRate: str(data, 'monthlyRate') || '0', interestTaxRate: str(data, 'taxRate') || '0', table },
@@ -122,11 +126,15 @@ function FinancialEditor({ modal, session, today, close, save }: {
   } else if (modal.type === 'plan') {
     const plan = p.installments.find(r => r.id === modal.id)?.value, card = p.cards.find(c => c.id === modal.cardId)!.value;
     const balance = view.cards.find(c => c.id === modal.cardId)!, planView = balance.plans.find(r => r.id === modal.id);
+    const currentCut = balance.cuts.find(cut => cut.current), canApplyToCurrentCut = !plan && planSource !== 'purchase' && Boolean(currentCut && currentCut.estimated && currentCut.cutDate <= today);
+    const defaultFirstCut = plan?.firstCutDate ?? (planTiming === 'current' && currentCut ? currentCut.cutDate : cutOnOrAfter(card.cutDay, today));
     title = plan ? 'Editar plan a meses' : 'Registrar plan a meses';
     fields = <>{planView?.editReason && <p className="form-note">{planView.editReason}</p>}
-      {!plan && <label className="field"><span>Qué quieres financiar</span><select name="source" value={planSource} onChange={e => setPlanSource(e.target.value)}><option value="debt">Dividir deuda ya registrada</option><option value="purchase">Nueva compra a meses</option><option value="existing">Compra registrada que el banco dividió</option></select></label>}
+      {!plan && <label className="field"><span>Qué quieres financiar</span><select name="source" value={planSource} onChange={e => { setPlanSource(e.target.value); setPlanTiming('next'); setPlanPreview(null); }}><option value="debt">Dividir deuda ya registrada</option><option value="purchase">Nueva compra a meses</option><option value="existing">Compra registrada que el banco dividió</option></select></label>}
       <Field label="Descripción del plan" name="description" value={plan?.description ?? p.movements.find(m => m.id === modal.purchaseId)?.value.description} /><MoneyField key={planSource} label="Capital a meses" name="capital" value={plan?.principalCents ?? (modal.purchaseId ? Math.min(balance.freeDebtCents, p.movements.find(m => m.id === modal.purchaseId)!.value.amountCents) : planSource === 'purchase' ? null : balance.freeDebtCents)} hint={`Deuda libre vigente: ${money(balance.freeDebtCents)}`} />
-      <Field label="Meses restantes" name="months" type="number" value={plan?.months ?? 3} min={2} max={120} /><Field label="Primer corte de las cuotas restantes" name="firstCut" type="date" value={plan?.firstCutDate ?? cutOnOrAfter(card.cutDay, today)} />
+      {!plan && canApplyToCurrentCut && <fieldset className="plan-timing wide"><legend>¿Cuándo aplicó el banco el diferimiento?</legend><label className="check"><input type="radio" name="planTiming" value="next" checked={planTiming === 'next'} onChange={() => { setPlanTiming('next'); setPlanPreview(null); }} /><span>Inicia en el próximo corte</span></label><label className="check"><input type="radio" name="planTiming" value="current" checked={planTiming === 'current'} onChange={() => { setPlanTiming('current'); setPlanPreview(null); }} /><span>Ya aparece en el corte recién emitido ({currentCut!.cutDate})</span></label><small>Elige la segunda opción solo si el banco ya muestra la primera mensualidad en ese estado de cuenta. El importe seguirá siendo estimado hasta que revises y confirmes el corte.</small></fieldset>}
+      {!plan && !canApplyToCurrentCut && planSource !== 'purchase' && currentCut && !currentCut.estimated && <p className="form-note wide">El corte actual ya está confirmado. Este diferimiento iniciará en el próximo corte para conservar el importe bancario confirmado.</p>}
+      <Field key={`${planTiming}:${planSource}:${defaultFirstCut}`} label="Primer corte de las cuotas restantes" name="firstCut" type="date" value={defaultFirstCut} readOnly={!plan && planTiming === 'current'} {...(!plan && planTiming === 'current' ? { hint: 'Se fija en el corte recién emitido que el banco ya ajustó.' } : {})} /><Field label="Meses restantes" name="months" type="number" value={plan?.months ?? 3} min={2} max={120} />
       {planSource === 'purchase' && !plan && <Field label="Fecha de la compra" name="purchaseDate" type="date" value={today} max={today} />}
       {planSource === 'existing' && !plan && <SelectField label="Compra registrada" name="purchaseId" value={modal.purchaseId}>{live(p.movements).filter(m => m.value.cardId === modal.cardId && m.value.kind === 'expense' && !m.value.scheduled).map(m => <option key={m.id} value={m.id}>{m.value.description} · {money(m.value.amountCents)}</option>)}</SelectField>}
       <label className="field"><span>Cálculo del interés</span><select value={amortization} onChange={e => setAmortization(e.target.value)}><option value="total">MSI / interés total informado</option><option value="bankPayment">Mensualidad fija informada por el banco</option><option value="fixedPayment">MCI · cuota fija</option><option value="fixedPrincipal">MCI · capital fijo</option><option value="bankTable">MCI · tabla del banco</option></select></label>

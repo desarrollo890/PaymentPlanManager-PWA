@@ -4,6 +4,8 @@
 
 En Tarjetas pulsa Planes. Cada plan permite desplegar cuotas, corte, fecha de pago y saldo restante. Los cancelados se conservan para consulta sin generar obligaciones. Pagar cuota prepara un movimiento; revisa fecha e importe antes de guardarlo.
 
+Al dividir una deuda después del corte, indica si el banco ya aplicó el diferimiento al corte recién emitido o si las cuotas empiezan en el próximo. La primera opción solo está disponible mientras ese corte sea estimado; úsala únicamente cuando el estado de cuenta del banco ya muestre su primera mensualidad. Después revisa y confirma el importe final del corte reportado por el banco.
+
 En Movimientos, un pago permite Distribuir entre cuotas. Captura capital e interés por cuota, incluso de varios planes. La suma no puede superar el pago. Lo que no atribuyas mantiene una distribución estimada. Esta operación no vuelve a registrar el pago ni modifica su importe; funciona con conciliados, pero un periodo cerrado debe reabrirse primero.
 
 Al registrar MCI puedes indicar interés total, mensualidad bancaria, tasa para cuota/capital fijo o tabla del banco. Previsualizar amortización permite revisar todas las cuotas sin guardar. Vuelve a calcular si cambias campos.
