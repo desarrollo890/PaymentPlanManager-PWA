@@ -17,7 +17,7 @@ El [generador normativo](../tools/architecture/generate-contracts.mjs) produce l
 | movement | Gasto/pago/interés/comisión, programación, conciliación, corte y atribuciones. |
 | installment | Capital, interés, meses, fechas, compra, amortización e interés incorporado. |
 | statement | Objetivo, mínimo, pagado inicial, apartado, origen estimado/confirmado y pagos incluidos. |
-| loan / loanPayment | Préstamos personales sin interés o bancarios a tasa fija, con plazo, primera cuota, amortización mensual estimada y pagos realizados/programados. |
+| loan / loanPayment | Préstamos personales sin interés o bancarios a tasa fija, con plazo, primera cuota, amortización mensual/quincenal estimada y pagos realizados/programados. |
 | income / budget | Ingresos habituales y excepciones por quincena, gastos y reserva. |
 | reminderPreferences / reminderState | Preferencias y avisos atendidos/pospuestos. |
 | closure | Importes históricos, comparación bancaria y huella del historial. |

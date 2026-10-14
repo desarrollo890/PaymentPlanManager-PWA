@@ -1,9 +1,11 @@
 import type { Loan, LoanPayment } from '@paymentplan/contracts';
-import { addMonths, civilDate } from './dates.ts';
+import { addMonths, civilDate, daysInMonth, paydaysThrough } from './dates.ts';
 import { roundRatio, safeInteger, sumCents } from './money.ts';
 import type { FinancialRecord } from './portfolio.ts';
 
 const MONTHLY_RATE_DENOMINATOR = 120_000n;
+const BIWEEKLY_RATE_DENOMINATOR = 240_000n;
+export type LoanPaymentFrequency = 'monthly' | 'biweekly';
 
 export interface BankInstallment {
   readonly number: number;
@@ -13,26 +15,44 @@ export interface BankInstallment {
   readonly principalCents: number;
 }
 
+export function bankLoanDueDates(firstPaymentDate: string, termMonths: number, frequency: LoanPaymentFrequency = 'monthly'): string[] {
+  civilDate(firstPaymentDate);
+  if (frequency === 'monthly') return Array.from({ length: termMonths }, (_, index) => addMonths(firstPaymentDate, index));
+  const { year, month, day } = civilDate(firstPaymentDate);
+  if (day !== 15 && day !== daysInMonth(year, month)) throw new RangeError('La primera cuota quincenal debe ser el día 15 o el último día del mes.');
+  const until = addMonths(firstPaymentDate, termMonths);
+  return paydaysThrough(firstPaymentDate, until).filter(date => date < until);
+}
+
+export function bankLoanLastDueDate(firstPaymentDate: string, termMonths: number, frequency: LoanPaymentFrequency = 'monthly'): string {
+  const dates = bankLoanDueDates(firstPaymentDate, termMonths, frequency);
+  const last = dates.at(-1);
+  if (!last) throw new RangeError('El préstamo requiere al menos una cuota.');
+  return last;
+}
+
 export function bankLoanSchedule(loan: Loan): BankInstallment[] {
   if (loan.loanType !== 'bank' || loan.annualRateBasisPoints == null || loan.termMonths == null || loan.firstPaymentDate === null || loan.firstPaymentDate === undefined)
     throw new RangeError('El préstamo bancario requiere tasa, plazo y fecha de primera cuota.');
   civilDate(loan.firstPaymentDate);
-  const rate = BigInt(loan.annualRateBasisPoints), term = loan.termMonths;
-  const monthlyRate = Number(rate) / Number(MONTHLY_RATE_DENOMINATOR);
+  const rate = BigInt(loan.annualRateBasisPoints), frequency = loan.paymentFrequency ?? 'monthly';
+  const dates = bankLoanDueDates(loan.firstPaymentDate, loan.termMonths, frequency), term = dates.length;
+  const rateDenominator = frequency === 'biweekly' ? BIWEEKLY_RATE_DENOMINATOR : MONTHLY_RATE_DENOMINATOR;
+  const periodRate = Number(rate) / Number(rateDenominator);
   const regularPayment = rate === 0n
     ? Math.ceil(loan.principalCents / term)
-    : Math.round(loan.principalCents * monthlyRate / (1 - Math.pow(1 + monthlyRate, -term)));
+    : Math.round(loan.principalCents * periodRate / (1 - Math.pow(1 + periodRate, -term)));
   if (!Number.isSafeInteger(regularPayment) || regularPayment <= 0)
     throw new RangeError('No se pudo calcular una cuota bancaria válida.');
 
   let balance = loan.principalCents;
   const schedule: BankInstallment[] = [];
   for (let index = 0; index < term && balance > 0; index++) {
-    const interestCents = safeInteger(roundRatio(BigInt(balance) * rate, MONTHLY_RATE_DENOMINATOR));
+    const interestCents = safeInteger(roundRatio(BigInt(balance) * rate, rateDenominator));
     const balanceWithInterest = safeInteger(BigInt(balance) + BigInt(interestCents));
     const paymentCents = index === term - 1 ? balanceWithInterest : Math.min(balanceWithInterest, Math.max(regularPayment, interestCents + 1));
     const principalCents = Math.min(balance, Math.max(0, paymentCents - interestCents));
-    schedule.push({ number: index + 1, dueDate: addMonths(loan.firstPaymentDate, index), paymentCents, interestCents, principalCents });
+    schedule.push({ number: index + 1, dueDate: dates[index]!, paymentCents, interestCents, principalCents });
     balance -= principalCents;
   }
   return schedule;
@@ -57,8 +77,9 @@ export function bankLoanProjection(loan: Loan, paymentRecords: readonly Financia
     .sort((a, b) => a.date.localeCompare(b.date) || Number(a.payment) - Number(b.payment));
   for (const event of events) {
     if (!event.payment) {
-      const rate = BigInt(loan.annualRateBasisPoints ?? 0);
-      balance = safeInteger(BigInt(balance) + roundRatio(BigInt(balance) * rate, MONTHLY_RATE_DENOMINATOR));
+      const rate = BigInt(loan.annualRateBasisPoints ?? 0), denominator = (loan.paymentFrequency ?? 'monthly') === 'biweekly'
+        ? BIWEEKLY_RATE_DENOMINATOR : MONTHLY_RATE_DENOMINATOR;
+      balance = safeInteger(BigInt(balance) + roundRatio(BigInt(balance) * rate, denominator));
     } else {
       overpaidCents = safeInteger(BigInt(overpaidCents) + BigInt(Math.max(0, event.amountCents - balance)));
       balance = Math.max(0, balance - event.amountCents);

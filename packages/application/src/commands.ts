@@ -170,6 +170,7 @@ export class FinancialCommands {
     const hasPayments = Boolean(previous && this.portfolio.loanPayments.some(a => a.value.loanId === id));
     const changedBankTerms = previous && ((input.loanType ?? 'personal') !== (previous.value.loanType ?? 'personal') ||
       (input.annualRateBasisPoints ?? null) !== (previous.value.annualRateBasisPoints ?? null) ||
+      (input.paymentFrequency ?? 'monthly') !== (previous.value.paymentFrequency ?? 'monthly') ||
       (input.termMonths ?? null) !== (previous.value.termMonths ?? null) ||
       (input.firstPaymentDate ?? null) !== (previous.value.firstPaymentDate ?? null));
     if (hasPayments && (input.principalCents !== previous!.value.principalCents || input.balanceDate !== previous!.value.balanceDate ||

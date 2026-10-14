@@ -35,7 +35,7 @@ export interface CardView {
 export interface LoanView {
   readonly id: string; readonly person: string; readonly loanType: 'personal' | 'bank'; readonly balanceCents: number;
   readonly paidCents: number; readonly scheduledCents: number; readonly annualRateBasisPoints: number | null;
-  readonly monthlyPaymentCents: number | null; readonly nextPaymentDate: string | null;
+  readonly installmentPaymentCents: number | null; readonly nextPaymentDate: string | null; readonly paymentFrequency: 'monthly' | 'biweekly' | null;
 }
 export interface LoanObligation { readonly loanId: string; readonly dueDate: string; readonly payday: string; readonly amountCents: number; readonly scheduled: boolean }
 export interface BudgetView {
@@ -279,11 +279,12 @@ export function financeView(p: Portfolio, today: string): FinanceView {
       const projection = bankLoanProjection(r.value, payments, today), schedule = bankLoanSchedule(r.value);
       return { id: r.id, person: r.value.person, loanType: 'bank' as const, balanceCents: projection.balanceCents, paidCents: projection.paidCents,
         scheduledCents: projection.scheduledCents, annualRateBasisPoints: r.value.annualRateBasisPoints ?? 0,
-        monthlyPaymentCents: schedule[0]?.paymentCents ?? null, nextPaymentDate: projection.installments[0]?.dueDate ?? null };
+        installmentPaymentCents: schedule[0]?.paymentCents ?? null, nextPaymentDate: projection.installments[0]?.dueDate ?? null,
+        paymentFrequency: r.value.paymentFrequency ?? 'monthly' };
     }
     return { id: r.id, person: r.value.person, loanType: 'personal' as const, balanceCents: r.value.principalCents - paid, paidCents: paid,
       scheduledCents: total(payments.filter(a => a.value.scheduled || a.value.date > today), a => a.value.amountCents),
-      annualRateBasisPoints: null, monthlyPaymentCents: null, nextPaymentDate: null };
+      annualRateBasisPoints: null, installmentPaymentCents: null, nextPaymentDate: null, paymentFrequency: null };
   }).sort((a, b) => Number(p.loans.find(r => r.id === a.id)!.value.archived) - Number(p.loans.find(r => r.id === b.id)!.value.archived) || b.balanceCents - a.balanceCents || a.person.localeCompare(b.person));
   const obligations: LoanObligation[] = [];
   for (const loan of loans) {

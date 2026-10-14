@@ -2,7 +2,7 @@ import { FinancialCommands } from '@paymentplan/application';
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import type { Change } from '@paymentplan/domain';
-import { addDays, addMonths, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
+import { addDays, bankLoanLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
 import type { CutView } from '@paymentplan/domain';
 import type { Installment } from '@paymentplan/contracts';
 import { PaymentAllocation } from './payment-allocation.tsx';
@@ -84,9 +84,10 @@ function FinancialEditor({ modal, session, today, close, save }: {
           const loanType = loanKind, annualRateBasisPoints = loanType === 'bank' ? parseRateBasisPoints(str(data, 'annualRate')) : null;
           const termMonths = loanType === 'bank' ? Number(str(data, 'termMonths')) : null;
           const firstPaymentDate = loanType === 'bank' ? str(data, 'firstPaymentDate') : null;
-          const dueDate = loanType === 'bank' && firstPaymentDate && termMonths ? addMonths(firstPaymentDate, termMonths - 1) : str(data, 'dueDate') || null;
+          const paymentFrequency: 'monthly' | 'biweekly' = loanType === 'bank' ? str(data, 'paymentFrequency') as 'monthly' | 'biweekly' : 'monthly';
+          const dueDate = loanType === 'bank' && firstPaymentDate && termMonths ? bankLoanLastDueDate(firstPaymentDate, termMonths, paymentFrequency) : str(data, 'dueDate') || null;
           changes = cmd.saveLoan({ person: str(data, 'person'), description: str(data, 'description'), principalCents: parseMoney(data.get('capital')), balanceDate: str(data, 'date'),
-            dueDate, loanType, annualRateBasisPoints, termMonths, firstPaymentDate,
+            dueDate, loanType, annualRateBasisPoints, paymentFrequency, termMonths, firstPaymentDate,
             includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false }, modal.id); break;
         }
         case 'loanPayment': changes = cmd.loanPayment(modal.loanId, str(data, 'date'), parseMoney(data.get('amount')), str(data, 'description')); break;
@@ -159,17 +160,18 @@ function FinancialEditor({ modal, session, today, close, save }: {
       <Field label={loanKind === 'bank' ? 'Banco o institución' : 'Persona que te prestó'} name="person" value={loan?.person} /><Field label="Concepto" name="description" value={loan?.description} />
       <MoneyField label="Capital inicial pendiente" name="capital" value={loan?.principalCents ?? null} /><Field label="Fecha del saldo / dinero recibido" name="date" type="date" value={loan?.balanceDate ?? today} max={today} />
       {loanKind === 'bank' ? <><Field label="Tasa anual fija (%)" name="annualRate" type="number" value={loan?.annualRateBasisPoints == null ? '' : (loan.annualRateBasisPoints / 100).toFixed(2)} min={0} max={100} />
+        <SelectField label="Frecuencia de pago" name="paymentFrequency" value={loan?.paymentFrequency ?? 'monthly'}><option value="monthly">Mensual</option><option value="biweekly">Quincenal (15 y último día del mes)</option></SelectField>
         <Field label="Plazo (meses)" name="termMonths" type="number" value={loan?.termMonths ?? 12} min={1} max={600} />
         <Field label="Fecha de primera cuota" name="firstPaymentDate" type="date" value={loan?.firstPaymentDate ?? ''} min={addDays(loan?.balanceDate ?? today, 1)} />
-        <p className="form-note">La cuota y el saldo se estiman con tasa fija nominal anual, capitalización mensual y pagos mensuales. Comisiones, seguros, CAT, tasa variable y diferencias del estado de cuenta no se modelan.</p></> :
+        <p className="form-note">La cuota y el saldo se estiman con tasa fija nominal anual y capitalización por periodo. Las quincenas son los días 15 y último del mes. Comisiones, seguros, CAT, tasa variable y diferencias del estado de cuenta no se modelan.</p></> :
         <><Field label="Fecha acordada de pago (opcional)" name="dueDate" type="date" value={loan?.dueDate ?? ''} required={false} />
         <p className="form-note">Pago único o abonos sin intereses. Deja desmarcada la opción de dinero recibido si estás capturando una deuda anterior.</p></>}
       <Check name="received" label="También sumar este dinero recibido a mi presupuesto" checked={loan?.includeReceivedMoney} /></>;
   } else if (modal.type === 'loanPayment') {
     const loan = view.loans.find(l => l.id === modal.loanId)!;
     title = loan.loanType === 'bank' ? 'Registrar pago bancario' : 'Registrar abono a persona';
-    fields = <><p className="form-note">{loan.person} · saldo pendiente estimado {money(loan.balanceCents)} · programado {money(loan.scheduledCents)}{loan.monthlyPaymentCents === null ? '' : ` · cuota estimada ${money(loan.monthlyPaymentCents)}`}</p><Field label="Fecha del pago" name="date" type="date" value={today} />
-      <MoneyField label="Importe del pago" name="amount" value={loan.monthlyPaymentCents ?? Math.max(0, loan.balanceCents - loan.scheduledCents)} /><Field label="Descripción" name="description" /><p className="form-note">Los pagos futuros se programan y requieren confirmación cuando pagues.{loan.loanType === 'bank' ? ' El saldo aplica los pagos registrados y estima intereses en cada vencimiento mensual.' : ''}</p></>;
+    fields = <><p className="form-note">{loan.person} · saldo pendiente estimado {money(loan.balanceCents)} · programado {money(loan.scheduledCents)}{loan.installmentPaymentCents === null ? '' : ` · cuota estimada ${money(loan.installmentPaymentCents)}`}</p><Field label="Fecha del pago" name="date" type="date" value={today} />
+      <MoneyField label="Importe del pago" name="amount" value={loan.installmentPaymentCents ?? Math.max(0, loan.balanceCents - loan.scheduledCents)} /><Field label="Descripción" name="description" /><p className="form-note">Los pagos futuros se programan y requieren confirmación cuando pagues.{loan.loanType === 'bank' ? ` El saldo estima intereses en cada vencimiento ${loan.paymentFrequency === 'biweekly' ? 'quincenal' : 'mensual'}.` : ''}</p></>;
   } else if (modal.type === 'reconcile') {
     const balance = view.cards.find(c => c.id === modal.cardId)!;
     title = 'Conciliar saldos con el banco'; fields = <><Field label="Fecha del saldo bancario" name="date" type="date" value={today} min={latestBalance(p, modal.cardId).value.date} max={today} />

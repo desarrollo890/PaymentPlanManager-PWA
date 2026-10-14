@@ -102,6 +102,7 @@ export type Loan = {
   readonly "dueDate": (string) | (null);
   readonly "loanType"?: "personal" | "bank";
   readonly "annualRateBasisPoints"?: (number) | (null);
+  readonly "paymentFrequency"?: "monthly" | "biweekly";
   readonly "termMonths"?: (number) | (null);
   readonly "firstPaymentDate"?: (string) | (null);
   readonly "includeReceivedMoney": boolean;

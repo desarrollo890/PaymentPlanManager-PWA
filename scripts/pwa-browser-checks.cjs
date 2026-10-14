@@ -53,7 +53,15 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
           const firstPayment = new Date(`${today}T12:00:00Z`); firstPayment.setUTCDate(1); firstPayment.setUTCMonth(firstPayment.getUTCMonth()+1); firstPayment.setUTCDate(15);
           await fill(page,'firstPaymentDate',firstPayment.toISOString().slice(0,10)); await save(page);
           await page.getByText('tasa fija anual 12.50%',{exact:false}).waitFor();
-          await page.getByText('cuota estimada',{exact:false}).waitFor();
+          await page.getByText('pago estimado',{exact:false}).waitFor();
+          await page.getByRole('button',{name:'Registrar préstamo',exact:true}).click();
+          await page.locator('select[name="loanType"]').selectOption('bank'); await page.locator('select[name="paymentFrequency"]').selectOption('biweekly');
+          await fill(page,'person','Banco quincenal sintético'); await fill(page,'description','Crédito quincenal sintético'); await fill(page,'capital','1000');
+          await fill(page,'annualRate','12.5'); await fill(page,'termMonths','12');
+          const firstBiweekly = new Date(`${today}T12:00:00Z`); firstBiweekly.setUTCDate(1); firstBiweekly.setUTCMonth(firstBiweekly.getUTCMonth()+1);
+          const lastDay = new Date(Date.UTC(firstBiweekly.getUTCFullYear(),firstBiweekly.getUTCMonth()+1,0)).getUTCDate(); firstBiweekly.setUTCDate(lastDay);
+          await fill(page,'firstPaymentDate',firstBiweekly.toISOString().slice(0,10)); await save(page);
+          await page.getByText('quincenal',{exact:false}).first().waitFor();
         }
       }
       await page.getByRole('navigation').getByRole('link',{name:'Movimientos',exact:true}).click(); await page.getByRole('button',{name:'Importar CSV / Excel'}).click();

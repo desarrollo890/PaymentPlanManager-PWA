@@ -1052,6 +1052,12 @@ export const schemas: Readonly<Record<string, Schema>> = {
               }
             ]
           },
+          "paymentFrequency": {
+            "enum": [
+              "monthly",
+              "biweekly"
+            ]
+          },
           "termMonths": {
             "anyOf": [
               {

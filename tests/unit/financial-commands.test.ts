@@ -95,7 +95,7 @@ test('bank loans estimate monthly installments and accrue interest before record
     dueDate: '2027-10-15', loanType: 'bank', annualRateBasisPoints: 1200, termMonths: 12, firstPaymentDate: '2026-11-15',
     includeReceivedMoney: false, archived: false }));
   const id = h.p.loans[0]!.id, initial = financeView(h.p, h.context.today);
-  assert.equal(initial.loans[0]!.monthlyPaymentCents, 8885);
+  assert.equal(initial.loans[0]!.installmentPaymentCents, 8885);
   assert.equal(initial.obligations.length, 12);
   assert.equal(initial.obligations[0]!.dueDate, '2026-11-15');
   assert.equal(initial.obligations[0]!.amountCents, 8885);
@@ -105,6 +105,20 @@ test('bank loans estimate monthly installments and accrue interest before record
   assert.equal(afterPayment.obligations.length, 11);
   assert.equal(afterPayment.obligations[0]!.dueDate, '2026-12-15');
   assert.throws(() => h.cmd.saveLoan({ ...h.p.loans[0]!.value, annualRateBasisPoints: 1500 }, id), /condiciones de amortización/);
+});
+test('bank loans support two fixed-end-of-month payments per month across calendar boundaries', () => {
+  const h = harness();
+  h.commit(h.cmd.saveLoan({ person: 'Banco', description: 'Crédito quincenal', principalCents: 240000, balanceDate: h.context.today,
+    dueDate: '2027-10-15', loanType: 'bank', annualRateBasisPoints: 1200, paymentFrequency: 'biweekly', termMonths: 12,
+    firstPaymentDate: '2026-10-31', includeReceivedMoney: false, archived: false }));
+  const loan = h.p.loans[0]!, initial = financeView(h.p, h.context.today);
+  assert.equal(initial.obligations.length, 24);
+  assert.deepEqual(initial.obligations.slice(0, 4).map(item => item.dueDate), ['2026-10-31', '2026-11-15', '2026-11-30', '2026-12-15']);
+  assert.equal(initial.loans[0]!.paymentFrequency, 'biweekly');
+  assert(initial.loans[0]!.installmentPaymentCents! < 11000);
+  h.context.today = '2026-11-30';
+  assert.equal(financeView(h.p, h.context.today).loans[0]!.balanceCents, 243618);
+  assert.throws(() => h.cmd.saveLoan({ ...loan.value, firstPaymentDate: '2026-10-20' }, loan.id), /día 15 o el último día/);
 });
 test('closed periods protect history until explicitly reopened', async () => {
   const h = harness(), cardId = h.addCard(); h.commit(await h.cmd.closePeriod(cardId, h.context.today, h.context.today, null, null));
