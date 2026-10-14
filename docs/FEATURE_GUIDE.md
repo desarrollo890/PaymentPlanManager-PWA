@@ -20,6 +20,8 @@ En Periodos, Actividad muestra todas las tarjetas por rango sin exigir saldo ini
 
 Presupuesto → Desglose muestra ingresos, préstamos recibidos, reserva, gastos, pagos y compromisos por tarjeta/persona. Aprender ofrece lecciones y preguntas con explicación; el contenido se consulta offline y los enlaces a fuentes necesitan conexión.
 
+Préstamos permite registrar deudas personales sin intereses o préstamos bancarios de tasa fija. Para los bancarios captura capital/saldo pendiente, tasa anual, plazo y fecha de primera cuota; se estiman cuotas mensuales, intereses en cada vencimiento y saldo restante. Registra el importe real que pagaste y programa pagos futuros por separado. Las estimaciones no incluyen tasa variable, CAT, seguros, comisiones ni ajustes del estado de cuenta; verifica el saldo y la cuota con tu banco.
+
 Calendario permite elegir de cero a diez días de anticipación. La fecha sugerida se limita al día de ingreso y no mueve la quincena con la que pagarás. La preferencia se guarda por navegador, sin información financiera.
 
 Análisis permite comparar gastos, comisiones e intereses por periodo y tarjeta. El uso de línea compara deuda/límite registrados; no es un puntaje crediticio.

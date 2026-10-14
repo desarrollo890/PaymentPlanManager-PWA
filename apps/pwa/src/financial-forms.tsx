@@ -2,7 +2,7 @@ import { FinancialCommands } from '@paymentplan/application';
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import type { Change } from '@paymentplan/domain';
-import { safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
+import { addDays, addMonths, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
 import type { CutView } from '@paymentplan/domain';
 import type { Installment } from '@paymentplan/contracts';
 import { PaymentAllocation } from './payment-allocation.tsx';
@@ -17,6 +17,8 @@ function FinancialEditor({ modal, session, today, close, save }: {
   modal: Exclude<FinancialModal, { type: 'allocation' }>; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void>;
 }) {
   const p = session.portfolio, cmd = session.commands(today), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const existingLoan = modal.type === 'loan' ? p.loans.find(l => l.id === modal.id)?.value : undefined;
+  const [loanKind, setLoanKind] = useState<'personal' | 'bank'>(existingLoan?.loanType === 'bank' ? 'bank' : 'personal');
   const [kind, setKind] = useState(modal.type === 'movement' ? p.movements.find(m => m.id === modal.id)?.value.kind ?? (modal.planId ? 'payment' : 'expense') : 'expense');
   const oldMovement = modal.type === 'movement' ? p.movements.find(m => m.id === modal.id)?.value : null;
   const [selectedPlan, setSelectedPlan] = useState(oldMovement && oldMovement.allocations.length > 1 ? 'preserve' : oldMovement?.allocations[0]?.planId ?? (modal.type === 'movement' ? modal.planId : '') ?? '');
@@ -79,8 +81,13 @@ function FinancialEditor({ modal, session, today, close, save }: {
         }
         case 'loan': {
           const previous = p.loans.find(l => l.id === modal.id);
+          const loanType = loanKind, annualRateBasisPoints = loanType === 'bank' ? parseRateBasisPoints(str(data, 'annualRate')) : null;
+          const termMonths = loanType === 'bank' ? Number(str(data, 'termMonths')) : null;
+          const firstPaymentDate = loanType === 'bank' ? str(data, 'firstPaymentDate') : null;
+          const dueDate = loanType === 'bank' && firstPaymentDate && termMonths ? addMonths(firstPaymentDate, termMonths - 1) : str(data, 'dueDate') || null;
           changes = cmd.saveLoan({ person: str(data, 'person'), description: str(data, 'description'), principalCents: parseMoney(data.get('capital')), balanceDate: str(data, 'date'),
-            dueDate: str(data, 'dueDate') || null, includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false }, modal.id); break;
+            dueDate, loanType, annualRateBasisPoints, termMonths, firstPaymentDate,
+            includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false }, modal.id); break;
         }
         case 'loanPayment': changes = cmd.loanPayment(modal.loanId, str(data, 'date'), parseMoney(data.get('amount')), str(data, 'description')); break;
         case 'reconcile': {
@@ -147,15 +154,22 @@ function FinancialEditor({ modal, session, today, close, save }: {
       <p className="form-note">Dividir deuda reclasifica lo que ya debes. Una nueva compra registra también un gasto, una sola vez. Para deuda inicial a meses, captura únicamente el capital y las cuotas restantes.</p></>;
   } else if (modal.type === 'loan') {
     const loan = p.loans.find(l => l.id === modal.id)?.value;
-    title = loan ? 'Editar préstamo' : 'Registrar préstamo recibido';
-    fields = <><Field label="Persona que te prestó" name="person" value={loan?.person} /><Field label="Concepto" name="description" value={loan?.description} />
+    title = loan ? 'Editar préstamo' : 'Registrar préstamo';
+    fields = <><label className="field"><span>Tipo de préstamo</span><select name="loanType" value={loanKind} onChange={e => setLoanKind(e.target.value as 'personal' | 'bank')}><option value="personal">Préstamo personal sin intereses</option><option value="bank">Préstamo bancario</option></select></label>
+      <Field label={loanKind === 'bank' ? 'Banco o institución' : 'Persona que te prestó'} name="person" value={loan?.person} /><Field label="Concepto" name="description" value={loan?.description} />
       <MoneyField label="Capital inicial pendiente" name="capital" value={loan?.principalCents ?? null} /><Field label="Fecha del saldo / dinero recibido" name="date" type="date" value={loan?.balanceDate ?? today} max={today} />
-      <Field label="Fecha acordada de pago (opcional)" name="dueDate" type="date" value={loan?.dueDate ?? ''} required={false} /><Check name="received" label="También sumar este dinero recibido a mi presupuesto" checked={loan?.includeReceivedMoney} />
-      <p className="form-note">Pago único o abonos sin intereses. Deja desmarcada la opción de dinero recibido si estás capturando una deuda anterior.</p></>;
+      {loanKind === 'bank' ? <><Field label="Tasa anual fija (%)" name="annualRate" type="number" value={loan?.annualRateBasisPoints == null ? '' : (loan.annualRateBasisPoints / 100).toFixed(2)} min={0} max={100} />
+        <Field label="Plazo (meses)" name="termMonths" type="number" value={loan?.termMonths ?? 12} min={1} max={600} />
+        <Field label="Fecha de primera cuota" name="firstPaymentDate" type="date" value={loan?.firstPaymentDate ?? ''} min={addDays(loan?.balanceDate ?? today, 1)} />
+        <p className="form-note">La cuota y el saldo se estiman con tasa fija nominal anual, capitalización mensual y pagos mensuales. Comisiones, seguros, CAT, tasa variable y diferencias del estado de cuenta no se modelan.</p></> :
+        <><Field label="Fecha acordada de pago (opcional)" name="dueDate" type="date" value={loan?.dueDate ?? ''} required={false} />
+        <p className="form-note">Pago único o abonos sin intereses. Deja desmarcada la opción de dinero recibido si estás capturando una deuda anterior.</p></>}
+      <Check name="received" label="También sumar este dinero recibido a mi presupuesto" checked={loan?.includeReceivedMoney} /></>;
   } else if (modal.type === 'loanPayment') {
-    title = 'Registrar abono a persona'; const loan = view.loans.find(l => l.id === modal.loanId)!;
-    fields = <><p className="form-note">{loan.person} · saldo pendiente {money(loan.balanceCents)} · programado {money(loan.scheduledCents)}</p><Field label="Fecha del abono" name="date" type="date" value={today} />
-      <MoneyField label="Importe del abono" name="amount" value={loan.balanceCents - loan.scheduledCents} /><Field label="Descripción" name="description" /><p className="form-note">Los abonos futuros se programan y requieren confirmación cuando pagues.</p></>;
+    const loan = view.loans.find(l => l.id === modal.loanId)!;
+    title = loan.loanType === 'bank' ? 'Registrar pago bancario' : 'Registrar abono a persona';
+    fields = <><p className="form-note">{loan.person} · saldo pendiente estimado {money(loan.balanceCents)} · programado {money(loan.scheduledCents)}{loan.monthlyPaymentCents === null ? '' : ` · cuota estimada ${money(loan.monthlyPaymentCents)}`}</p><Field label="Fecha del pago" name="date" type="date" value={today} />
+      <MoneyField label="Importe del pago" name="amount" value={loan.monthlyPaymentCents ?? Math.max(0, loan.balanceCents - loan.scheduledCents)} /><Field label="Descripción" name="description" /><p className="form-note">Los pagos futuros se programan y requieren confirmación cuando pagues.{loan.loanType === 'bank' ? ' El saldo aplica los pagos registrados y estima intereses en cada vencimiento mensual.' : ''}</p></>;
   } else if (modal.type === 'reconcile') {
     const balance = view.cards.find(c => c.id === modal.cardId)!;
     title = 'Conciliar saldos con el banco'; fields = <><Field label="Fecha del saldo bancario" name="date" type="date" value={today} min={latestBalance(p, modal.cardId).value.date} max={today} />
@@ -174,6 +188,12 @@ function FinancialEditor({ modal, session, today, close, save }: {
     title = `Presupuesto · ${modal.payday}`; fields = <><MoneyField label="Ingreso esperado" name="income" value={saved?.expectedIncomeCents ?? b.incomeCents} />
       <MoneyField label="Ingreso recibido (opcional)" name="receivedIncome" value={saved?.receivedIncomeCents ?? null} required={false} /><MoneyField label="Gastos esenciales" name="expenses" value={b.expensesCents} />
       <MoneyField label="Reserva" name="reserve" value={b.reserveCents} hint="Dinero que conservas para imprevistos y no asignas a pagos." /><Field label="Nota (opcional)" name="note" value={saved?.note} required={false} /></>;
+  }
+  function parseRateBasisPoints(value: string): number {
+    const text = value.trim();
+    if (!/^(?:0|[1-9]\d?)(?:\.\d{1,2})?$|^100(?:\.0{1,2})?$/.test(text)) throw Error('La tasa anual debe ser un porcentaje entre 0 y 100, con hasta dos decimales.');
+    const [whole, fraction = ''] = text.split('.');
+    return Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
   }
   return <FormDialog title={title} close={close} submit={submit} busy={busy} error={error} onInput={checkBalance}>{fields}{balanceWarning && <p className="alert wide" role="status">{balanceWarning}</p>}</FormDialog>;
 }

@@ -1034,6 +1034,48 @@ export const schemas: Readonly<Record<string, Schema>> = {
               }
             ]
           },
+          "loanType": {
+            "enum": [
+              "personal",
+              "bank"
+            ]
+          },
+          "annualRateBasisPoints": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "termMonths": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 600
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstPaymentDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(19[0-9]{2}|[2-9][0-9]{3})-[0-9]{2}-[0-9]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "includeReceivedMoney": {
             "type": "boolean"
           },

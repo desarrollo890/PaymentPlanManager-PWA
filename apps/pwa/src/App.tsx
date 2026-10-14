@@ -25,7 +25,7 @@ import { ConflictReview } from './conflicts.tsx';
 const google = new GoogleAccess(oauth.web.clientId);
 const sections = [ ['inicio', 'Inicio', 'home', 'Tu espacio financiero'], ['tarjetas', 'Tarjetas', 'card', 'Tus tarjetas'],
   ['movimientos', 'Movimientos', 'activity', 'Tus movimientos'], ['plan', 'Calendario', 'calendar', 'Tu calendario de pagos'],
-  ['presupuesto', 'Presupuesto', 'report', 'Tu presupuesto'], ['prestamos', 'Préstamos', 'people', 'Préstamos de personas'],
+  ['presupuesto', 'Presupuesto', 'report', 'Tu presupuesto'], ['prestamos', 'Préstamos', 'people', 'Préstamos personales y bancarios'],
   ['categorias', 'Categorías', 'report', 'Tus categorías de gastos'], ['recurrencias', 'Recurrencias', 'calendar', 'Cargos recurrentes'], ['cuentas', 'Cuentas', 'card', 'Tu efectivo y débito'], ['metas', 'Metas', 'shield', 'Tus metas de ahorro'],
   ['periodos', 'Periodos', 'report', 'Tus resúmenes'], ['analisis', 'Análisis', 'report', 'Gastos y costos'], ['simulador', 'Simulador', 'activity', 'Explora cómo reducir tu deuda'], ['aprender', 'Aprender', 'report', 'Educación financiera'], ['preferencias', 'Preferencias', 'settings', 'A tu manera'] ] as const;
 type Section = typeof sections[number][0];

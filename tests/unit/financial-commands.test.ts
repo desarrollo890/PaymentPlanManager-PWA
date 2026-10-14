@@ -89,6 +89,23 @@ test('loan abonos reserve capital and cannot overpay even before the scheduled d
   h.context.today = '2026-10-16'; assert.equal(financeView(h.p, h.context.today).loans[0]!.balanceCents, 100000);
   h.commit(h.cmd.changeLoanPayment(h.p.loanPayments[0]!.id, 'realize')); assert.equal(financeView(h.p, h.context.today).loans[0]!.balanceCents, 40000);
 });
+test('bank loans estimate monthly installments and accrue interest before recorded payments', () => {
+  const h = harness();
+  h.commit(h.cmd.saveLoan({ person: 'Banco', description: 'Crédito automotriz', principalCents: 100000, balanceDate: h.context.today,
+    dueDate: '2027-10-15', loanType: 'bank', annualRateBasisPoints: 1200, termMonths: 12, firstPaymentDate: '2026-11-15',
+    includeReceivedMoney: false, archived: false }));
+  const id = h.p.loans[0]!.id, initial = financeView(h.p, h.context.today);
+  assert.equal(initial.loans[0]!.monthlyPaymentCents, 8885);
+  assert.equal(initial.obligations.length, 12);
+  assert.equal(initial.obligations[0]!.dueDate, '2026-11-15');
+  assert.equal(initial.obligations[0]!.amountCents, 8885);
+  h.context.today = '2026-11-16'; h.commit(h.cmd.loanPayment(id, h.context.today, 8885, 'Cuota 1'));
+  const afterPayment = financeView(h.p, h.context.today);
+  assert.equal(afterPayment.loans[0]!.balanceCents, 92115);
+  assert.equal(afterPayment.obligations.length, 11);
+  assert.equal(afterPayment.obligations[0]!.dueDate, '2026-12-15');
+  assert.throws(() => h.cmd.saveLoan({ ...h.p.loans[0]!.value, annualRateBasisPoints: 1500 }, id), /condiciones de amortización/);
+});
 test('closed periods protect history until explicitly reopened', async () => {
   const h = harness(), cardId = h.addCard(); h.commit(await h.cmd.closePeriod(cardId, h.context.today, h.context.today, null, null));
   assert.throws(() => h.cmd.recordMovement({ cardId, date: h.context.today, amountCents: 1, kind: 'expense', description: 'Cerrado', statementId: null, allocations: [] }), /Reabre/);

@@ -100,6 +100,10 @@ export type Loan = {
   readonly "principalCents": number;
   readonly "balanceDate": string;
   readonly "dueDate": (string) | (null);
+  readonly "loanType"?: "personal" | "bank";
+  readonly "annualRateBasisPoints"?: (number) | (null);
+  readonly "termMonths"?: (number) | (null);
+  readonly "firstPaymentDate"?: (string) | (null);
   readonly "includeReceivedMoney": boolean;
   readonly "archived": boolean;
   readonly "recordedAt": (string) | (null);

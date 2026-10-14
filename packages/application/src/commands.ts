@@ -167,8 +167,14 @@ export class FinancialCommands {
   }
   saveLoan(input: Omit<Loan, 'recordedAt' | 'legacyOrdinal'>, id?: string): Change[] {
     const previous = id ? record(this.portfolio.loans, id) : null;
-    if (previous && this.portfolio.loanPayments.some(a => a.value.loanId === id) && (input.principalCents !== previous.value.principalCents ||
-      input.balanceDate !== previous.value.balanceDate || input.includeReceivedMoney !== previous.value.includeReceivedMoney)) throw Error('Con abonos registrados conserva importe, fecha y origen del dinero.');
+    const hasPayments = Boolean(previous && this.portfolio.loanPayments.some(a => a.value.loanId === id));
+    const changedBankTerms = previous && ((input.loanType ?? 'personal') !== (previous.value.loanType ?? 'personal') ||
+      (input.annualRateBasisPoints ?? null) !== (previous.value.annualRateBasisPoints ?? null) ||
+      (input.termMonths ?? null) !== (previous.value.termMonths ?? null) ||
+      (input.firstPaymentDate ?? null) !== (previous.value.firstPaymentDate ?? null));
+    if (hasPayments && (input.principalCents !== previous!.value.principalCents || input.balanceDate !== previous!.value.balanceDate ||
+      input.includeReceivedMoney !== previous!.value.includeReceivedMoney || changedBankTerms))
+      throw Error('Con abonos registrados conserva capital, origen y condiciones de amortización.');
     return this.checked([{ entityType: 'loan', entityId: id ?? this.context.newId(), payload: { ...input, person: input.person.trim(), description: input.description.trim(),
       ...(previous ? { recordedAt: previous.value.recordedAt, legacyOrdinal: previous.value.legacyOrdinal } : this.stamp()) }, voided: false }]);
   }

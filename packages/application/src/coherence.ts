@@ -16,7 +16,8 @@ export async function historyIssues(state: RevisionState, portfolio: Portfolio, 
     for (const head of entity.heads) {
       if (head.action !== 'replace' || head.parentRevisionIds.length !== 1 || !head.payload) continue;
       const parent = operations.get(head.parentRevisionIds[0]!); if (!parent?.payload) continue;
-      const fields = entity.entityType === 'installment' ? ['principalCents', 'months', 'interestCents', 'firstCutDate', 'cutDay', 'interestIncludedInDebt', 'amortization'] : ['principalCents', 'balanceDate', 'includeReceivedMoney'];
+      const fields = entity.entityType === 'installment' ? ['principalCents', 'months', 'interestCents', 'firstCutDate', 'cutDay', 'interestIncludedInDebt', 'amortization']
+        : ['principalCents', 'balanceDate', 'includeReceivedMoney', 'loanType', 'annualRateBasisPoints', 'termMonths', 'firstPaymentDate'];
       if (!fields.some(f => canonical((head.payload as unknown as Record<string, unknown>)[f]) !== canonical((parent.payload as unknown as Record<string, unknown>)[f]))) continue;
       if (entity.entityType === 'installment') {
         const plan = parent.payload as Installment, reason = planEditReason(portfolio, { id: entity.entityId, value: plan, voided: false }, today);

@@ -11,7 +11,7 @@ El motor de `packages/domain` opera con centavos enteros y fechas civiles, sin R
 - Pagos ordinarios primero; después cuotas por corte y reparto proporcional entre planes. Las atribuciones explícitas conservan anticipos y detalles bancarios. Sin atribución bancaria, el desglose es un estimado.
 - Cortes estimados automáticamente según origen de deuda. El 3 de octubre, una deuda del periodo actual con día 11 corresponde al 11 de octubre. Confirmar guarda el objetivo bancario; los nuevos movimientos no sobrescriben ese importe.
 - Vencimiento automático o mes explícito, como Plata: corte 2 de noviembre, pago 2 de diciembre e ingreso del 30 de noviembre.
-- Préstamos sin intereses, abonos realizados/programados, ingresos recibidos opcionales y presupuesto del 15/fin de mes con gastos esenciales y reserva.
+- Préstamos personales sin intereses y bancarios a tasa fija con cuotas mensuales estimadas; pagos realizados/programados, intereses vencidos, ingresos recibidos opcionales y presupuesto del 15/fin de mes con gastos esenciales y reserva.
 - Proyecciones hasta el último compromiso. Suponen pagos completos por periodo sin nuevos cargos y nunca generan movimientos reales.
 - Resúmenes, comparación bancaria, cierres protegidos y avisos dentro de la aplicación.
 

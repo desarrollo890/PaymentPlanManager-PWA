@@ -42,9 +42,19 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       assert.equal(await page.locator('.installment-detail').count(),1); await page.screenshot({path:path.join(output,`${name}-tarjetas.png`),fullPage:true});
       await page.getByRole('dialog',{name:'Planes de Tarjeta sintética',exact:true}).getByRole('button',{name:'Cerrar ventana'}).click();
       await page.getByRole('button',{name:'Registrar movimiento',exact:true}).click(); const today = await page.locator('input[name="date"]').inputValue(); await fill(page,'amount','250'); await fill(page,'description','Compra local sintética'); await save(page);
-      for (const [label,title] of [['Movimientos','Tus movimientos'],['Calendario','Tu calendario de pagos'],['Presupuesto','Tu presupuesto'],['Préstamos','Préstamos de personas'],['Periodos','Tus resúmenes'],['Preferencias','A tu manera']]) {
+      for (const [label,title] of [['Movimientos','Tus movimientos'],['Calendario','Tu calendario de pagos'],['Presupuesto','Tu presupuesto'],['Préstamos','Préstamos personales y bancarios'],['Periodos','Tus resúmenes'],['Preferencias','A tu manera']]) {
         await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click(); await page.getByRole('heading',{name:title,exact:true,level:1}).waitFor();
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name} ${label} overflow`);
+        if (label === 'Préstamos') {
+          await page.getByRole('button',{name:'Registrar préstamo',exact:true}).click();
+          await page.locator('select[name="loanType"]').selectOption('bank');
+          await fill(page,'person','Banco sintético'); await fill(page,'description','Crédito automotriz sintético'); await fill(page,'capital','1000');
+          await fill(page,'annualRate','12.5'); await fill(page,'termMonths','12');
+          const firstPayment = new Date(`${today}T12:00:00Z`); firstPayment.setUTCDate(1); firstPayment.setUTCMonth(firstPayment.getUTCMonth()+1); firstPayment.setUTCDate(15);
+          await fill(page,'firstPaymentDate',firstPayment.toISOString().slice(0,10)); await save(page);
+          await page.getByText('tasa fija anual 12.50%',{exact:false}).waitFor();
+          await page.getByText('cuota estimada',{exact:false}).waitFor();
+        }
       }
       await page.getByRole('navigation').getByRole('link',{name:'Movimientos',exact:true}).click(); await page.getByRole('button',{name:'Importar CSV / Excel'}).click();
       const bankCsv = Buffer.from(`Fecha,Descripcion,Importe,Tipo,Referencia\n${today},Compra importada,125.50,Gasto,SYNTHETIC-CSV-ID`);

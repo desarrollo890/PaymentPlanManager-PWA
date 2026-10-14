@@ -2,6 +2,7 @@ import type { Balance, Card, Installment, Movement, Statement } from '@paymentpl
 import { addDays, addMonths, civilDate, cutOnOrAfter, cutOnOrBefore, dateInMonth, dueDateFor, paydayFor, paydaysThrough, suggestedPaymentDate } from './dates.ts';
 import { installmentQuotas } from './installments.ts';
 import type { InstallmentQuota } from './installments.ts';
+import { bankLoanProjection, bankLoanSchedule } from './loans.ts';
 import { cents, safeInteger, sumCents } from './money.ts';
 import { live, orderOf } from './portfolio.ts';
 import type { FinancialRecord, Portfolio } from './portfolio.ts';
@@ -31,7 +32,11 @@ export interface CardView {
   readonly cuts: readonly CutView[]; readonly plans: readonly PlanView[]; readonly projections: readonly CutView[];
   readonly alerts: readonly BalanceAlert[]; readonly reviewPreviousDebt: boolean;
 }
-export interface LoanView { readonly id: string; readonly person: string; readonly balanceCents: number; readonly paidCents: number; readonly scheduledCents: number }
+export interface LoanView {
+  readonly id: string; readonly person: string; readonly loanType: 'personal' | 'bank'; readonly balanceCents: number;
+  readonly paidCents: number; readonly scheduledCents: number; readonly annualRateBasisPoints: number | null;
+  readonly monthlyPaymentCents: number | null; readonly nextPaymentDate: string | null;
+}
 export interface LoanObligation { readonly loanId: string; readonly dueDate: string; readonly payday: string; readonly amountCents: number; readonly scheduled: boolean }
 export interface BudgetView {
   readonly payday: string; readonly pendingCents: number; readonly loanPendingCents: number; readonly receivedLoanCents: number;
@@ -270,13 +275,26 @@ export function financeView(p: Portfolio, today: string): FinanceView {
   const current = cards.flatMap(c => c.cuts.filter(s => s.current)), owed = current.filter(c => c.pendingCents > 0);
   const loans = live(p.loans).map(r => {
     const payments = live(p.loanPayments).filter(a => a.value.loanId === r.id), paid = total(payments.filter(a => !a.value.scheduled && a.value.date <= today), a => a.value.amountCents);
-    return { id: r.id, person: r.value.person, balanceCents: r.value.principalCents - paid, paidCents: paid,
-      scheduledCents: total(payments.filter(a => a.value.scheduled || a.value.date > today), a => a.value.amountCents) };
+    if (r.value.loanType === 'bank') {
+      const projection = bankLoanProjection(r.value, payments, today), schedule = bankLoanSchedule(r.value);
+      return { id: r.id, person: r.value.person, loanType: 'bank' as const, balanceCents: projection.balanceCents, paidCents: projection.paidCents,
+        scheduledCents: projection.scheduledCents, annualRateBasisPoints: r.value.annualRateBasisPoints ?? 0,
+        monthlyPaymentCents: schedule[0]?.paymentCents ?? null, nextPaymentDate: projection.installments[0]?.dueDate ?? null };
+    }
+    return { id: r.id, person: r.value.person, loanType: 'personal' as const, balanceCents: r.value.principalCents - paid, paidCents: paid,
+      scheduledCents: total(payments.filter(a => a.value.scheduled || a.value.date > today), a => a.value.amountCents),
+      annualRateBasisPoints: null, monthlyPaymentCents: null, nextPaymentDate: null };
   }).sort((a, b) => Number(p.loans.find(r => r.id === a.id)!.value.archived) - Number(p.loans.find(r => r.id === b.id)!.value.archived) || b.balanceCents - a.balanceCents || a.person.localeCompare(b.person));
   const obligations: LoanObligation[] = [];
   for (const loan of loans) {
     const value = p.loans.find(l => l.id === loan.id)!.value;
     if (value.archived || loan.balanceCents <= 0) continue;
+    if (value.loanType === 'bank') {
+      const payments = live(p.loanPayments).filter(a => a.value.loanId === loan.id);
+      const projection = bankLoanProjection(value, payments, today);
+      obligations.push(...projection.installments.map(item => ({ loanId: loan.id, dueDate: item.dueDate, payday: paydayFor(item.dueDate), amountCents: item.amountCents, scheduled: item.scheduled })));
+      continue;
+    }
     const scheduled = live(p.loanPayments).filter(a => a.value.loanId === loan.id && (a.value.scheduled || a.value.date > today) &&
       (value.dueDate === null || a.value.date <= value.dueDate));
     obligations.push(...scheduled.map(a => ({ loanId: loan.id, dueDate: a.value.date, payday: paydayFor(a.value.date), amountCents: a.value.amountCents, scheduled: true })));
