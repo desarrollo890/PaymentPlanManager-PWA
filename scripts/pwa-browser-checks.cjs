@@ -124,7 +124,7 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await fill(page,'description','Plan bancario sintético');await fill(page,'capital','100');await fill(page,'months','3');await page.getByLabel('Cálculo del interés').selectOption('bankPayment');await fill(page,'bankPayment','35');
       await page.getByRole('button',{name:'Previsualizar amortización'}).click();await page.getByRole('dialog').locator('table').waitFor();assert.equal(await page.getByRole('dialog').locator('tbody tr').count(),3);await save(page);
       await page.locator('.credit-months').first().click();const bankPlan=page.locator('.installment-detail').filter({hasText:'Plan bancario sintético'});await bankPlan.locator('summary').click();await bankPlan.getByRole('button',{name:'Deshacer plan'}).click();
-      await page.locator('.plan-group-cancelled summary').click();assert.equal(await page.locator('.plan-group-cancelled .installment-detail').count(),1);assert.equal(await bankPlan.getByRole('button',{name:'Editar plan'}).count(),0);await page.getByRole('button',{name:'Cerrar ventana'}).click();
+      await page.locator('.plan-group-cancelled > summary').click();assert.equal(await page.locator('.plan-group-cancelled .installment-detail').count(),1);assert.equal(await bankPlan.getByRole('button',{name:'Editar plan'}).count(),0);await page.getByRole('button',{name:'Cerrar ventana'}).click();
       await page.getByRole('navigation').getByRole('link',{name:'Periodos',exact:true}).click();await page.getByRole('button',{name:'Ver resumen',exact:true}).click();await page.getByRole('button',{name:'Cerrar periodo',exact:true}).click();await page.locator('details.plan-detail summary').click();
       assert.equal(await page.getByRole('button',{name:'Exportar cierre CSV',exact:true}).count(),2);await page.getByRole('button',{name:'Reabrir',exact:true}).click();
       await page.getByRole('navigation').getByRole('link',{name:'Aprender',exact:true}).click();await page.getByRole('button',{name:'El pago para no generar intereses del corte',exact:true}).click();await page.getByText(/Correcto. La app organiza/).waitFor();
@@ -137,6 +137,9 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();const disposable=page.locator('.credit-card').filter({has:page.getByRole('heading',{name:'Tarjeta 4',exact:true})});await disposable.locator('.card-menu summary').click();page.once('dialog',dialog=>dialog.accept());await disposable.getByRole('button',{name:'Eliminar tarjeta e historial',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.credit-card').length===3);
       console.log('PASS: '+name+', quota payments, multiple allocations, bank monthly preview, cancelled history, period close/reopen, offline education/insights/simulator and atomic card removal.');
       await page.getByRole('navigation').getByRole('link',{name:'Presupuesto',exact:true}).click();
+      await page.getByRole('heading',{name:'Tu presupuesto',level:1}).waitFor();
+      await page.setViewportSize({width:viewport.width,height:700});
+      assert(await page.locator('main tbody tr').count()>=26,'Budget includes the full installment horizon');
       const headerRect=await page.locator('.topbar').boundingBox(), menuHeadRect=await page.locator('.sidebar-head').boundingBox();
       assert(await page.locator('main').evaluate(el=>el.scrollHeight>el.clientHeight),'Budget supplies real scrollable content');
       await page.locator('main').evaluate(el=>el.scrollTop=el.scrollHeight);await page.waitForTimeout(100);
