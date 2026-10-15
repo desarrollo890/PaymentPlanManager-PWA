@@ -228,3 +228,9 @@ html, body, #root { height: 100%; overflow: hidden; }
 @media (max-width: 1100px) { .home-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 800px) { .home-columns { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 480px) { .home-metrics { grid-template-columns: minmax(0, 1fr); } }
+/* Filas de dos columnas: sin desbordes y ancho completo si solo hay un panel. */
+.home-columns > .panel { min-width: 0; }
+.home-columns > .panel:only-child { grid-column: 1 / -1; }
+.home-columns .planning-grid { grid-template-columns: minmax(0, 1fr); }
+.home-columns .table-wrap, .home-columns .payday-body { overflow-x: auto; }
+@media (min-width: 801px) and (max-width: 1100px) { .home-columns { grid-template-columns: minmax(0, 1fr); } }
