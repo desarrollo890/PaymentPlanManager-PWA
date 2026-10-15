@@ -110,6 +110,10 @@ export type Loan = {
   readonly "nextCapitalCents"?: (number) | (null);
   readonly "vatBasisPoints"?: number;
   readonly "exemptInterestBasisPoints"?: number;
+  readonly "exemptInterestOverrides"?: ReadonlyArray<{
+  readonly "dueDate": string;
+  readonly "amountCents": number;
+}>;
   readonly "includeReceivedMoney": boolean;
   readonly "archived": boolean;
   readonly "recordedAt": (string) | (null);

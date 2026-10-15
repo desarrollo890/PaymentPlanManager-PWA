@@ -88,7 +88,8 @@ function FinancialEditor({ modal, session, today, close, save }: {
           const firstPaymentDate = loanType === 'bank' ? str(data, 'firstPaymentDate') : null;
           const paymentFrequency: 'monthly' | 'biweekly' = loanType === 'bank' ? str(data, 'paymentFrequency') as 'monthly' | 'biweekly' : 'monthly';
           const progressiveFields = progressive ? { amortizationMethod: 'progressive' as const, remainingInstallments: Number(str(data, 'remainingInstallments')),
-            nextCapitalCents: parseMoney(data.get('nextCapital')), vatBasisPoints: parseRateBasisPoints(str(data, 'vat')), exemptInterestBasisPoints: parseRateBasisPoints(str(data, 'exempt')) } : {};
+            nextCapitalCents: parseMoney(data.get('nextCapital')), vatBasisPoints: parseRateBasisPoints(str(data, 'vat')), exemptInterestBasisPoints: parseRateBasisPoints(str(data, 'exempt')),
+            ...(previous?.value.exemptInterestOverrides ? { exemptInterestOverrides: previous.value.exemptInterestOverrides } : {}) } : {};
           const base = { person: str(data, 'person'), description: str(data, 'description'), principalCents: parseMoney(data.get('capital')), balanceDate: str(data, 'date'),
             loanType, annualRateBasisPoints, paymentFrequency, termMonths, firstPaymentDate, ...progressiveFields,
             includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false };

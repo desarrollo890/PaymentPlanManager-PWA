@@ -39,6 +39,14 @@ test('bank movements: VAT is 16 % of the taxable interest only; exempt interest 
     remainingInstallments: 8, exemptInterestBasisPoints: 0 });
   statements.forEach(([, , capital], i) => assert(Math.abs(rows[i]!.capitalCents - capital) <= 10, `capital ${i + 1}: ${rows[i]!.capitalCents} vs ${capital}`));
 });
+test('real exempt interest per installment overrides the percentage and VAT taxes only the remainder', () => {
+  const rows = progressiveSchedule({ ...terms, exemptInterestByDate: { '2026-10-15': 61935 } });
+  assert.equal(rows[0]!.exemptInterestCents, 61935);
+  assert.equal(rows[0]!.vatCents, Math.round((rows[0]!.interestCents - 61935) * 0.16));
+  assert.equal(rows[0]!.paymentCents, rows[0]!.capitalCents + rows[0]!.interestCents + rows[0]!.vatCents);
+  assert.equal(rows[1]!.vatCents, periodVatCents(rows[1]!.interestCents, 650, 1600));
+  assert.equal(progressiveSchedule({ ...terms, exemptInterestByDate: { '2026-10-15': 10 ** 9 } })[0]!.vatCents, 0);
+});
 test('progressive schedule starts at the current balance, grows capital and closes at zero with a forced final capital', () => {
   const rows = progressiveSchedule(terms);
   assert.equal(rows.length, 6);

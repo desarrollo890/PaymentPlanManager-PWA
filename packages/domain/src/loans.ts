@@ -26,7 +26,8 @@ export function progressiveTerms(loan: Loan): ProgressiveLoanTerms {
   return { balanceCents: loan.principalCents, lastPaymentDate: loan.balanceDate, firstPaymentDate: loan.firstPaymentDate,
     remainingInstallments: loan.remainingInstallments, nextCapitalCents: loan.nextCapitalCents, annualRateBasisPoints: loan.annualRateBasisPoints,
     frequency: loan.paymentFrequency ?? 'monthly', vatBasisPoints: loan.vatBasisPoints ?? DEFAULT_VAT_BASIS_POINTS,
-    exemptInterestBasisPoints: loan.exemptInterestBasisPoints ?? 0 };
+    exemptInterestBasisPoints: loan.exemptInterestBasisPoints ?? 0,
+    exemptInterestByDate: Object.fromEntries((loan.exemptInterestOverrides ?? []).map(item => [item.dueDate, item.amountCents])) };
 }
 
 export function progressiveLastDueDate(loan: Loan): string {

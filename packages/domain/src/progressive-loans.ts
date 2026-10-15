@@ -15,6 +15,8 @@ export interface ProgressiveLoanTerms {
   readonly frequency: ProgressiveFrequency;
   readonly vatBasisPoints?: number;
   readonly exemptInterestBasisPoints?: number;
+  // Interés exento real facturado por fecha de cuota; tiene prioridad sobre el porcentaje.
+  readonly exemptInterestByDate?: Readonly<Record<string, number>>;
 }
 
 export interface ProgressiveRow {
@@ -26,6 +28,7 @@ export interface ProgressiveRow {
   readonly capitalCents: number;
   readonly extraCapitalCents: number;
   readonly interestCents: number;
+  readonly exemptInterestCents: number;
   readonly vatCents: number;
   readonly paymentCents: number;
   readonly closingBalanceCents: number;
@@ -73,9 +76,12 @@ export function progressiveSchedule(terms: ProgressiveLoanTerms, extraCapitalByI
     const interest = periodInterestCents(balance, annualRateBasisPoints, days);
     const last = index === dates.length - 1;
     const capital = last ? balance : Math.min(balance, Math.round(base) + extra);
-    const vatCents = periodVatCents(interest, exempt, vat);
+    const exemptCents = terms.exemptInterestByDate?.[dueDate], exemptApplied = exemptCents === undefined
+      ? safeInteger(roundRatio(BigInt(interest) * BigInt(exempt), 10_000n)) : Math.min(interest, exemptCents);
+    const vatCents = exemptCents === undefined ? periodVatCents(interest, exempt, vat)
+      : safeInteger(roundRatio(BigInt(interest - exemptApplied) * BigInt(vat), 10_000n));
     rows.push({ number: index + 1, previousDate: previous, dueDate, days, openingBalanceCents: balance, capitalCents: capital,
-      extraCapitalCents: last ? 0 : Math.min(extra, capital), interestCents: interest, vatCents, paymentCents: capital + interest + vatCents,
+      extraCapitalCents: last ? 0 : Math.min(extra, capital), interestCents: interest, exemptInterestCents: exemptApplied, vatCents, paymentCents: capital + interest + vatCents,
       closingBalanceCents: balance - capital });
     balance -= capital; base *= growth; previous = dueDate;
   }
