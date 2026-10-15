@@ -31,9 +31,10 @@ export interface ProgressiveRow {
   readonly closingBalanceCents: number;
 }
 
+// Convención 30E/360 del banco: los días 31 cuentan como 30, de modo que una quincena (15→31) son 15 días.
 export function daysBetween(from: string, to: string): number {
   const a = civilDate(from), b = civilDate(to);
-  return Math.round((Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / 86_400_000);
+  return (b.year - a.year) * 360 + (b.month - a.month) * 30 + Math.min(b.day, 30) - Math.min(a.day, 30);
 }
 
 export function progressiveDueDates(firstPaymentDate: string, count: number, frequency: ProgressiveFrequency): string[] {

@@ -5,21 +5,22 @@ import { FinancialCommands } from '@paymentplan/application';
 import { applyChanges, emptyPortfolio, financeView, periodInterestCents, periodVatCents, progressiveSchedule } from '@paymentplan/domain';
 import type { Change, Portfolio, ProgressiveLoanTerms } from '@paymentplan/domain';
 
-// Filas reales de Santander (saldo inicial, capital, interés, IVA, pago total) en centavos.
-const real = [[28132364, 148336, 403984, 60113, 612433], [27984028, 150498, 401822, 60387, 612707],
-  [27833530, 152691, 399629, 56633, 608953], [27680839, 154916, 393093, 57989, 605998]] as const;
+// Filas reales de Santander (saldo inicial, capital, interés, IVA, pago total) en centavos. El saldo inicial se dedujo del interés (35 % / 360 × 15 días).
+const real = [[27702000, 148336, 403984, 60113, 612433], [27553664, 150498, 401822, 60387, 612707],
+  [27403166, 152691, 399629, 56633, 608953], [27250475, 154916, 397404, 53675, 605995]] as const;
 
-const terms: ProgressiveLoanTerms = { balanceCents: 27680839, lastPaymentDate: '2026-09-30', firstPaymentDate: '2026-10-15', remainingInstallments: 6,
+const terms: ProgressiveLoanTerms = { balanceCents: 27250475, lastPaymentDate: '2026-09-30', firstPaymentDate: '2026-10-15', remainingInstallments: 6,
   nextCapitalCents: 154916, annualRateBasisPoints: 3500, frequency: 'biweekly', vatBasisPoints: 1600, exemptInterestBasisPoints: 650 };
 
-test('real statement rows keep the balance chain, payment sum and capital growth of the bank', () => {
+test('real statement rows: 35 % over 360 with 15-day quincenas reproduces interest and capital growth', () => {
   real.forEach(([balance, capital, interest, vat, payment], index) => {
     assert.equal(capital + interest + vat, payment);
-    if (index > 0) assert.equal(real[index - 1]![0] - real[index - 1]![1], balance);
+    if (index > 0) assert(Math.abs(real[index - 1]![0] - real[index - 1]![1] - balance) <= 2);
+    assert(Math.abs(periodInterestCents(balance, 3500, 15) - interest) <= 4, `interest row ${index + 1}`);
   });
   const rows = progressiveSchedule({ ...terms, balanceCents: real[0]![0], nextCapitalCents: real[0]![1], lastPaymentDate: '2026-08-15', firstPaymentDate: '2026-08-31', remainingInstallments: 8 });
   for (let i = 0; i < 4; i++) assert(Math.abs(rows[i]!.capitalCents - real[i]![1]) <= 5, `capital row ${i + 1}: ${rows[i]!.capitalCents} vs ${real[i]![1]}`);
-  assert.deepEqual(rows.slice(0, 4).map(row => row.days), [16, 15, 15, 15]);
+  assert.deepEqual(rows.slice(0, 4).map(row => row.days), [15, 15, 15, 15]);
 });
 test('interest uses real days over a 360-day year and VAT only taxes the non-exempt share', () => {
   assert.equal(periodInterestCents(10_000_000, 3500, 15), 145833);
