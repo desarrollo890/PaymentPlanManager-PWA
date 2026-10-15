@@ -31,7 +31,16 @@ export function Icon({ name, size = 20 }: { name: string; size?: number }) {
     people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM2 21v-3a7 7 0 0 1 14 0v3m1-17a4 4 0 0 1 0 8m1 3a5 5 0 0 1 4 5v1',
     report: 'M5 3h11l3 3v15H5ZM9 8h5m-5 4h6m-6 4h6', arrow: 'M5 12h14m-5-5 5 5-5 5', shield: 'm12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6ZM8 12l3 3 5-6',
     'panel-collapse': 'M3 4h18v16H3ZM8 4v16m8-12-4 4 4 4', 'panel-expand': 'M3 4h18v16H3ZM8 4v16m4-12 4 4-4 4',
-    plus: 'M12 5v14M5 12h14', lock: 'M6 10h12v11H6ZM8 10V6a4 4 0 1 1 8 0v4', sync: 'M20 8a8 8 0 0 0-14-4L3 7m0-5v5h5M4 16a8 8 0 0 0 14 4l3-3m0 5v-5h-5',
+    plus: 'M12 5v14M5 12h14',
+    wallet: 'M3 7h16a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2ZM3 7l12-3v3M16 14h2',
+    repeat: 'M4 11V9a3 3 0 0 1 3-3h12m-3-3 3 3-3 3M20 13v2a3 3 0 0 1-3 3H5m3 3-3-3 3-3',
+    target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 12h.01',
+    tag: 'M3 3h8l10 10-8 8L3 11ZM7.5 7.5h.01',
+    chart: 'M4 20V4m0 16h16M8 16v-5m4 5V8m4 8v-3',
+    archive: 'M3 4h18v4H3ZM5 8v12h14V8M10 12h4',
+    calculator: 'M5 3h14v18H5ZM8 7h8M8 12h.01m3.99 0h.01m4 0h.01M8 16h.01m3.99 0h.01m4 0h.01',
+    book: 'M4 4h6a3 3 0 0 1 2 1 3 3 0 0 1 2-1h6v15h-6a3 3 0 0 0-2 1 3 3 0 0 0-2-1H4ZM12 5v15',
+    lock: 'M6 10h12v11H6ZM8 10V6a4 4 0 1 1 8 0v4', sync: 'M20 8a8 8 0 0 0-14-4L3 7m0-5v5h5M4 16a8 8 0 0 0 14 4l3-3m0 5v-5h-5',
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.card} /></svg>;
 }

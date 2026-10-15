@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { VaultSession, assertBackup, decodeBatches, synchronizeDrive, importLegacy } from '@paymentplan/application';
 import type { EncryptedBackup, ImportPreview } from '@paymentplan/application';
 import { createVault, unlockVault, recoverVault, assertVaultHeader } from '@paymentplan/crypto';
@@ -23,11 +23,14 @@ import { PlanningView, GoalBudget } from './planning-views.tsx';
 import { ConflictReview } from './conflicts.tsx';
 
 const google = new GoogleAccess(oauth.web.clientId);
-const sections = [ ['inicio', 'Inicio', 'home', 'Tu espacio financiero'], ['tarjetas', 'Tarjetas', 'card', 'Tus tarjetas'],
-  ['movimientos', 'Movimientos', 'activity', 'Tus movimientos'], ['plan', 'Calendario', 'calendar', 'Tu calendario de pagos'],
-  ['presupuesto', 'Presupuesto', 'report', 'Tu presupuesto'], ['prestamos', 'Préstamos', 'people', 'Préstamos personales y bancarios'],
-  ['categorias', 'Categorías', 'report', 'Tus categorías de gastos'], ['recurrencias', 'Recurrencias', 'calendar', 'Cargos recurrentes'], ['cuentas', 'Cuentas', 'card', 'Tu efectivo y débito'], ['metas', 'Metas', 'shield', 'Tus metas de ahorro'],
-  ['periodos', 'Periodos', 'report', 'Tus resúmenes'], ['analisis', 'Análisis', 'report', 'Gastos y costos'], ['simulador', 'Simulador', 'activity', 'Explora cómo reducir tu deuda'], ['aprender', 'Aprender', 'report', 'Educación financiera'], ['preferencias', 'Preferencias', 'settings', 'A tu manera'] ] as const;
+const sections = [ ['inicio', 'Inicio', 'home', 'Tu espacio financiero', 'HOY'],
+  ['cuentas', 'Cuentas', 'wallet', 'Tu efectivo y débito', 'DINERO'], ['movimientos', 'Movimientos', 'activity', 'Tus movimientos', 'DINERO'],
+  ['tarjetas', 'Tarjetas', 'card', 'Tus tarjetas', 'DEUDAS'], ['prestamos', 'Préstamos', 'people', 'Préstamos personales y bancarios', 'DEUDAS'],
+  ['presupuesto', 'Presupuesto', 'report', 'Tu presupuesto', 'PLANEACIÓN'], ['plan', 'Calendario', 'calendar', 'Tu calendario de pagos', 'PLANEACIÓN'],
+  ['recurrencias', 'Recurrencias', 'repeat', 'Cargos recurrentes', 'PLANEACIÓN'], ['metas', 'Metas', 'target', 'Tus metas de ahorro', 'PLANEACIÓN'],
+  ['categorias', 'Categorías', 'tag', 'Tus categorías de gastos', 'ENTENDER'], ['analisis', 'Análisis', 'chart', 'Gastos y costos', 'ENTENDER'],
+  ['periodos', 'Periodos', 'archive', 'Tus resúmenes', 'ENTENDER'], ['simulador', 'Simulador', 'calculator', 'Explora cómo reducir tu deuda', 'ENTENDER'],
+  ['aprender', 'Aprender', 'book', 'Educación financiera', 'ENTENDER'], ['preferencias', 'Preferencias', 'settings', 'A tu manera', 'AJUSTES'] ] as const;
 type Section = typeof sections[number][0];
 const selectedSection = (): Section => sections.find(s => s[0] === window.location.hash.slice(2))?.[0] ?? 'inicio';
 const message = (error: unknown): string => error instanceof Error ? error.message : 'No se pudo completar la operación.';
@@ -157,8 +160,8 @@ export function App() {
   }, [session, revision, today, blocked]);
   const googleButtons = <div className="inline-actions">{!googleReady ? <button className="secondary" disabled={busy} onClick={() => void run(async () => { await google.prepare(); setGoogleReady(true); })}>Preparar Google Drive</button> : <button className="secondary" disabled={busy} onClick={authorize}>{authorized ? 'Renovar autorización' : 'Autorizar Google Drive'}</button>}{authorized && <button className="text-button" disabled={busy} onClick={() => { google.forget(); setAuthorized(false); setRemoteHeaders([]); setNotice('Google desconectado de esta sesión.'); }}>Desconectar</button>}</div>;
   return <div className={`app-layout${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}><a className="skip-link" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Ir al contenido</a>
-    <aside className="sidebar"><div className="sidebar-head"><a className="brand" href="#/inicio" aria-label="PaymentPlan · Inicio"><span className="brand-symbol">P</span><span>Payment<span className="brand-light">Plan</span></span></a><button type="button" className="icon-button sidebar-toggle" aria-label={sidebarCollapsed ? 'Expandir menú' : 'Reducir menú'} title={sidebarCollapsed ? 'Expandir menú' : 'Reducir menú'} aria-expanded={!sidebarCollapsed} aria-controls="primary-navigation" onClick={toggleSidebar}><Icon name={sidebarCollapsed ? 'panel-expand' : 'panel-collapse'} size={18} /></button></div><p className="nav-label">MI ESPACIO</p>
-      <nav id="primary-navigation" aria-label="Navegación principal">{sections.map(([id, label, icon]) => <a key={id} href={`#/${id}`} aria-label={label} title={label} className={`nav-item ${section === id ? 'active' : ''}`} aria-current={section === id ? 'page' : undefined}><Icon name={icon} /><span>{label}</span></a>)}</nav>
+    <aside className="sidebar"><div className="sidebar-head"><a className="brand" href="#/inicio" aria-label="PaymentPlan · Inicio"><span className="brand-symbol">P</span><span>Payment<span className="brand-light">Plan</span></span></a><button type="button" className="icon-button sidebar-toggle" aria-label={sidebarCollapsed ? 'Expandir menú' : 'Reducir menú'} title={sidebarCollapsed ? 'Expandir menú' : 'Reducir menú'} aria-expanded={!sidebarCollapsed} aria-controls="primary-navigation" onClick={toggleSidebar}><Icon name={sidebarCollapsed ? 'panel-expand' : 'panel-collapse'} size={18} /></button></div>
+      <nav id="primary-navigation" aria-label="Navegación principal">{sections.map(([id, label, icon, , group], i) => <Fragment key={id}>{group !== sections[i - 1]?.[4] && <p className="nav-group" aria-hidden="true">{group}</p>}<a href={`#/${id}`} aria-label={label} title={label} className={`nav-item ${section === id ? 'active' : ''}`} aria-current={section === id ? 'page' : undefined}><Icon name={icon} /><span>{label}</span></a></Fragment>)}</nav>
       <div className="sidebar-note"><Icon name="shield" /><p>Tu información cifrada.<br />Tu plan, en cada quincena.</p></div></aside>
     <div className="main-shell"><header className="topbar"><span>Finanzas personales <span className="separator">/</span> <strong>{sectionData[1]}</strong></span>
       {session && <div className="header-actions"><button className="primary" disabled={busy || blocked || !view?.cards.length} onClick={() => setModal({ type: 'movement' })}><Icon name="plus" size={16} /><span>Registrar movimiento</span></button>
