@@ -30,6 +30,15 @@ test('interest uses real days over a 360-day year and VAT only taxes the non-exe
   assert.equal(periodVatCents(100000, 0, 1600), 16000);
   assert.equal(periodVatCents(100000, 10000, 1600), 0);
 });
+test('bank movements: VAT is 16 % of the taxable interest only; exempt interest is a separate variable amount', () => {
+  // [interés gravado, interés exento, capital, IVA] facturados el 15-abr, 30-abr, 15-may, 31-may, 15-jun y 30-jun.
+  const statements = [[308278, 113818, 130224, 49324], [386088, 34111, 132121, 61774], [395730, 22543, 134047, 63317],
+    [416319, 0, 136001, 66611], [414337, 0, 137983, 66294], [412326, 0, 139994, 65972]] as const;
+  statements.forEach(([taxable, , , vat], i) => assert(Math.abs(periodVatCents(taxable, 0, 1600) - vat) <= 1, `VAT row ${i + 1}`));
+  const rows = progressiveSchedule({ ...terms, balanceCents: 28941500, nextCapitalCents: 130224, lastPaymentDate: '2026-03-31', firstPaymentDate: '2026-04-15',
+    remainingInstallments: 8, exemptInterestBasisPoints: 0 });
+  statements.forEach(([, , capital], i) => assert(Math.abs(rows[i]!.capitalCents - capital) <= 10, `capital ${i + 1}: ${rows[i]!.capitalCents} vs ${capital}`));
+});
 test('progressive schedule starts at the current balance, grows capital and closes at zero with a forced final capital', () => {
   const rows = progressiveSchedule(terms);
   assert.equal(rows.length, 6);
