@@ -13,3 +13,4 @@ export * from './reminders.ts';
 export * from './payoff.ts';
 
 export * from './extensions.ts';
+export * from './home.ts';

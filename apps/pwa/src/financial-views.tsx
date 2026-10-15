@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
-import { addMonths, live, paydaysThrough, progressiveSchedule, progressiveTerms, quotaBalances, suggestedPaymentDate } from '@paymentplan/domain';
+import { addMonths, homeSummary, live, paydaysThrough, progressiveSchedule, progressiveTerms, quotaBalances, suggestedPaymentDate } from '@paymentplan/domain';
 import type { CardView, Change, FinanceView, LoanView, Portfolio } from '@paymentplan/domain';
 import type { Loan } from '@paymentplan/contracts';
 import { csvCell, Dialog, download, Empty, Icon, money, shortDate } from './ui.tsx';
@@ -8,8 +8,6 @@ import type { FinancialModal } from './financial-forms.tsx';
 type Modal = (modal: FinancialModal) => void;
 type Act = (prepare: () => Change[] | Promise<Change[]>) => void;
 export function Dashboard({ view, modal, p }: { view: FinanceView; modal: Modal; p: Portfolio }) {
-  const next = view.budgets.find(b => b.payday > view.today), current = view.budgets.filter(b => b.payday <= view.today).at(-1);
-  const budget = current ?? next;
   const paymentPeriods = paydaysThrough(view.today, addMonths(view.today, 3, 1)).slice(0, 4).map(payday => {
     const period = view.budgets.find(candidate => candidate.payday === payday);
     return {
@@ -20,9 +18,33 @@ export function Dashboard({ view, modal, p }: { view: FinanceView; modal: Modal;
       .map(cut => ({ ...cut, name: card.name }))).sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name)),
     };
   });
-  return <><div className="metrics"><a className="metric-link" href="#/plan" aria-label="Ver todo el calendario de pagos"><article><span>Deuda en tarjetas</span><strong>{money(view.debtCents)}</strong><small>{view.cards.length} tarjetas · saldo a favor {money(view.creditCents)}</small></article></a>
-    <article><span>Préstamos y créditos</span><strong>{money(view.loanDebtCents)}</strong><small>Saldo estimado · sin fecha {money(view.undatedLoanDebtCents)}</small></article>
-    <article className="highlight"><span>{budget ? `Quincena del ${shortDate(budget.payday)}` : 'Próxima quincena'}</span><strong>{money((budget?.pendingCents ?? 0) + (budget?.loanPendingCents ?? 0))}</strong><small>Tarjetas y préstamos por pagar{next && next !== budget ? ` · próxima ${money(next.pendingCents + next.loanPendingCents)}` : ''}</small></article></div>
+  const home = homeSummary(p, view), cutFor = (cardId: string) => view.cards.find(c => c.id === cardId)?.cuts.find(c => c.current);
+  const segmentLabels = { expenses: 'Gastos esenciales', reserve: 'Reserva', cards: 'Tarjetas', loans: 'Préstamos' } as const;
+  const periodTotal = home.period ? Math.max(home.period.incomeCents, home.period.segments.reduce((sum, s) => sum + s.cents, 0)) : 0;
+  return <><section className="panel home-actions" aria-label="Acciones de la quincena"><h2>Qué hacer ahora</h2>
+      {home.actions.length ? <ul>{home.actions.map(a => a.kind === 'payroll' ? <li key={'p' + a.payday}><span><strong>Confirmar ingreso del {shortDate(a.payday)}</strong><small>Se abona a {a.accountName}</small></span><button className="primary" onClick={() => modal({ type: 'payroll', payday: a.payday })}>Confirmar ingreso</button></li>
+        : a.kind === 'loanInstallment' ? <li key={'l' + a.loanId + a.dueDate}><span><strong>Pagar {a.person} · {shortDate(a.dueDate)}</strong><small>{money(a.amountCents)} estimados desde {a.accountName}{a.waitingForPayroll ? ' · confirma antes el ingreso' : ''}</small></span><button className="primary" disabled={a.waitingForPayroll} onClick={() => modal({ type: 'loanInstallment', loanId: a.loanId, dueDate: a.dueDate })}>Registrar pago</button></li>
+        : <li key={'c' + a.cardId}><span><strong>Revisar corte de {a.cardName}</strong><small>Corte del {shortDate(a.cutDate)} sin confirmar con el banco</small></span><button className="secondary" onClick={() => { const cut = cutFor(a.cardId); if (cut) modal({ type: 'cut', cardId: a.cardId, cut }); }}>Revisar corte</button></li>)}</ul>
+        : <p className="muted">Todo al día. No tienes ingresos, cuotas ni cortes pendientes de registrar.</p>}</section>
+    <div className="metrics home-metrics">
+      <a className="metric-link" href="#/cuentas"><article><span>Disponible</span><strong>{home.hasAccounts ? money(home.availableCents) : '—'}</strong><small>{home.hasAccounts ? `Saldo ${money(home.totalCashCents)} · apartado en metas ${money(home.reservedCents)}` : 'Registra una cuenta para verlo'}</small></article></a>
+      <a className="metric-link" href="#/presupuesto"><article><span>Por pagar{home.period ? ` · ${shortDate(home.period.payday)}` : ''}</span><strong>{money(home.period?.payCents ?? 0)}</strong><small>Tarjetas y préstamos de la quincena</small></article></a>
+      <a className="metric-link" href="#/presupuesto"><article className={home.period && home.period.leftoverCents < 0 ? 'negative-card' : 'highlight'}><span>Sobrante proyectado</span><strong className={home.period && home.period.leftoverCents < 0 ? 'negative' : ''}>{money(home.period?.leftoverCents ?? 0)}</strong><small>{home.period?.estimated ? 'Con ingreso estimado' : 'Con ingreso recibido'}</small></article></a>
+      <a className="metric-link" href="#/plan" aria-label="Ver todo el calendario de pagos"><article><span>Deuda total</span><strong>{money(home.debtCents)}</strong><small>Tarjetas {money(view.debtCents)} · préstamos {money(view.loanDebtCents)}</small></article></a></div>
+    {home.period && home.period.incomeCents > 0 && <section className="panel"><div className="section-heading"><div><h2>Salud de la quincena del {shortDate(home.period.payday)}</h2><p className="caption">Ingreso {money(home.period.incomeCents)} repartido entre gastos, reserva y pagos.</p></div></div>
+      <div className="health-bar" role="img" aria-label={`Ingreso ${money(home.period.incomeCents)}, sobrante ${money(home.period.leftoverCents)}`}>{home.period.segments.filter(s => s.cents > 0).map(s => <span key={s.key} className={`seg-${s.key}`} style={{ width: `${(s.cents / periodTotal) * 100}%` }} title={`${segmentLabels[s.key]} ${money(s.cents)}`} />)}{home.period.leftoverCents > 0 && <span className="seg-left" style={{ width: `${(home.period.leftoverCents / periodTotal) * 100}%` }} title={`Sobrante ${money(home.period.leftoverCents)}`} />}</div>
+      <ul className="health-legend">{home.period.segments.map(s => <li key={s.key}><i className={`seg-${s.key}`} />{segmentLabels[s.key]} <strong>{money(s.cents)}</strong></li>)}<li><i className="seg-left" />Sobrante <strong className={home.period.leftoverCents < 0 ? 'negative' : ''}>{money(home.period.leftoverCents)}</strong></li></ul></section>}
+    {view.loans.some(l => l.loanType === 'bank' && l.balanceCents > 0) && <section className="panel"><div className="section-heading"><h2>Préstamos bancarios</h2><a href="#/prestamos">Ver préstamos →</a></div>
+      <div className="planning-grid">{view.loans.filter(l => l.loanType === 'bank' && l.balanceCents > 0).map(l => { const done = l.paidCents + l.balanceCents > 0 ? Math.round(l.paidCents / (l.paidCents + l.balanceCents) * 100) : 0; return <article className="planning-card" key={l.id}><h2>{l.person}</h2>
+        <strong className="planning-amount">{money(l.progressive?.balanceToDateCents ?? l.balanceCents)}</strong><small>{l.progressive ? 'Saldo al día' : 'Saldo estimado'}{l.progressive ? ` · monto utilizado ${money(l.progressive.usedAmountCents)}` : ''}</small>
+        <small>{l.progressive ? `${l.progressive.remainingInstallments} cuotas restantes` : 'Cuota fija'}{l.nextPaymentDate ? ` · próxima ${shortDate(l.nextPaymentDate)}` : ''}{l.installmentPaymentCents ? ` · ${money(l.installmentPaymentCents)}` : ''}</small>
+        <div className="progress-track" role="img" aria-label={`Avance de pago ${done}%`}><span style={{ width: `${done}%` }} /></div><small>{done}% pagado desde el registro</small></article>; })}</div></section>}
+    <div className="home-columns">
+      <section className="panel"><div className="section-heading"><h2>Cuentas y metas</h2><a href="#/cuentas">Ver cuentas →</a></div>
+        {home.accounts.length ? <ul className="plain-list">{home.accounts.map(a => <li key={a.id}><span>{a.name}{a.payroll && <small className="tag">Nómina</small>}</span><strong>{money(a.balanceCents)}</strong></li>)}</ul> : <p className="muted">Aún no registras cuentas de efectivo o débito.</p>}
+        {home.goals.map(g => <div key={g.id} className="goal-row"><span>{g.name}<small>{money(g.savedCents)} de {money(g.targetCents)}</small></span><div className="progress-track"><span style={{ width: `${g.targetCents > 0 ? Math.min(100, Math.round(g.savedCents / g.targetCents * 100)) : 0}%` }} /></div></div>)}</section>
+      <section className="panel"><div className="section-heading"><h2>Gasto del mes</h2><a href="#/categorias">Ver categorías →</a></div>
+        {home.categories.length ? <ul className="plain-list">{home.categories.map(c => <li key={c.id}><span><i className="dot" style={{ background: c.color }} />{c.name}{c.limitCents !== null && <small className={c.spentCents > c.limitCents ? 'negative' : ''}>Límite {money(c.limitCents)}{c.spentCents > c.limitCents ? ' · excedido' : ''}</small>}</span><strong>{money(c.spentCents)}</strong></li>)}</ul> : <p className="muted">Sin gastos categorizados este mes.</p>}</section></div>
     <section className="panel"><div className="section-heading"><div><h2>Plan de pagos por quincena</h2><p className="caption">Las próximas cuatro quincenas organizan los pagos estimados y confirmados de tus tarjetas.</p></div></div>
       {!view.cards.length ? <Empty title="Tu cartera empieza aquí" text="Registra el límite, disponible y deuda inicial de tus tarjetas. Después agrega gastos, pagos y planes a meses." action={<button className="primary" onClick={() => modal({ type: 'card' })}>Registrar mi primera tarjeta</button>} /> :
         <div className="payday-groups">{paymentPeriods.map((period, index) => <details className="payday-group" key={period.payday} open={index === 0}>

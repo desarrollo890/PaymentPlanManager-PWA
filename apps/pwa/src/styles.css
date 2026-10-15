@@ -205,3 +205,26 @@ html, body, #root { height: 100%; overflow: hidden; }
   .plan-group > summary { padding-inline: 11px; }
   .plan-group-content { padding-inline: 10px; }
 }
+
+/* Inicio: acciones, salud de la quincena y resúmenes. */
+.home-actions ul, .plain-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.home-actions li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--border-soft); border-radius: 10px; background: var(--soft); }
+.home-actions li span, .goal-row > span { display: grid; }
+.home-actions small, .goal-row small, .plain-list small { color: var(--muted); font-size: 12px; }
+.home-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.negative-card { border-color: #C0392B; }
+.health-bar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: var(--soft-strong); }
+.health-bar span { height: 100%; }
+.seg-expenses { background: #536580; } .seg-reserve { background: #8DA2C0; } .seg-cards { background: #0067D8; } .seg-loans { background: #00A3A3; } .seg-left { background: #2E9E5B; }
+.health-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0 0; padding: 0; font-size: 13px; }
+.health-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.progress-track { height: 8px; border-radius: 4px; background: var(--soft-strong); overflow: hidden; margin: 8px 0 4px; }
+.progress-track span { display: block; height: 100%; background: var(--primary); }
+.home-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.plain-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.plain-list li > span { display: grid; }
+.plain-list .dot, .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+.goal-row { margin-top: 12px; }
+@media (max-width: 1100px) { .home-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 800px) { .home-columns { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .home-metrics { grid-template-columns: minmax(0, 1fr); } }

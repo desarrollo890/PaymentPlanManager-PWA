@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { FinancialCommands } from '@paymentplan/application';
-import { applyChanges, cashBalance, emptyPortfolio, financeView, live } from '@paymentplan/domain';
+import { applyChanges, cashBalance, emptyPortfolio, financeView, homeSummary, live } from '@paymentplan/domain';
 import type { Change, Portfolio } from '@paymentplan/domain';
 
 const today = '2026-10-20';
@@ -72,4 +72,26 @@ test('bank installments are charged to the linked account only after the payroll
 test('a loan without charge account cannot be paid from an account', async () => {
   const h = harness(); h.commit(h.cmd.saveIncome(income(null))); bank(h, null);
   await assert.rejects(h.cmd.payLoanInstallment(h.p.loans[0]!.id, '2026-10-15', 100), /cuenta de débito/);
+});
+
+test('home summary lists pending actions in order and totals cash, goals and debt', async () => {
+  const h = harness(), id = h.account(); h.commit(h.cmd.saveIncome(income(id))); bank(h, id);
+  let home = homeSummary(h.p, financeView(h.p, today));
+  assert.deepEqual(home.actions.map(a => a.kind), ['payroll', 'payroll', 'payroll', 'loanInstallment']);
+  assert.equal(home.actions.find(a => a.kind === 'loanInstallment')?.kind === 'loanInstallment' && (home.actions.find(a => a.kind === 'loanInstallment') as { waitingForPayroll: boolean }).waitingForPayroll, true);
+  assert.equal(home.accounts[0]?.payroll, true);
+  assert.equal(home.availableCents, 100000);
+  h.commit(await h.cmd.receivePayroll('2026-10-15', 2000000));
+  home = homeSummary(h.p, financeView(h.p, today));
+  assert.equal(home.actions.some(a => a.kind === 'payroll' && a.payday === '2026-10-15'), false);
+  const loan = home.actions.find(a => a.kind === 'loanInstallment') as { waitingForPayroll: boolean };
+  assert.equal(loan.waitingForPayroll, false);
+  assert.equal(home.availableCents, 2100000);
+  assert.equal(home.period?.payday, '2026-10-15');
+  assert.equal(home.debtCents, financeView(h.p, today).loanDebtCents + financeView(h.p, today).debtCents);
+});
+
+test('home summary without data is empty and safe', () => {
+  const h = harness(), home = homeSummary(h.p, financeView(h.p, today));
+  assert.equal(home.actions.length, 0); assert.equal(home.hasAccounts, false); assert.equal(home.period?.payCents, 0); assert.equal(home.debtCents, 0);
 });
