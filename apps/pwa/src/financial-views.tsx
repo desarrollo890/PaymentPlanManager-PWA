@@ -305,8 +305,8 @@ export function Dashboard({
                     </small>
                     <small>
                       {l.progressive
-                        ? `${l.progressive.remainingInstallments} cuotas restantes`
-                        : "Cuota fija"}
+                        ? ` · cuotas restantes ${l.progressive.remainingInstallments} `
+                        : " · Cuota fija"}
                       {l.nextPaymentDate
                         ? ` · próxima ${shortDate(l.nextPaymentDate)}`
                         : ""}
