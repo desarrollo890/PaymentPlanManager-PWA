@@ -68,6 +68,10 @@ export function extensionIssues(p: Portfolio, today: string): FinancialIssue[] {
   const categories = live(p.categories), accounts = live(p.cashAccounts), goals = live(p.savingsGoals), entries = live(p.cashEntries), savings = live(p.savingsEntries);
   const refs: readonly [string, readonly FinancialRecord<object>[]][] = [['categoryId', categories], ['accountId', accounts], ['toAccountId', accounts], ['goalId', goals], ['recurrenceId', live(p.recurrences)]];
   const rows: readonly FinancialRecord<object>[] = [...live(p.classifications), ...live(p.categoryRules), ...live(p.categoryBudgets), ...live(p.recurrences), ...live(p.occurrences), ...entries, ...goals, ...savings];
+  for (const income of live(p.incomes)) {
+    const payroll = income.value.payrollAccountId ?? null, account = accounts.find(a => a.id === payroll);
+    if (payroll !== null && (!account || account.value.kind !== 'debit')) issue('La cuenta de nómina debe ser una cuenta de débito registrada.', income.id, payroll);
+  }
   for (const row of rows) for (const [key, targets] of refs) if (key in row.value) {
     const id = (row.value as Record<string, unknown>)[key];
     if (id !== null && !targets.some(t => t.id === id)) issue('El registro tiene una referencia ausente: ' + key + '.', row.id, String(id));

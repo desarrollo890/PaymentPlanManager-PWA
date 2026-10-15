@@ -1,7 +1,7 @@
 import { canonical } from '@paymentplan/contracts';
 import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
-  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents } from '@paymentplan/domain';
+  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate } from '@paymentplan/domain';
 import type { FinancialEntityType, Change, FinancialRecord, Portfolio } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 
@@ -193,7 +193,34 @@ export class FinancialCommands {
     if (action === 'realize' && (p.voided || (!p.value.scheduled && p.value.date <= this.context.today))) throw Error('El abono ya está realizado o anulado.');
     return this.checked([{ entityType: 'loanPayment', entityId: id, payload: action === 'realize' ? { ...p.value, date: this.context.today, scheduled: false } : p.value, voided: action === 'void' }]);
   }
-  saveIncome(payload: Income): Change[] { return this.checked([{ entityType: 'income', entityId: live(this.portfolio.incomes)[0]?.id ?? '11111111-1111-4111-8111-111111111111', payload, voided: false }]); }
+  saveIncome(payload: Income): Change[] {
+    const previous = live(this.portfolio.incomes)[0]?.value, payroll = payload.payrollAccountId ?? null;
+    if (payroll !== null && payroll !== (previous?.payrollAccountId ?? null)) {
+      const account = this.portfolio.cashAccounts.find(a => a.id === payroll && !a.voided);
+      if (!account || account.value.kind !== 'debit' || account.value.archived) throw Error('Selecciona una cuenta de débito activa como cuenta de nómina.');
+    }
+    return this.checked([{ entityType: 'income', entityId: live(this.portfolio.incomes)[0]?.id ?? '11111111-1111-4111-8111-111111111111', payload, voided: false }]);
+  }
+  // Confirma el ingreso real de la quincena: lo marca como recibido en el presupuesto y lo abona a la cuenta de nómina.
+  async receivePayroll(payday: string, amountCents: number): Promise<Change[]> {
+    const config = live(this.portfolio.incomes)[0]?.value, accountId = config?.payrollAccountId ?? null;
+    const account = this.portfolio.cashAccounts.find(a => a.id === accountId && !a.voided);
+    if (!config || !account || account.value.kind !== 'debit' || account.value.archived) throw Error('Vincula primero una cuenta de débito de nómina en Preferencias.');
+    if (paydayFor(payday) !== payday || payday > this.context.today) throw Error('Solo puedes registrar ingresos del 15 o fin de mes que ya ocurrieron.');
+    if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw Error('Captura un ingreso mayor a cero.');
+    const saved = live(this.portfolio.budgets).find(b => b.value.payday === payday)?.value;
+    const budget: Budget = { payday, expectedIncomeCents: saved?.expectedIncomeCents ?? (civilDate(payday).day === 15 ? config.income15Cents : config.incomeEndCents),
+      receivedIncomeCents: amountCents, expensesCents: saved?.expensesCents ?? config.expensesCents, reserveCents: saved?.reserveCents ?? config.reserveCents, note: saved?.note ?? '' };
+    const existing = live(this.portfolio.cashEntries).filter(e => e.value.accountId === account.id && e.value.kind === 'income' && e.value.date === payday);
+    if (existing.length > 1) throw Error('Hay varios ingresos de esa fecha en la cuenta de nómina. Corrígelos desde Cuentas.');
+    const entryId = existing[0]?.id ?? await stableId('payroll:' + account.id + ':' + payday);
+    const entry: CashEntry = { accountId: account.id, toAccountId: null, cardMovementId: null, date: payday, amountCents, kind: 'income', categoryId: null,
+      description: existing[0]?.value.description ?? 'Ingreso de nómina' };
+    return this.checked([
+      { entityType: 'budget', entityId: live(this.portfolio.budgets).find(b => b.value.payday === payday)?.id ?? this.context.newId(), payload: budget, voided: false },
+      { entityType: 'cashEntry', entityId: entryId, payload: entry, voided: false },
+    ]);
+  }
   saveBudget(payload: Budget): Change[] { return this.checked([{ entityType: 'budget', entityId: live(this.portfolio.budgets).find(b => b.value.payday === payload.payday)?.id ?? this.context.newId(), payload, voided: false }]); }
   reminders(payload: ReminderPreferences): Change[] { return this.checked([{ entityType: 'reminderPreferences', entityId: live(this.portfolio.reminderPreferences)[0]?.id ?? '22222222-2222-4222-8222-222222222222', payload, voided: false }]); }
   dismissReminder(payload: ReminderState): Change[] { return this.checked([{ entityType: 'reminderState', entityId: live(this.portfolio.reminderStates).find(r => r.value.reminderKey === payload.reminderKey)?.id ?? this.context.newId(), payload, voided: false }]); }

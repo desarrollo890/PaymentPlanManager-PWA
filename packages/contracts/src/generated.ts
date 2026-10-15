@@ -135,6 +135,7 @@ export type Income = {
   readonly "incomeEndCents": number;
   readonly "expensesCents": number;
   readonly "reserveCents": number;
+  readonly "payrollAccountId"?: (Uuid) | (null);
 };
 
 export type Budget = {

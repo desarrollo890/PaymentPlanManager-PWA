@@ -1312,6 +1312,16 @@ export const schemas: Readonly<Record<string, Schema>> = {
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "payrollAccountId": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

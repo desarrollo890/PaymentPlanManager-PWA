@@ -10,7 +10,7 @@ import { Check, Field, FormDialog, MoneyField, SelectField, amount, money, optio
 
 export type FinancialModal = { type: 'card'; id?: string } | { type: 'movement'; id?: string; cardId?: string; planId?: string; quotaNumber?: number; capitalCents?: number; interestCents?: number } | { type: 'plan'; id?: string; cardId: string; purchaseId?: string }
   | { type: 'loan'; id?: string } | { type: 'loanPayment'; loanId: string } | { type: 'reconcile'; cardId: string }
-  | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string };
+  | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string } | { type: 'payroll'; payday: string };
 export function FinancialForm(props: FinancialFormProps) { return props.modal.type === 'allocation' ? <PaymentAllocation id={props.modal.id} session={props.session} today={props.today} close={props.close} save={props.save} /> : <FinancialEditor {...props} modal={props.modal} />; }
 type FinancialFormProps = { modal: FinancialModal; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void> };
 function FinancialEditor({ modal, session, today, close, save }: {
@@ -105,6 +105,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
         case 'cut': changes = cmd.saveStatement(modal.cardId, { cutDate: str(data, 'date'), dueDate: str(data, 'dueDate'), targetCents: parseMoney(data.get('target')),
           minimumCents: parseMoney(data.get('minimum')), initialPaidCents: parseMoney(data.get('paid')) }, !modal.create && modal.cut.estimated && parseMoney(data.get('target')) === modal.cut.targetCents, modal.create ? undefined : modal.cut.id); break;
         case 'reserve': changes = cmd.reserve(modal.cardId, modal.cut.cutDate, parseMoney(data.get('reserved'))); break;
+        case 'payroll': changes = await cmd.receivePayroll(modal.payday, parseMoney(data.get('amount'))); break;
         case 'budget': changes = cmd.saveBudget({ payday: modal.payday, expectedIncomeCents: parseMoney(data.get('income')), receivedIncomeCents: optionalMoney(data, 'receivedIncome'),
           expensesCents: parseMoney(data.get('expenses')), reserveCents: parseMoney(data.get('reserve')), note: str(data, 'note') }); break;
       }
@@ -199,6 +200,10 @@ function FinancialEditor({ modal, session, today, close, save }: {
       <Field label="Fecha del corte" name="date" type="date" value={c.cutDate} max={today} /><Field label="Fecha límite de pago" name="dueDate" type="date" value={c.dueDate} />
       <MoneyField label="Pago para no generar intereses" name="target" value={c.targetCents} /><MoneyField label="Pago mínimo reportado" name="minimum" value={stored?.minimumCents ?? 0} />
       <MoneyField label="Pagado antes de registrarlo aquí" name="paid" value={stored?.initialPaidCents ?? 0} /></>;
+  } else if (modal.type === 'payroll') {
+    const b = view.budgets.find(b => b.payday === modal.payday)!;
+    title = `Ingreso en ${b.payroll?.accountName ?? 'nómina'} · ${modal.payday}`;
+    fields = <><MoneyField label="Ingreso recibido" name="amount" value={b.incomeCents} hint="Se abonará a la cuenta de nómina y se marcará como recibido en el presupuesto. Si ya lo capturaste en Cuentas, no lo repitas." /></>;
   } else {
     const saved = p.budgets.find(b => b.value.payday === modal.payday)?.value, b = view.budgets.find(b => b.payday === modal.payday)!;
     title = `Presupuesto · ${modal.payday}`; fields = <><MoneyField label="Ingreso esperado" name="income" value={saved?.expectedIncomeCents ?? b.incomeCents} />

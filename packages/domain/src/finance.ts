@@ -44,6 +44,8 @@ export interface BudgetView {
   readonly payday: string; readonly pendingCents: number; readonly loanPendingCents: number; readonly receivedLoanCents: number;
   readonly loanPaidCents: number; readonly balanceCents: number; readonly cardPaidCents: number;
   readonly incomeCents: number; readonly expensesCents: number; readonly reserveCents: number; readonly estimated: boolean;
+  // Cuenta de nómina vinculada; recordedCents es el ingreso ya registrado en ella ese día (null si falta registrarlo).
+  readonly payroll: { readonly accountId: string; readonly accountName: string; readonly recordedCents: number | null; readonly canRecord: boolean } | null;
 }
 export interface FinanceView {
   readonly today: string; readonly debtCents: number; readonly creditCents: number; readonly pendingCents: number;
@@ -320,7 +322,8 @@ export function financeView(p: Portfolio, today: string): FinanceView {
   live(p.budgets).forEach(b => dates.add(b.value.payday)); obligations.forEach(o => dates.add(o.payday));
   live(p.loans).filter(l => l.value.includeReceivedMoney).forEach(l => dates.add(paydayFor(l.value.balanceDate)));
   live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today).forEach(a => dates.add(paydayFor(a.value.date)));
-  const config = live(p.incomes)[0]?.value ?? { income15Cents: 0, incomeEndCents: 0, expensesCents: 0, reserveCents: 0 };
+  const config = live(p.incomes)[0]?.value ?? { income15Cents: 0, incomeEndCents: 0, expensesCents: 0, reserveCents: 0, payrollAccountId: null };
+  const payrollAccount = live(p.cashAccounts).find(a => a.id === config.payrollAccountId && a.value.kind === 'debit');
   const budgets = [...dates].sort().map(date => {
     const saved = live(p.budgets).find(b => b.value.payday === date)?.value;
     const income = saved?.receivedIncomeCents ?? saved?.expectedIncomeCents ?? (civilDate(date).day === 15 ? config.income15Cents : config.incomeEndCents);
@@ -331,7 +334,11 @@ export function financeView(p: Portfolio, today: string): FinanceView {
     const received = total(live(p.loans).filter(l => l.value.includeReceivedMoney && l.value.balanceDate <= today && paydayFor(l.value.balanceDate) === date), l => l.value.principalCents);
     const loanPaid = total(live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today && paydayFor(a.value.date) === date), a => a.value.amountCents);
     const loanPending = total(obligations.filter(o => o.payday === date), o => o.amountCents);
+    const recorded = payrollAccount ? live(p.cashEntries).filter(e => e.value.accountId === payrollAccount.id && e.value.kind === 'income' && e.value.date === date) : [];
+    const payroll = payrollAccount ? { accountId: payrollAccount.id, accountName: payrollAccount.value.name, recordedCents: recorded.length ? total(recorded, e => e.value.amountCents) : null,
+      canRecord: date <= today && date >= payrollAccount.value.openingDate } : null;
     return { payday: date, pendingCents: pending, loanPendingCents: loanPending, receivedLoanCents: received, loanPaidCents: loanPaid,
+      payroll,
       cardPaidCents: cardPaid, incomeCents: income, expensesCents: expenses, reserveCents: reserve,
       balanceCents: sumCents([income, received, -expenses, -reserve, -cardPaid, -pending, -loanPaid, -loanPending]),
       estimated: saved?.receivedIncomeCents == null || [...targets.values()].some(s => s.payday === date && s.estimated) };
