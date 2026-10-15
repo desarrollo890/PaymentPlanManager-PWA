@@ -2,6 +2,8 @@ import type { Loan, LoanPayment } from '@paymentplan/contracts';
 import { addMonths, civilDate, daysInMonth, paydaysThrough } from './dates.ts';
 import { roundRatio, safeInteger, sumCents } from './money.ts';
 import type { FinancialRecord } from './portfolio.ts';
+import { DEFAULT_VAT_BASIS_POINTS, daysBetween, periodInterestCents, progressiveDueDates, progressiveSchedule } from './progressive-loans.ts';
+import type { ProgressiveLoanTerms } from './progressive-loans.ts';
 
 const MONTHLY_RATE_DENOMINATOR = 120_000n;
 const BIWEEKLY_RATE_DENOMINATOR = 240_000n;
@@ -13,6 +15,23 @@ export interface BankInstallment {
   readonly paymentCents: number;
   readonly interestCents: number;
   readonly principalCents: number;
+  readonly vatCents?: number;
+}
+
+export const isProgressiveLoan = (loan: Loan): boolean => loan.loanType === 'bank' && loan.amortizationMethod === 'progressive';
+
+export function progressiveTerms(loan: Loan): ProgressiveLoanTerms {
+  if (!isProgressiveLoan(loan) || loan.annualRateBasisPoints == null || loan.remainingInstallments == null || loan.nextCapitalCents == null || !loan.firstPaymentDate)
+    throw new RangeError('El crédito progresivo requiere saldo actual, último pago, siguiente cuota, cuotas restantes, abono a capital base y tasa.');
+  return { balanceCents: loan.principalCents, lastPaymentDate: loan.balanceDate, firstPaymentDate: loan.firstPaymentDate,
+    remainingInstallments: loan.remainingInstallments, nextCapitalCents: loan.nextCapitalCents, annualRateBasisPoints: loan.annualRateBasisPoints,
+    frequency: loan.paymentFrequency ?? 'monthly', vatBasisPoints: loan.vatBasisPoints ?? DEFAULT_VAT_BASIS_POINTS,
+    exemptInterestBasisPoints: loan.exemptInterestBasisPoints ?? 0 };
+}
+
+export function progressiveLastDueDate(loan: Loan): string {
+  const terms = progressiveTerms(loan);
+  return progressiveDueDates(terms.firstPaymentDate, terms.remainingInstallments, terms.frequency).at(-1)!;
 }
 
 export function bankLoanDueDates(firstPaymentDate: string, termMonths: number, frequency: LoanPaymentFrequency = 'monthly'): string[] {
@@ -32,6 +51,8 @@ export function bankLoanLastDueDate(firstPaymentDate: string, termMonths: number
 }
 
 export function bankLoanSchedule(loan: Loan): BankInstallment[] {
+  if (isProgressiveLoan(loan)) return progressiveSchedule(progressiveTerms(loan)).map(row => ({ number: row.number, dueDate: row.dueDate,
+    paymentCents: row.paymentCents, interestCents: row.interestCents, principalCents: row.capitalCents, vatCents: row.vatCents }));
   if (loan.loanType !== 'bank' || loan.annualRateBasisPoints == null || loan.termMonths == null || loan.firstPaymentDate === null || loan.firstPaymentDate === undefined)
     throw new RangeError('El préstamo bancario requiere tasa, plazo y fecha de primera cuota.');
   civilDate(loan.firstPaymentDate);
@@ -72,7 +93,8 @@ export function bankLoanProjection(loan: Loan, paymentRecords: readonly Financia
   const realized = payments.filter(r => !r.value.scheduled && r.value.date <= today);
   const scheduled = payments.filter(r => r.value.scheduled || r.value.date > today);
   let balance = loan.principalCents, paidCents = 0, overpaidCents = 0;
-  const events = realized.map(r => ({ date: r.value.date, amountCents: r.value.amountCents, payment: true }))
+  const progressive = isProgressiveLoan(loan);
+  const events = progressive ? [] : realized.map(r => ({ date: r.value.date, amountCents: r.value.amountCents, payment: true }))
     .concat(schedule.filter(row => row.dueDate <= today).map(row => ({ date: row.dueDate, amountCents: 0, payment: false })))
     .sort((a, b) => a.date.localeCompare(b.date) || Number(a.payment) - Number(b.payment));
   for (const event of events) {
@@ -87,6 +109,7 @@ export function bankLoanProjection(loan: Loan, paymentRecords: readonly Financia
     }
   }
 
+  if (progressive) paidCents = sumCents(realized.map(r => r.value.amountCents));
   const realizedBySlot = new Map<number, number>();
   for (const payment of realized) {
     let remaining = payment.value.amountCents;
@@ -99,6 +122,11 @@ export function bankLoanProjection(loan: Loan, paymentRecords: readonly Financia
       if (allocation) realizedBySlot.set(index, paid + allocation);
       remaining -= allocation;
     }
+  }
+  if (progressive) {
+    // Monto Utilizado: capital que sigue vivo después de las cuotas cubiertas por pagos reales.
+    balance = loan.principalCents - sumCents(schedule.filter((row, index) => (realizedBySlot.get(index) ?? 0) >= row.paymentCents).map(row => row.principalCents));
+    overpaidCents = Math.max(0, paidCents - sumCents(schedule.map(row => row.paymentCents)));
   }
   const scheduledBySlot = new Map<number, FinancialRecord<LoanPayment>[]>();
   for (const payment of scheduled) {
@@ -121,4 +149,22 @@ export function bankLoanProjection(loan: Loan, paymentRecords: readonly Financia
   for (const [slot, group] of scheduledBySlot) if (slot >= schedule.length)
     for (const payment of group) installments.push({ dueDate: payment.value.date, amountCents: payment.value.amountCents, scheduled: true });
   return { balanceCents: balance, paidCents, scheduledCents: sumCents(scheduled.map(r => r.value.amountCents)), overpaidCents, installments };
+}
+
+export interface LoanBalanceStates {
+  readonly usedAmountCents: number;
+  readonly statementBalanceCents: number;
+  readonly accruedInterestCents: number;
+  readonly balanceToDateCents: number;
+  readonly lastStatementDate: string;
+}
+
+// Monto Utilizado: deuda real viva. Saldo al Corte: cierre del último corte del calendario.
+// Saldo al Día: Monto Utilizado más interés devengado desde ese corte hasta hoy (sin IVA).
+export function progressiveLoanStates(loan: Loan, paymentRecords: readonly FinancialRecord<LoanPayment>[], today: string): LoanBalanceStates {
+  const schedule = progressiveSchedule(progressiveTerms(loan)), used = bankLoanProjection(loan, paymentRecords, today).balanceCents;
+  const cut = schedule.filter(row => row.dueDate <= today).at(-1);
+  const lastStatementDate = cut?.dueDate ?? loan.balanceDate, statementBalanceCents = cut?.closingBalanceCents ?? loan.principalCents;
+  const accruedInterestCents = used > 0 ? periodInterestCents(used, loan.annualRateBasisPoints ?? 0, Math.max(0, daysBetween(lastStatementDate, today))) : 0;
+  return { usedAmountCents: used, statementBalanceCents, accruedInterestCents, balanceToDateCents: used + accruedInterestCents, lastStatementDate };
 }

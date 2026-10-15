@@ -1079,6 +1079,46 @@
             }
           ]
         },
+        "amortizationMethod": {
+          "enum": [
+            "annuity",
+            "progressive"
+          ]
+        },
+        "remainingInstallments": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "nextCapitalCents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vatBasisPoints": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "exemptInterestBasisPoints": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
         "includeReceivedMoney": {
           "type": "boolean"
         },

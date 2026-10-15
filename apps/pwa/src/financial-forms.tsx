@@ -2,9 +2,9 @@ import { FinancialCommands } from '@paymentplan/application';
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import type { Change } from '@paymentplan/domain';
-import { addDays, bankLoanLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
+import { addDays, bankLoanLastDueDate, progressiveLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
 import type { CutView } from '@paymentplan/domain';
-import type { Installment } from '@paymentplan/contracts';
+import type { Installment, Loan } from '@paymentplan/contracts';
 import { PaymentAllocation } from './payment-allocation.tsx';
 import { Check, Field, FormDialog, MoneyField, SelectField, amount, money, optionalMoney, parseMoney, str } from './ui.tsx';
 
@@ -19,6 +19,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
   const p = session.portfolio, cmd = session.commands(today), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const existingLoan = modal.type === 'loan' ? p.loans.find(l => l.id === modal.id)?.value : undefined;
   const [loanKind, setLoanKind] = useState<'personal' | 'bank'>(existingLoan?.loanType === 'bank' ? 'bank' : 'personal');
+  const [amortizationMethod, setAmortizationMethod] = useState<'annuity' | 'progressive'>(existingLoan?.amortizationMethod ?? 'annuity');
   const [kind, setKind] = useState(modal.type === 'movement' ? p.movements.find(m => m.id === modal.id)?.value.kind ?? (modal.planId ? 'payment' : 'expense') : 'expense');
   const oldMovement = modal.type === 'movement' ? p.movements.find(m => m.id === modal.id)?.value : null;
   const [selectedPlan, setSelectedPlan] = useState(oldMovement && oldMovement.allocations.length > 1 ? 'preserve' : oldMovement?.allocations[0]?.planId ?? (modal.type === 'movement' ? modal.planId : '') ?? '');
@@ -82,13 +83,17 @@ function FinancialEditor({ modal, session, today, close, save }: {
         case 'loan': {
           const previous = p.loans.find(l => l.id === modal.id);
           const loanType = loanKind, annualRateBasisPoints = loanType === 'bank' ? parseRateBasisPoints(str(data, 'annualRate')) : null;
-          const termMonths = loanType === 'bank' ? Number(str(data, 'termMonths')) : null;
+          const progressive = loanType === 'bank' && amortizationMethod === 'progressive';
+          const termMonths = loanType === 'bank' && !progressive ? Number(str(data, 'termMonths')) : null;
           const firstPaymentDate = loanType === 'bank' ? str(data, 'firstPaymentDate') : null;
           const paymentFrequency: 'monthly' | 'biweekly' = loanType === 'bank' ? str(data, 'paymentFrequency') as 'monthly' | 'biweekly' : 'monthly';
-          const dueDate = loanType === 'bank' && firstPaymentDate && termMonths ? bankLoanLastDueDate(firstPaymentDate, termMonths, paymentFrequency) : str(data, 'dueDate') || null;
-          changes = cmd.saveLoan({ person: str(data, 'person'), description: str(data, 'description'), principalCents: parseMoney(data.get('capital')), balanceDate: str(data, 'date'),
-            dueDate, loanType, annualRateBasisPoints, paymentFrequency, termMonths, firstPaymentDate,
-            includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false }, modal.id); break;
+          const progressiveFields = progressive ? { amortizationMethod: 'progressive' as const, remainingInstallments: Number(str(data, 'remainingInstallments')),
+            nextCapitalCents: parseMoney(data.get('nextCapital')), vatBasisPoints: parseRateBasisPoints(str(data, 'vat')), exemptInterestBasisPoints: parseRateBasisPoints(str(data, 'exempt')) } : {};
+          const base = { person: str(data, 'person'), description: str(data, 'description'), principalCents: parseMoney(data.get('capital')), balanceDate: str(data, 'date'),
+            loanType, annualRateBasisPoints, paymentFrequency, termMonths, firstPaymentDate, ...progressiveFields,
+            includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false };
+          const dueDate = progressive ? progressiveLastDueDate({ ...base, dueDate: null } as Loan) : loanType === 'bank' && firstPaymentDate && termMonths ? bankLoanLastDueDate(firstPaymentDate, termMonths, paymentFrequency) : str(data, 'dueDate') || null;
+          changes = cmd.saveLoan({ ...base, dueDate }, modal.id); break;
         }
         case 'loanPayment': changes = cmd.loanPayment(modal.loanId, str(data, 'date'), parseMoney(data.get('amount')), str(data, 'description')); break;
         case 'reconcile': {
@@ -161,9 +166,17 @@ function FinancialEditor({ modal, session, today, close, save }: {
       <MoneyField label="Capital inicial pendiente" name="capital" value={loan?.principalCents ?? null} /><Field label="Fecha del saldo / dinero recibido" name="date" type="date" value={loan?.balanceDate ?? today} max={today} />
       {loanKind === 'bank' ? <><Field label="Tasa anual fija (%)" name="annualRate" type="number" value={loan?.annualRateBasisPoints == null ? '' : (loan.annualRateBasisPoints / 100).toFixed(2)} min={0} max={100} />
         <SelectField label="Frecuencia de pago" name="paymentFrequency" value={loan?.paymentFrequency ?? 'monthly'}><option value="monthly">Mensual</option><option value="biweekly">Quincenal (15 y último día del mes)</option></SelectField>
+        <label className="field"><span>Amortización</span><select name="amortizationMethod" value={amortizationMethod} onChange={e => setAmortizationMethod(e.target.value as 'annuity' | 'progressive')}><option value="annuity">Cuota fija (anualidad)</option><option value="progressive">Capital creciente con interés por días reales (Santander)</option></select></label>
+        {amortizationMethod === 'progressive' ? <>
+          <Field label="Cuotas restantes" name="remainingInstallments" type="number" value={loan?.remainingInstallments ?? 12} min={1} max={1200} />
+          <MoneyField label="Siguiente abono a capital base" name="nextCapital" value={loan?.nextCapitalCents ?? null} />
+          <Field label="IVA sobre intereses (%)" name="vat" type="number" value={((loan?.vatBasisPoints ?? 1600) / 100).toFixed(2)} min={0} max={100} />
+          <Field label="Interés exento de IVA (%)" name="exempt" type="number" value={((loan?.exemptInterestBasisPoints ?? 0) / 100).toFixed(2)} min={0} max={100} />
+          <Field label="Fecha de siguiente cuota" name="firstPaymentDate" type="date" value={loan?.firstPaymentDate ?? ''} min={addDays(loan?.balanceDate ?? today, 1)} />
+          <p className="form-note">Captura el saldo insoluto actual y la fecha de tu último pago: no necesitas el historial. El interés se calcula por los días reales entre cortes (año de 360 días); el capital crece cada periodo con la tasa anual entre 24 (quincenal) o 12 (mensual). La última cuota liquida el saldo. Las cuotas son estimadas; los abonos extra se simulan en la tarjeta del préstamo.</p></> : <>
         <Field label="Plazo (meses)" name="termMonths" type="number" value={loan?.termMonths ?? 12} min={1} max={600} />
         <Field label="Fecha de primera cuota" name="firstPaymentDate" type="date" value={loan?.firstPaymentDate ?? ''} min={addDays(loan?.balanceDate ?? today, 1)} />
-        <p className="form-note">La cuota y el saldo se estiman con tasa fija nominal anual y capitalización por periodo. Las quincenas son los días 15 y último del mes. Comisiones, seguros, CAT, tasa variable y diferencias del estado de cuenta no se modelan.</p></> :
+        <p className="form-note">La cuota y el saldo se estiman con tasa fija nominal anual y capitalización por periodo. Las quincenas son los días 15 y último del mes. Comisiones, seguros, CAT, tasa variable y diferencias del estado de cuenta no se modelan.</p></>}</> :
         <><Field label="Fecha acordada de pago (opcional)" name="dueDate" type="date" value={loan?.dueDate ?? ''} required={false} />
         <p className="form-note">Pago único o abonos sin intereses. Deja desmarcada la opción de dinero recibido si estás capturando una deuda anterior.</p></>}
       <Check name="received" label="También sumar este dinero recibido a mi presupuesto" checked={loan?.includeReceivedMoney} /></>;

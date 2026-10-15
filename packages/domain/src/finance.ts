@@ -2,7 +2,7 @@ import type { Balance, Card, Installment, Movement, Statement } from '@paymentpl
 import { addDays, addMonths, civilDate, cutOnOrAfter, cutOnOrBefore, dateInMonth, dueDateFor, paydayFor, paydaysThrough, suggestedPaymentDate } from './dates.ts';
 import { installmentQuotas } from './installments.ts';
 import type { InstallmentQuota } from './installments.ts';
-import { bankLoanProjection, bankLoanSchedule } from './loans.ts';
+import { bankLoanProjection, bankLoanSchedule, isProgressiveLoan, progressiveLoanStates } from './loans.ts';
 import { cents, safeInteger, sumCents } from './money.ts';
 import { live, orderOf } from './portfolio.ts';
 import type { FinancialRecord, Portfolio } from './portfolio.ts';
@@ -36,6 +36,8 @@ export interface LoanView {
   readonly id: string; readonly person: string; readonly loanType: 'personal' | 'bank'; readonly balanceCents: number;
   readonly paidCents: number; readonly scheduledCents: number; readonly annualRateBasisPoints: number | null;
   readonly installmentPaymentCents: number | null; readonly nextPaymentDate: string | null; readonly paymentFrequency: 'monthly' | 'biweekly' | null;
+  readonly progressive?: { readonly usedAmountCents: number; readonly statementBalanceCents: number; readonly balanceToDateCents: number;
+    readonly accruedInterestCents: number; readonly lastStatementDate: string; readonly remainingInstallments: number };
 }
 export interface LoanObligation { readonly loanId: string; readonly dueDate: string; readonly payday: string; readonly amountCents: number; readonly scheduled: boolean }
 export interface BudgetView {
@@ -280,7 +282,8 @@ export function financeView(p: Portfolio, today: string): FinanceView {
       return { id: r.id, person: r.value.person, loanType: 'bank' as const, balanceCents: projection.balanceCents, paidCents: projection.paidCents,
         scheduledCents: projection.scheduledCents, annualRateBasisPoints: r.value.annualRateBasisPoints ?? 0,
         installmentPaymentCents: schedule[0]?.paymentCents ?? null, nextPaymentDate: projection.installments[0]?.dueDate ?? null,
-        paymentFrequency: r.value.paymentFrequency ?? 'monthly' };
+        paymentFrequency: r.value.paymentFrequency ?? 'monthly',
+        ...(isProgressiveLoan(r.value) ? { progressive: { ...progressiveLoanStates(r.value, payments, today), remainingInstallments: schedule.length - schedule.filter(row => row.dueDate <= today).length } } : {}) };
     }
     return { id: r.id, person: r.value.person, loanType: 'personal' as const, balanceCents: r.value.principalCents - paid, paidCents: paid,
       scheduledCents: total(payments.filter(a => a.value.scheduled || a.value.date > today), a => a.value.amountCents),

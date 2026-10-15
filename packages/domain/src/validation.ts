@@ -4,7 +4,7 @@ import { live } from './portfolio.ts';
 import type { FinancialRecord, Portfolio } from './portfolio.ts';
 import { activePlans, cardBalance, planAccruedInterest, quotaBalances, financeView } from './finance.ts';
 import { installmentQuotas } from './installments.ts';
-import { bankLoanLastDueDate, bankLoanProjection, bankLoanSchedule } from './loans.ts';
+import { bankLoanLastDueDate, bankLoanProjection, bankLoanSchedule, isProgressiveLoan, progressiveLastDueDate } from './loans.ts';
 import { civilDate, cutOnOrAfter, dueDateFor } from './dates.ts';
 import { extensionIssues } from './extensions.ts';
 import { sumCents } from './money.ts';
@@ -105,7 +105,8 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
       try {
         const schedule = bankLoanSchedule(loan.value);
         if (loan.value.firstPaymentDate! <= loan.value.balanceDate) issue('La primera cuota debe ser posterior al saldo inicial.', loan.id);
-        if (loan.value.dueDate !== bankLoanLastDueDate(loan.value.firstPaymentDate!, loan.value.termMonths!, loan.value.paymentFrequency ?? 'monthly')) issue('El vencimiento debe coincidir con la última cuota estimada.', loan.id);
+        const lastDue = isProgressiveLoan(loan.value) ? progressiveLastDueDate(loan.value) : bankLoanLastDueDate(loan.value.firstPaymentDate!, loan.value.termMonths!, loan.value.paymentFrequency ?? 'monthly');
+        if (loan.value.dueDate !== lastDue) issue('El vencimiento debe coincidir con la última cuota estimada.', loan.id);
         if (sumCents(payments.map(a => a.value.amountCents)) > sumCents(schedule.map(a => a.paymentCents)))
           issue('Los pagos bancarios superan el total estimado del contrato.', loan.id, ...payments.map(a => a.id));
         const projection = bankLoanProjection(loan.value, payments, today);
@@ -115,7 +116,8 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
       } catch (e) { issue(e instanceof Error ? e.message : 'Revisa la amortización del préstamo bancario.', loan.id); }
     } else {
       if ((loan.value.annualRateBasisPoints ?? null) !== null || (loan.value.paymentFrequency ?? 'monthly') !== 'monthly' ||
-        (loan.value.termMonths ?? null) !== null || (loan.value.firstPaymentDate ?? null) !== null)
+        (loan.value.termMonths ?? null) !== null || (loan.value.firstPaymentDate ?? null) !== null || (loan.value.amortizationMethod ?? 'annuity') !== 'annuity' ||
+        (loan.value.remainingInstallments ?? null) !== null || (loan.value.nextCapitalCents ?? null) !== null)
         issue('Los préstamos personales no deben contener condiciones de amortización bancaria.', loan.id);
       if (sumCents(payments.map(a => a.value.amountCents)) > loan.value.principalCents)
         issue('Revisa el préstamo: sus abonos no pueden superar el capital.', loan.id, ...payments.map(a => a.id));

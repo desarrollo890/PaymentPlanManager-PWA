@@ -172,6 +172,11 @@ export class FinancialCommands {
       (input.annualRateBasisPoints ?? null) !== (previous.value.annualRateBasisPoints ?? null) ||
       (input.paymentFrequency ?? 'monthly') !== (previous.value.paymentFrequency ?? 'monthly') ||
       (input.termMonths ?? null) !== (previous.value.termMonths ?? null) ||
+      (input.amortizationMethod ?? 'annuity') !== (previous.value.amortizationMethod ?? 'annuity') ||
+      (input.remainingInstallments ?? null) !== (previous.value.remainingInstallments ?? null) ||
+      (input.nextCapitalCents ?? null) !== (previous.value.nextCapitalCents ?? null) ||
+      (input.vatBasisPoints ?? 1600) !== (previous.value.vatBasisPoints ?? 1600) ||
+      (input.exemptInterestBasisPoints ?? 0) !== (previous.value.exemptInterestBasisPoints ?? 0) ||
       (input.firstPaymentDate ?? null) !== (previous.value.firstPaymentDate ?? null));
     if (hasPayments && (input.principalCents !== previous!.value.principalCents || input.balanceDate !== previous!.value.balanceDate ||
       input.includeReceivedMoney !== previous!.value.includeReceivedMoney || changedBankTerms))

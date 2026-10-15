@@ -6,6 +6,7 @@ export * from './installments.ts';
 export * from './portfolio.ts';
 export * from './finance.ts';
 export * from './loans.ts';
+export * from './progressive-loans.ts';
 export * from './validation.ts';
 export * from './periods.ts';
 export * from './reminders.ts';

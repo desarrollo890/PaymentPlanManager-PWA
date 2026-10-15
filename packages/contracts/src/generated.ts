@@ -105,6 +105,11 @@ export type Loan = {
   readonly "paymentFrequency"?: "monthly" | "biweekly";
   readonly "termMonths"?: (number) | (null);
   readonly "firstPaymentDate"?: (string) | (null);
+  readonly "amortizationMethod"?: "annuity" | "progressive";
+  readonly "remainingInstallments"?: (number) | (null);
+  readonly "nextCapitalCents"?: (number) | (null);
+  readonly "vatBasisPoints"?: number;
+  readonly "exemptInterestBasisPoints"?: number;
   readonly "includeReceivedMoney": boolean;
   readonly "archived": boolean;
   readonly "recordedAt": (string) | (null);
