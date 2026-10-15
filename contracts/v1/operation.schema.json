@@ -1140,6 +1140,12 @@
             }
           }
         },
+        "chargeAccountId": {
+          "anyOf": [
+            { "$ref": "#/$defs/uuid" },
+            { "type": "null" }
+          ]
+        },
         "includeReceivedMoney": {
           "type": "boolean"
         },

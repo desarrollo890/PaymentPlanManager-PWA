@@ -114,6 +114,7 @@ export type Loan = {
   readonly "dueDate": string;
   readonly "amountCents": number;
 }>;
+  readonly "chargeAccountId"?: (Uuid) | (null);
   readonly "includeReceivedMoney": boolean;
   readonly "archived": boolean;
   readonly "recordedAt": (string) | (null);

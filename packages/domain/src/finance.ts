@@ -39,7 +39,7 @@ export interface LoanView {
   readonly progressive?: { readonly usedAmountCents: number; readonly statementBalanceCents: number; readonly balanceToDateCents: number;
     readonly accruedInterestCents: number; readonly lastStatementDate: string; readonly remainingInstallments: number };
 }
-export interface LoanObligation { readonly loanId: string; readonly dueDate: string; readonly payday: string; readonly amountCents: number; readonly scheduled: boolean }
+export interface LoanObligation { readonly loanId: string; readonly dueDate: string; readonly payday: string; readonly amountCents: number; readonly scheduled: boolean; readonly chargeAccountName?: string }
 export interface BudgetView {
   readonly payday: string; readonly pendingCents: number; readonly loanPendingCents: number; readonly receivedLoanCents: number;
   readonly loanPaidCents: number; readonly balanceCents: number; readonly cardPaidCents: number;
@@ -298,7 +298,9 @@ export function financeView(p: Portfolio, today: string): FinanceView {
     if (value.loanType === 'bank') {
       const payments = live(p.loanPayments).filter(a => a.value.loanId === loan.id);
       const projection = bankLoanProjection(value, payments, today);
-      obligations.push(...projection.installments.map(item => ({ loanId: loan.id, dueDate: item.dueDate, payday: paydayFor(item.dueDate), amountCents: item.amountCents, scheduled: item.scheduled })));
+      const charge = live(p.cashAccounts).find(a => a.id === value.chargeAccountId && a.value.kind === 'debit' && !a.value.archived);
+      obligations.push(...projection.installments.map(item => ({ loanId: loan.id, dueDate: item.dueDate, payday: paydayFor(item.dueDate), amountCents: item.amountCents, scheduled: item.scheduled,
+        ...(charge ? { chargeAccountName: charge.value.name } : {}) })));
       continue;
     }
     const scheduled = live(p.loanPayments).filter(a => a.value.loanId === loan.id && (a.value.scheduled || a.value.date > today) &&

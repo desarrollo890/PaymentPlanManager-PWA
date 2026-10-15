@@ -181,12 +181,38 @@ export class FinancialCommands {
     if (hasPayments && (input.principalCents !== previous!.value.principalCents || input.balanceDate !== previous!.value.balanceDate ||
       input.includeReceivedMoney !== previous!.value.includeReceivedMoney || changedBankTerms))
       throw Error('Con abonos registrados conserva capital, origen y condiciones de amortización.');
+    const charge = input.chargeAccountId ?? null;
+    if (charge !== null && charge !== (previous?.value.chargeAccountId ?? null)) {
+      const account = live(this.portfolio.cashAccounts).find(a => a.id === charge);
+      if ((input.loanType ?? 'personal') !== 'bank' || !account || account.value.kind !== 'debit' || account.value.archived) throw Error('La cuenta de cargo debe ser una cuenta de débito activa y solo aplica a préstamos bancarios.');
+    }
     return this.checked([{ entityType: 'loan', entityId: id ?? this.context.newId(), payload: { ...input, person: input.person.trim(), description: input.description.trim(),
       ...(previous ? { recordedAt: previous.value.recordedAt, legacyOrdinal: previous.value.legacyOrdinal } : this.stamp()) }, voided: false }]);
   }
   loanPayment(loanId: string, date: string, amountCents: number, description: string): Change[] {
     if (record(this.portfolio.loans, loanId).value.archived) throw Error('Reabre el préstamo antes de registrar un abono.');
     return this.checked([{ entityType: 'loanPayment', entityId: this.context.newId(), payload: { loanId, date, amountCents, description: description.trim(), scheduled: date > this.context.today, ...this.stamp() }, voided: false }]);
+  }
+  // Paga una cuota bancaria vencida: registra el abono al préstamo y el cargo en su cuenta, siempre con ids derivados para no duplicar.
+  async payLoanInstallment(loanId: string, dueDate: string, amountCents: number): Promise<Change[]> {
+    const loan = record(this.portfolio.loans, loanId), account = this.portfolio.cashAccounts.find(a => a.id === loan.value.chargeAccountId && !a.voided);
+    if (loan.voided || loan.value.archived || loan.value.loanType !== 'bank') throw Error('Solo puedes pagar cuotas de préstamos bancarios vigentes.');
+    if (!account || account.value.kind !== 'debit' || account.value.archived) throw Error('Vincula una cuenta de débito de cargo en el préstamo.');
+    if (dueDate > this.context.today) throw Error('La cuota aún no vence.');
+    if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw Error('Captura un pago mayor a cero.');
+    const payday = paydayFor(dueDate), income = live(this.portfolio.incomes)[0]?.value, payroll = this.portfolio.cashAccounts.find(a => a.id === income?.payrollAccountId && !a.voided);
+    if (payroll && payday <= this.context.today && payday >= payroll.value.openingDate &&
+      !live(this.portfolio.cashEntries).some(e => e.value.accountId === payroll.id && e.value.kind === 'income' && e.value.date === payday))
+      throw Error(`Confirma primero en Presupuesto el ingreso del ${payday}.`);
+    const paymentId = await stableId('loanInstallment:' + loanId + ':' + dueDate), entryId = await stableId('loanInstallmentCash:' + loanId + ':' + dueDate);
+    const payment = this.portfolio.loanPayments.find(r => r.id === paymentId);
+    if (payment && !payment.voided) throw Error('Esa cuota ya está pagada.');
+    const description = `Pago de préstamo ${loan.value.person}`;
+    const entry: CashEntry = { accountId: account.id, toAccountId: null, cardMovementId: null, date: dueDate, amountCents, kind: 'expense', categoryId: null, description };
+    return this.checked([
+      { entityType: 'loanPayment', entityId: paymentId, payload: { loanId, date: dueDate, amountCents, description, scheduled: false, ...(payment ? { recordedAt: payment.value.recordedAt, legacyOrdinal: payment.value.legacyOrdinal } : this.stamp()) }, voided: false },
+      { entityType: 'cashEntry', entityId: entryId, payload: entry, voided: false },
+    ]);
   }
   changeLoanPayment(id: string, action: 'void' | 'restore' | 'realize'): Change[] {
     const p = record(this.portfolio.loanPayments, id);

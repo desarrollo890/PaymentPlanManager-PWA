@@ -72,6 +72,10 @@ export function extensionIssues(p: Portfolio, today: string): FinancialIssue[] {
     const payroll = income.value.payrollAccountId ?? null, account = accounts.find(a => a.id === payroll);
     if (payroll !== null && (!account || account.value.kind !== 'debit')) issue('La cuenta de nómina debe ser una cuenta de débito registrada.', income.id, payroll);
   }
+  for (const loan of live(p.loans)) {
+    const charge = loan.value.chargeAccountId ?? null, account = accounts.find(a => a.id === charge);
+    if (charge !== null && (!account || account.value.kind !== 'debit')) issue('La cuenta de cargo del préstamo debe ser una cuenta de débito registrada.', loan.id, charge);
+  }
   for (const row of rows) for (const [key, targets] of refs) if (key in row.value) {
     const id = (row.value as Record<string, unknown>)[key];
     if (id !== null && !targets.some(t => t.id === id)) issue('El registro tiene una referencia ausente: ' + key + '.', row.id, String(id));

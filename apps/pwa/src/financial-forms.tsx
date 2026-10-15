@@ -10,7 +10,7 @@ import { Check, Field, FormDialog, MoneyField, SelectField, amount, money, optio
 
 export type FinancialModal = { type: 'card'; id?: string } | { type: 'movement'; id?: string; cardId?: string; planId?: string; quotaNumber?: number; capitalCents?: number; interestCents?: number } | { type: 'plan'; id?: string; cardId: string; purchaseId?: string }
   | { type: 'loan'; id?: string } | { type: 'loanPayment'; loanId: string } | { type: 'reconcile'; cardId: string }
-  | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string } | { type: 'payroll'; payday: string };
+  | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string } | { type: 'payroll'; payday: string } | { type: 'loanInstallment'; loanId: string; dueDate: string };
 export function FinancialForm(props: FinancialFormProps) { return props.modal.type === 'allocation' ? <PaymentAllocation id={props.modal.id} session={props.session} today={props.today} close={props.close} save={props.save} /> : <FinancialEditor {...props} modal={props.modal} />; }
 type FinancialFormProps = { modal: FinancialModal; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void> };
 function FinancialEditor({ modal, session, today, close, save }: {
@@ -92,7 +92,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
             ...(previous?.value.exemptInterestOverrides ? { exemptInterestOverrides: previous.value.exemptInterestOverrides } : {}) } : {};
           const base = { person: str(data, 'person'), description: str(data, 'description'), principalCents: parseMoney(data.get('capital')), balanceDate: str(data, 'date'),
             loanType, annualRateBasisPoints, paymentFrequency, termMonths, firstPaymentDate, ...progressiveFields,
-            includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false };
+            includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false, chargeAccountId: loanType === 'bank' ? str(data, 'chargeAccount') || null : null };
           const dueDate = progressive ? progressiveLastDueDate({ ...base, dueDate: null } as Loan) : loanType === 'bank' && firstPaymentDate && termMonths ? bankLoanLastDueDate(firstPaymentDate, termMonths, paymentFrequency) : str(data, 'dueDate') || null;
           changes = cmd.saveLoan({ ...base, dueDate }, modal.id); break;
         }
@@ -105,6 +105,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
         case 'cut': changes = cmd.saveStatement(modal.cardId, { cutDate: str(data, 'date'), dueDate: str(data, 'dueDate'), targetCents: parseMoney(data.get('target')),
           minimumCents: parseMoney(data.get('minimum')), initialPaidCents: parseMoney(data.get('paid')) }, !modal.create && modal.cut.estimated && parseMoney(data.get('target')) === modal.cut.targetCents, modal.create ? undefined : modal.cut.id); break;
         case 'reserve': changes = cmd.reserve(modal.cardId, modal.cut.cutDate, parseMoney(data.get('reserved'))); break;
+        case 'loanInstallment': changes = await cmd.payLoanInstallment(modal.loanId, modal.dueDate, parseMoney(data.get('amount'))); break;
         case 'payroll': changes = await cmd.receivePayroll(modal.payday, parseMoney(data.get('amount'))); break;
         case 'budget': changes = cmd.saveBudget({ payday: modal.payday, expectedIncomeCents: parseMoney(data.get('income')), receivedIncomeCents: optionalMoney(data, 'receivedIncome'),
           expensesCents: parseMoney(data.get('expenses')), reserveCents: parseMoney(data.get('reserve')), note: str(data, 'note') }); break;
@@ -168,6 +169,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
       <MoneyField label="Capital inicial pendiente" name="capital" value={loan?.principalCents ?? null} /><Field label="Fecha del saldo / dinero recibido" name="date" type="date" value={loan?.balanceDate ?? today} max={today} />
       {loanKind === 'bank' ? <><Field label="Tasa anual fija (%)" name="annualRate" type="number" value={loan?.annualRateBasisPoints == null ? '' : (loan.annualRateBasisPoints / 100).toFixed(2)} min={0} max={100} />
         <SelectField label="Frecuencia de pago" name="paymentFrequency" value={loan?.paymentFrequency ?? 'monthly'}><option value="monthly">Mensual</option><option value="biweekly">Quincenal (15 y último día del mes)</option></SelectField>
+        <SelectField label="Cuenta de cargo automático" name="chargeAccount" value={loan?.chargeAccountId ?? ''}><option value="">Sin vincular</option>{live(p.cashAccounts).filter(a => a.value.kind === 'debit' && (!a.value.archived || a.id === loan?.chargeAccountId)).map(a => <option key={a.id} value={a.id}>{a.value.name}</option>)}</SelectField>
         <label className="field"><span>Amortización</span><select name="amortizationMethod" value={amortizationMethod} onChange={e => setAmortizationMethod(e.target.value as 'annuity' | 'progressive')}><option value="annuity">Cuota fija (anualidad)</option><option value="progressive">Capital creciente con interés por días reales (Santander)</option></select></label>
         {amortizationMethod === 'progressive' ? <>
           <Field label="Cuotas restantes" name="remainingInstallments" type="number" value={loan?.remainingInstallments ?? 12} min={1} max={1200} />
@@ -200,6 +202,10 @@ function FinancialEditor({ modal, session, today, close, save }: {
       <Field label="Fecha del corte" name="date" type="date" value={c.cutDate} max={today} /><Field label="Fecha límite de pago" name="dueDate" type="date" value={c.dueDate} />
       <MoneyField label="Pago para no generar intereses" name="target" value={c.targetCents} /><MoneyField label="Pago mínimo reportado" name="minimum" value={stored?.minimumCents ?? 0} />
       <MoneyField label="Pagado antes de registrarlo aquí" name="paid" value={stored?.initialPaidCents ?? 0} /></>;
+  } else if (modal.type === 'loanInstallment') {
+    const o = view.obligations.find(o => o.loanId === modal.loanId && o.dueDate === modal.dueDate), person = p.loans.find(l => l.id === modal.loanId)?.value.person ?? '';
+    title = `Pagar cuota · ${person} · ${modal.dueDate}`;
+    fields = <><MoneyField label="Importe cobrado" name="amount" value={o?.amountCents ?? null} hint={`Se descuenta de ${o?.chargeAccountName ?? 'la cuenta de cargo'} y se registra como pago del préstamo. Corrige el importe si el banco cobró otro.`} /></>;
   } else if (modal.type === 'payroll') {
     const b = view.budgets.find(b => b.payday === modal.payday)!;
     title = `Ingreso en ${b.payroll?.accountName ?? 'nómina'} · ${modal.payday}`;

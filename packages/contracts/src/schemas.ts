@@ -1146,6 +1146,16 @@ export const schemas: Readonly<Record<string, Schema>> = {
               }
             }
           },
+          "chargeAccountId": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "includeReceivedMoney": {
             "type": "boolean"
           },
