@@ -1,8 +1,11 @@
 import { useState } from "react";
 import type { VaultSession } from "@paymentplan/application";
 import {
+  addDays,
   addMonths,
+  bankLoanSchedule,
   budgetFocus,
+  fixedLoanExtraSavings,
   homeSummary,
   live,
   paydaysThrough,
@@ -1136,8 +1139,26 @@ export function MovementsView({
     interest: "Interés",
     fee: "Comisión",
   };
+  const monthStart = today.slice(0, 8) + "01",
+    prevEnd = addDays(monthStart, -1),
+    prevStart = prevEnd.slice(0, 8) + "01",
+    ranges: [string, string, string][] = [
+      ["Este mes", monthStart, today],
+      ["Mes anterior", prevStart, prevEnd],
+      ["30 días", addDays(today, -29), today],
+      ["Todo", "", ""],
+    ];
+  const counted = rows.filter((m) => !m.voided),
+    totalOf = (kinds: string[]) => counted.filter((m) => kinds.includes(m.value.kind)).reduce((t, m) => t + m.value.amountCents, 0);
   return (
     <section className="panel">
+      <div className="chip-row" role="group" aria-label="Periodo rápido">
+        {ranges.map(([label, f, t]) => (
+          <button key={label} className={"chip" + (from === f && to === t ? " active" : "")} aria-pressed={from === f && to === t} onClick={() => { setFrom(f); setTo(t); }}>
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="filter-bar">
         <label>
           Tarjeta
@@ -1220,6 +1241,11 @@ export function MovementsView({
           Exportar CSV
         </button>
       </div>
+      {!!counted.length && (
+        <p className="caption movement-totals">
+          {counted.length} movimientos · Gastos {money(totalOf(["expense"]))} · Pagos {money(totalOf(["payment"]))} · Intereses y comisiones {money(totalOf(["interest", "fee"]))}
+        </p>
+      )}
       {!rows.length ? (
         <Empty
           title="Cada movimiento cuenta"
@@ -1227,7 +1253,7 @@ export function MovementsView({
         />
       ) : (
         <div className="table-wrap">
-          <table>
+          <table className="movements-table">
             <thead>
               <tr>
                 <th>Fecha / tarjeta</th>
@@ -1241,16 +1267,16 @@ export function MovementsView({
             <tbody>
               {rows.map((m) => (
                 <tr key={m.id} className={m.voided ? "voided" : ""}>
-                  <td>
+                  <td className="mv-main">
                     {shortDate(m.value.date)}
                     <small>
                       {p.cards.find((c) => c.id === m.value.cardId)?.value.name}
                     </small>
                   </td>
-                  <td>{m.value.description}</td>
-                  <td>{labels[m.value.kind]}</td>
-                  <td className="numeric">{money(m.value.amountCents)}</td>
-                  <td>
+                  <td className="mv-desc">{m.value.description}</td>
+                  <td data-label="Tipo">{labels[m.value.kind]}</td>
+                  <td className="numeric mv-amount">{money(m.value.amountCents)}</td>
+                  <td data-label="Estado">
                     <span className="tag">
                       {m.voided
                         ? "Anulado"
@@ -1997,8 +2023,48 @@ export function LoansView({
   act: Act;
 }) {
   const p = session.portfolio;
+  const [filter, setFilter] = useState<"active" | "closed">("active");
+  const isClosed = (l: LoanView) => p.loans.find((r) => r.id === l.id)!.value.archived || l.balanceCents === 0;
+  const activeLoans = view.loans.filter((l) => !isClosed(l)),
+    closedLoans = view.loans.filter(isClosed),
+    shown = filter === "active" ? activeLoans : closedLoans,
+    nextDue = activeLoans
+      .map((l) => ({ l, date: l.nextPaymentDate ?? p.loans.find((r) => r.id === l.id)!.value.dueDate ?? null }))
+      .filter((x): x is { l: LoanView; date: string } => !!x.date)
+      .toSorted((a, b) => a.date.localeCompare(b.date))[0];
   return (
     <>
+      {view.loans.length > 0 && (
+        <div className="focus-grid loan-summary">
+          <div>
+            <small>Deuda total</small>
+            <strong>{money(activeLoans.reduce((t, l) => t + l.balanceCents, 0))}</strong>
+          </div>
+          <div>
+            <small>Próximo vencimiento</small>
+            <strong>{nextDue ? shortDate(nextDue.date) : "Ninguno"}</strong>
+            {nextDue && <small>{nextDue.l.person}</small>}
+          </div>
+          <div>
+            <small>Pagado</small>
+            <strong>{money(view.loans.reduce((t, l) => t + l.paidCents, 0))}</strong>
+          </div>
+          <div>
+            <small>Préstamos activos</small>
+            <strong>{activeLoans.length}</strong>
+          </div>
+        </div>
+      )}
+      {closedLoans.length > 0 && (
+        <div className="segmented" role="group" aria-label="Filtrar préstamos">
+          <button className={filter === "active" ? "active" : ""} aria-pressed={filter === "active"} onClick={() => setFilter("active")}>
+            Activos ({activeLoans.length})
+          </button>
+          <button className={filter === "closed" ? "active" : ""} aria-pressed={filter === "closed"} onClick={() => setFilter("closed")}>
+            Liquidados o archivados ({closedLoans.length})
+          </button>
+        </div>
+      )}
       <div className="section-heading">
         <p className="caption">
           Préstamos personales sin intereses y créditos bancarios con
@@ -2015,12 +2081,21 @@ export function LoansView({
         />
       )}
       <div className="loan-grid">
-        {view.loans.map((l) => {
-          const value = p.loans.find((r) => r.id === l.id)!.value;
+        {shown.map((l) => {
+          const value = p.loans.find((r) => r.id === l.id)!.value,
+            total = l.balanceCents + l.paidCents,
+            chargeAccount = value.chargeAccountId ? p.cashAccounts.find((a) => a.id === value.chargeAccountId)?.value.name : undefined;
           return (
-            <article className="panel" key={l.id}>
+            <article className="panel loan-card" key={l.id}>
               <div className="section-heading">
-                <h2>{l.person}</h2>
+                <h2>
+                  {l.person}
+                  <small>
+                    {l.loanType === "bank"
+                      ? `Préstamo bancario · ${l.paymentFrequency === "biweekly" ? "quincenal" : "mensual"}${l.progressive ? " · progresivo" : ""}`
+                      : "Préstamo personal"}
+                  </small>
+                </h2>
                 <span className="tag">
                   {value.archived
                     ? "Archivado"
@@ -2031,17 +2106,7 @@ export function LoansView({
                         : "Pendiente"}
                 </span>
               </div>
-              <p className="muted">{value.description}</p>
-              {l.loanType === "bank" && (
-                <p className="caption">
-                  Préstamo bancario ·{" "}
-                  {l.paymentFrequency === "biweekly" ? "quincenal" : "mensual"}{" "}
-                  · tasa fija anual{" "}
-                  {(l.annualRateBasisPoints! / 100).toFixed(2)}% · pago estimado{" "}
-                  {money(l.installmentPaymentCents ?? 0)} · próximo vencimiento{" "}
-                  {l.nextPaymentDate ? shortDate(l.nextPaymentDate) : "ninguno"}
-                </p>
-              )}
+              {value.description && <p className="muted">{value.description}</p>}
               <div className="loan-balance">
                 <small>
                   {l.loanType === "bank"
@@ -2050,19 +2115,47 @@ export function LoansView({
                 </small>
                 <strong>{money(l.balanceCents)}</strong>
               </div>
-              <p className="caption">
-                {l.loanType === "bank"
-                  ? `Vencimiento final estimado: ${value.dueDate ? shortDate(value.dueDate) : "sin fecha"}`
-                  : value.dueDate
-                    ? `Pago acordado: ${shortDate(value.dueDate)}`
-                    : "Sin fecha acordada"}{" "}
-                · programado {money(l.scheduledCents)}
-                {l.loanType === "bank" &&
-                l.paymentFrequency === "biweekly" &&
-                value.termMonths
-                  ? ` · ${value.termMonths * 2} cuotas en ${value.termMonths} meses`
-                  : ""}
-              </p>
+              {total > 0 && (
+                <>
+                  <progress aria-label={`Avance de ${l.person}`} value={l.paidCents} max={total} />
+                  <p className="caption">
+                    Pagado {money(l.paidCents)} de {money(total)} ({Math.round((l.paidCents / total) * 100)}%)
+                  </p>
+                </>
+              )}
+              <dl className="loan-facts">
+                {l.loanType === "bank" && (
+                  <>
+                    <div>
+                      <dt>Cuota</dt>
+                      <dd>{money(l.installmentPaymentCents ?? 0)}</dd>
+                    </div>
+                    <div>
+                      <dt>Próximo pago</dt>
+                      <dd>{l.nextPaymentDate ? shortDate(l.nextPaymentDate) : "Ninguno"}</dd>
+                    </div>
+                    <div>
+                      <dt>Tasa anual</dt>
+                      <dd>{(l.annualRateBasisPoints! / 100).toFixed(2)}%</dd>
+                    </div>
+                    <div>
+                      <dt>Cargo desde</dt>
+                      <dd>{chargeAccount ?? "Manual"}</dd>
+                    </div>
+                  </>
+                )}
+                <div>
+                  <dt>{l.loanType === "bank" ? "Vencimiento final" : "Pago acordado"}</dt>
+                  <dd>{value.dueDate ? shortDate(value.dueDate) : "Sin fecha"}</dd>
+                </div>
+                <div>
+                  <dt>Programado</dt>
+                  <dd>{money(l.scheduledCents)}</dd>
+                </div>
+              </dl>
+              {l.loanType === "bank" && l.balanceCents > 0 && !value.archived && (
+                <ExtraPaymentCard loan={value} today={view.today} onPay={() => modal({ type: "loanPayment", loanId: l.id })} />
+              )}
               {l.progressive && (
                 <ProgressivePanel
                   loanId={l.id}
@@ -2259,6 +2352,47 @@ function LoanTimeline({
           ))}
         </ul>
       </details>
+    </div>
+  );
+}
+// Simulador visible en la ficha: ahorro por un abono extra a capital aplicado a la próxima cuota.
+function ExtraPaymentCard({ loan, today, onPay }: { loan: Loan; today: string; onPay: () => void }) {
+  const [extra, setExtra] = useState("");
+  const cents = Math.round(Number(extra.replace(/[^0-9.]/g, "")) * 100) || 0;
+  let result: { installments: number; interestCents: number; lastDate: string } | null = null,
+    note = "";
+  if (cents > 0) {
+    try {
+      const schedule = bankLoanSchedule(loan);
+      if (loan.amortizationMethod === "progressive") {
+        const terms = progressiveTerms(loan),
+          base = progressiveSchedule(terms),
+          simulated = progressiveSchedule(terms, { 1: cents }),
+          total = (rows: typeof base) => rows.reduce((t, r) => t + r.interestCents + r.vatCents, 0);
+        result = { installments: base.length - simulated.length, interestCents: total(base) - total(simulated), lastDate: simulated.at(-1)?.dueDate ?? "" };
+      } else {
+        const done = schedule.filter((row) => row.dueDate <= today).length,
+          saved = fixedLoanExtraSavings(loan, Math.min(done, schedule.length - 1), cents);
+        result = { installments: saved.savedInstallments, interestCents: saved.savedInterestCents, lastDate: saved.newLastDueDate };
+      }
+    } catch (error) {
+      note = error instanceof Error ? error.message : "No se pudo simular.";
+    }
+  }
+  return (
+    <div className="extra-payment">
+      <label className="field">
+        <span>¿Y si abono extra a capital?</span>
+        <input inputMode="decimal" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="0.00" />
+      </label>
+      {result && (
+        <p className="caption" role="status">
+          Ahorras <strong>{money(result.interestCents)}</strong> en intereses
+          {result.installments > 0 ? ` y terminas ${result.installments} cuotas antes (${shortDate(result.lastDate)})` : ""}.{" "}
+          <button className="text-button" onClick={onPay}>Registrar abono</button>
+        </p>
+      )}
+      {note && <p className="negative">{note}</p>}
     </div>
   );
 }

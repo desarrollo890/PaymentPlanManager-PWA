@@ -80,6 +80,34 @@ export function bankLoanSchedule(loan: Loan): BankInstallment[] {
   return schedule;
 }
 
+export interface ExtraPaymentSavings {
+  readonly savedInterestCents: number;
+  readonly savedInstallments: number;
+  readonly newLastDueDate: string;
+}
+
+// Abono extra a capital en un préstamo de cuota fija: se mantiene la cuota y se acorta el plazo.
+export function fixedLoanExtraSavings(loan: Loan, afterInstallment: number, extraCents: number): ExtraPaymentSavings {
+  if (isProgressiveLoan(loan)) throw new RangeError('Usa el simulador progresivo para este crédito.');
+  const schedule = bankLoanSchedule(loan);
+  if (!Number.isSafeInteger(extraCents) || extraCents <= 0) throw new RangeError('El abono extra debe ser mayor que cero.');
+  if (!Number.isInteger(afterInstallment) || afterInstallment < 0 || afterInstallment >= schedule.length) throw new RangeError('La cuota elegida no existe.');
+  const paid = schedule.slice(0, afterInstallment), remaining = schedule.slice(afterInstallment);
+  const balance = loan.principalCents - sumCents(paid.map(row => row.principalCents));
+  const rate = BigInt(loan.annualRateBasisPoints ?? 0), denominator = (loan.paymentFrequency ?? 'monthly') === 'biweekly' ? BIWEEKLY_RATE_DENOMINATOR : MONTHLY_RATE_DENOMINATOR;
+  const payment = schedule[0]!.paymentCents;
+  let current = Math.max(0, balance - extraCents), interest = 0, count = 0;
+  while (current > 0 && count < remaining.length) {
+    const periodInterest = safeInteger(roundRatio(BigInt(current) * rate, denominator));
+    interest += periodInterest;
+    current = Math.max(0, current + periodInterest - payment);
+    count++;
+  }
+  const originalInterest = sumCents(remaining.map(row => row.interestCents));
+  return { savedInterestCents: Math.max(0, originalInterest - interest), savedInstallments: remaining.length - count,
+    newLastDueDate: count === 0 ? (paid.at(-1)?.dueDate ?? schedule[0]!.dueDate) : remaining[count - 1]!.dueDate };
+}
+
 export interface BankLoanProjection {
   readonly balanceCents: number;
   readonly paidCents: number;

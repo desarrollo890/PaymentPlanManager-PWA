@@ -1,5 +1,6 @@
 // All browser data is synthetic. Google is not authorized by this suite.
 const { chromium } = require('playwright');
+async function go(page,label){const link=page.getByRole('navigation',{name:'Navegación principal'}).getByRole('link',{name:label,exact:true});if(!(await link.isVisible()))await page.getByRole('button',{name:'Más',exact:true}).click();await link.click();}
 const { createServer } = require('node:http');
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const dist = path.resolve(__dirname, '../apps/pwa/dist'), output = path.resolve(__dirname, '../artifacts/pwa-preview'), base = '/PaymentPlanManager-PWA/';
@@ -29,7 +30,7 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await page.getByRole('checkbox',{name:'Guardé la clave de recuperación en un lugar seguro'}).check(); await page.getByRole('button',{name:'Abrir mi cartera'}).click();
       await page.getByRole('button',{name:'Registrar mi primera tarjeta'}).click();
       await fill(page,'name','Tarjeta sintética'); await fill(page,'bank','Banco de pruebas'); await fill(page,'limit','20000'); await fill(page,'available','10000'); await fill(page,'debt','10000'); await save(page);
-      await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click(); await page.locator('.credit-card').waitFor();
+      await go(page,'Tarjetas'); await page.locator('.credit-card').waitFor();
       assert.equal(await page.locator('.credit-limit span').textContent(),'Límite de crédito'); assert.match(await page.locator('.credit-limit strong').textContent(),/20,000/);
       await page.locator('.credit-months').first().click();
       await page.getByRole('button',{name:'Dividir deuda',exact:true}).click();
@@ -43,7 +44,7 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await page.getByRole('dialog',{name:'Planes de Tarjeta sintética',exact:true}).getByRole('button',{name:'Cerrar ventana'}).click();
       await page.getByRole('button',{name:'Registrar movimiento',exact:true}).click(); const today = await page.locator('input[name="date"]').inputValue(); await fill(page,'amount','250'); await fill(page,'description','Compra local sintética'); await save(page);
       for (const [label,title] of [['Movimientos','Tus movimientos'],['Calendario','Tu calendario de pagos'],['Presupuesto','Tu presupuesto'],['Préstamos','Préstamos personales y bancarios'],['Periodos','Tus resúmenes'],['Preferencias','A tu manera']]) {
-        await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click(); await page.getByRole('heading',{name:title,exact:true,level:1}).waitFor();
+        await go(page,label); await page.getByRole('heading',{name:title,exact:true,level:1}).waitFor();
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name} ${label} overflow`);
         if (label === 'Préstamos') {
           await page.getByRole('button',{name:'Registrar préstamo',exact:true}).click();
@@ -52,8 +53,8 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
           await fill(page,'annualRate','12.5'); await fill(page,'termMonths','12');
           const firstPayment = new Date(`${today}T12:00:00Z`); firstPayment.setUTCDate(1); firstPayment.setUTCMonth(firstPayment.getUTCMonth()+1); firstPayment.setUTCDate(15);
           await fill(page,'firstPaymentDate',firstPayment.toISOString().slice(0,10)); await save(page);
-          await page.getByText('tasa fija anual 12.50%',{exact:false}).waitFor();
-          await page.getByText('pago estimado',{exact:false}).waitFor();
+          await page.getByText('12.50%',{exact:true}).waitFor();
+          await page.getByText('Cuota',{exact:true}).waitFor();
           await page.getByRole('button',{name:'Registrar préstamo',exact:true}).click();
           await page.locator('select[name="loanType"]').selectOption('bank'); await page.locator('select[name="paymentFrequency"]').selectOption('biweekly');
           await fill(page,'person','Banco quincenal sintético'); await fill(page,'description','Crédito quincenal sintético'); await fill(page,'capital','1000');
@@ -64,24 +65,24 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
           await page.getByText('quincenal',{exact:false}).first().waitFor();
         }
       }
-      await page.getByRole('navigation').getByRole('link',{name:'Movimientos',exact:true}).click(); await page.getByRole('button',{name:'Importar CSV / Excel'}).click();
+      await go(page,'Movimientos'); await page.getByRole('button',{name:'Importar CSV / Excel'}).click();
       const bankCsv = Buffer.from(`Fecha,Descripcion,Importe,Tipo,Referencia\n${today},Compra importada,125.50,Gasto,SYNTHETIC-CSV-ID`);
       await page.getByRole('dialog').locator('input[type=file]').setInputFiles({name:'synthetic-bank.csv',mimeType:'text/csv',buffer:bankCsv});
       await page.getByRole('dialog').locator('select[name="kind"]').selectOption('3');await page.getByRole('dialog').locator('select[name="reference"]').selectOption('4'); await page.getByRole('button',{name:'Previsualizar movimientos'}).click();
       await page.getByRole('button',{name:'Confirmar movimientos'}).click(); await page.getByRole('dialog').waitFor({state:'hidden'}); await page.getByRole('cell',{name:'Compra importada',exact:true}).waitFor();
       await page.getByRole('button',{name:'Importar CSV / Excel'}).click();await page.getByRole('dialog').locator('input[type=file]').setInputFiles({name:'synthetic-bank.csv',mimeType:'text/csv',buffer:bankCsv});
       await page.getByRole('dialog').locator('select[name="kind"]').selectOption('3');await page.getByRole('dialog').locator('select[name="reference"]').selectOption('4');await page.getByRole('button',{name:'Previsualizar movimientos'}).click();await page.getByText('0 movimientos seleccionados · 1 ya registrados.').waitFor(); await page.getByRole('button',{name:'Cerrar ventana'}).click();
-      await page.getByRole('navigation').getByRole('link',{name:'Presupuesto',exact:true}).click(); await page.getByRole('heading',{name:'Tu presupuesto',level:1}).waitFor(); assert(await page.locator('tbody tr').count()>=26,'Full installment horizon');
-      await page.getByRole('navigation').getByRole('link',{name:'Preferencias',exact:true}).click();
+      await go(page,'Presupuesto'); await page.getByRole('heading',{name:'Tu presupuesto',level:1}).waitFor(); assert(await page.locator('tbody tr').count()>=26,'Full installment horizon');
+      await go(page,'Preferencias');
       const downloadEvent = page.waitForEvent('download'); await page.getByRole('button',{name:'Descargar respaldo cifrado'}).click(); const backupFile = await downloadEvent;
       const backupPath = path.join(output, `${name}-synthetic-backup.json`); await backupFile.saveAs(backupPath); const contents = fs.readFileSync(backupPath,'utf8');
       for (const secret of ['Tarjeta sintética','Banco de pruebas','Compra local sintética',password,recovery]) assert(!contents.includes(secret),'Backup contains only encrypted data');
       if(name==='desktop'){
         const restoredContext=await browser.newContext({viewport}),restored=await restoredContext.newPage();await restored.goto(url);await restored.getByRole('heading',{name:'Crea tu cartera'}).waitFor();
         await restored.locator('input[type=file]').setInputFiles(backupPath);await restored.getByRole('button',{name:'Olvidé mi contraseña'}).click();await fill(restored,'recovery',recovery);await fill(restored,'password','synthetic-backup-recovered');await fill(restored,'confirmation','synthetic-backup-recovered');await restored.getByRole('button',{name:'Importar respaldo',exact:true}).click();await restored.getByRole('button',{name:'Bloquear cartera'}).waitFor();
-        await restored.getByRole('navigation').getByRole('link',{name:'Preferencias',exact:true}).click();await restored.locator('input[type=file]').filter({visible:true}).count();
+        await go(restored,'Preferencias');await restored.locator('input[type=file]').filter({visible:true}).count();
         await restored.locator('.file-button').filter({hasText:'Importar respaldo cifrado'}).locator('input').setInputFiles(backupPath);await restored.getByRole('dialog').locator('input[name=password]').fill(password);await restored.getByRole('button',{name:'Verificar e importar'}).click();await restored.getByRole('dialog').waitFor({state:'hidden'});
-        await restored.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();await restored.locator('.credit-card').waitFor();assert.equal(await restored.locator('.credit-card').count(),1,'Repeated backup import cannot duplicate a card');await restoredContext.close();
+        await go(restored,'Tarjetas');await restored.locator('.credit-card').waitFor();assert.equal(await restored.locator('.credit-card').count(),1,'Repeated backup import cannot duplicate a card');await restoredContext.close();
       }
       const stored = await page.evaluate(async () => { const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('paymentplan-encrypted-v1');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)}); const result={};for(const name of ['meta','blocks','outbox'])result[name]=await new Promise(resolve=>{const r=db.transaction(name).objectStore(name).getAll();r.onsuccess=()=>resolve(r.result)});db.close();return JSON.stringify(result) });
       assert(!stored.includes('Compra local sintética')); assert(!stored.includes(password)); assert(!stored.includes(recovery));
@@ -90,7 +91,7 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await fill(page,'password',password); await page.getByRole('button',{name:'Desbloquear',exact:true}).click(); await page.getByRole('button',{name:'Bloquear cartera'}).waitFor();
       await page.reload(); await page.getByRole('heading',{name:'Desbloquea tu cartera'}).waitFor();
       await page.getByRole('button',{name:'Olvidé mi contraseña'}).click(); await fill(page,'recovery',recovery); await fill(page,'password','synthetic-recovered-password'); await fill(page,'confirmation','synthetic-recovered-password'); await page.getByRole('button',{name:'Cambiar contraseña y desbloquear'}).click(); await page.getByRole('button',{name:'Bloquear cartera'}).waitFor();
-      await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click(); await page.locator('.credit-card').waitFor(); assert.equal(await page.locator('.credit-card').count(),1);
+      await go(page,'Tarjetas'); await page.locator('.credit-card').waitFor(); assert.equal(await page.locator('.credit-card').count(),1);
       await page.evaluate(()=>navigator.serviceWorker.ready); await page.waitForFunction(()=>Boolean(navigator.serviceWorker.controller)); await context.setOffline(true); await page.reload();
       await page.getByRole('heading',{name:'Desbloquea tu cartera'}).waitFor(); await fill(page,'password','synthetic-recovered-password'); await page.getByRole('button',{name:'Desbloquear',exact:true}).click(); await page.locator('.credit-card').waitFor();
       await page.getByRole('button',{name:'Registrar movimiento',exact:true}).click(); await fill(page,'amount','100'); await fill(page,'description','Compra sin conexión'); await save(page);
@@ -111,32 +112,32 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
         await fill(page,'password','synthetic-recovered-password');await page.getByRole('button',{name:'Desbloquear',exact:true}).click();await page.locator('.credit-card').first().waitFor();assert.equal(await page.locator('.credit-card').count(),4,'Update retains encrypted financial data');
       }
 
-      await page.getByRole('navigation').getByRole('link',{name:'Calendario',exact:true}).click();await page.getByLabel('Días de anticipación del pago').selectOption('10');assert.equal(await page.evaluate(()=>localStorage.getItem('paymentplan-margin')),'10');await page.getByRole('columnheader',{name:'Pago sugerido',exact:true}).waitFor();
+      await go(page,'Calendario');await page.getByLabel('Días de anticipación del pago').selectOption('10');assert.equal(await page.evaluate(()=>localStorage.getItem('paymentplan-margin')),'10');await page.getByRole('columnheader',{name:'Pago sugerido',exact:true}).waitFor();
       // Extra parity flows and education run against synthetic encrypted state.
-      await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();
+      await go(page,'Tarjetas');
       await page.locator('.credit-months').first().click();await page.locator('.installment-detail summary').click();
       await page.getByRole('button',{name:'Pagar cuota',exact:true}).first().click();assert.equal(await page.locator('select[name="kind"]').inputValue(),'payment');
       await fill(page,'amount','20');await fill(page,'capitalPaid','10');await save(page);
-      await page.getByRole('navigation').getByRole('link',{name:'Movimientos',exact:true}).click();
+      await go(page,'Movimientos');
       await page.getByRole('row').filter({has:page.getByRole('cell',{name:'Pago de cuota',exact:true})}).getByRole('button',{name:'Distribuir entre cuotas'}).click();
       await fill(page,'capital0','10');await fill(page,'capital1','10');await save(page);
-      await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();await page.locator('.credit-months').first().click();await page.getByRole('button',{name:'Dividir deuda',exact:true}).click();
+      await go(page,'Tarjetas');await page.locator('.credit-months').first().click();await page.getByRole('button',{name:'Dividir deuda',exact:true}).click();
       await fill(page,'description','Plan bancario sintético');await fill(page,'capital','100');await fill(page,'months','3');await page.getByLabel('Cálculo del interés').selectOption('bankPayment');await fill(page,'bankPayment','35');
       await page.getByRole('button',{name:'Previsualizar amortización'}).click();await page.getByRole('dialog').locator('table').waitFor();assert.equal(await page.getByRole('dialog').locator('tbody tr').count(),3);await save(page);
       await page.locator('.credit-months').first().click();const bankPlan=page.locator('.installment-detail').filter({hasText:'Plan bancario sintético'});await bankPlan.locator('summary').click();await bankPlan.getByRole('button',{name:'Deshacer plan'}).click();
       await page.locator('.plan-group-cancelled > summary').click();assert.equal(await page.locator('.plan-group-cancelled .installment-detail').count(),1);assert.equal(await bankPlan.getByRole('button',{name:'Editar plan'}).count(),0);await page.getByRole('button',{name:'Cerrar ventana'}).click();
-      await page.getByRole('navigation').getByRole('link',{name:'Periodos',exact:true}).click();await page.getByRole('button',{name:'Ver resumen',exact:true}).click();await page.getByRole('button',{name:'Cerrar periodo',exact:true}).click();await page.locator('details.plan-detail summary').click();
+      await go(page,'Periodos');await page.getByRole('button',{name:'Ver resumen',exact:true}).click();await page.getByRole('button',{name:'Cerrar periodo',exact:true}).click();await page.locator('details.plan-detail summary').click();
       assert.equal(await page.getByRole('button',{name:'Exportar cierre CSV',exact:true}).count(),2);await page.getByRole('button',{name:'Reabrir',exact:true}).click();
-      await page.getByRole('navigation').getByRole('link',{name:'Aprender',exact:true}).click();await page.getByRole('button',{name:'El pago para no generar intereses del corte',exact:true}).click();await page.getByText(/Correcto. La app organiza/).waitFor();
+      await go(page,'Aprender');await page.getByRole('button',{name:'El pago para no generar intereses del corte',exact:true}).click();await page.getByText(/Correcto. La app organiza/).waitFor();
       assert.equal(await page.locator('.lesson').count(),7);await page.screenshot({path:path.join(output,name+'-educacion.png'),fullPage:true});
-      await page.getByRole('navigation').getByRole('link',{name:'Análisis',exact:true}).click();await page.getByRole('heading',{name:'Gastos y costo del crédito'}).waitFor();assert.equal(await page.locator('tbody tr').count(),4);
-      await page.getByRole('navigation').getByRole('link',{name:'Simulador',exact:true}).click();await fill(page,'budget','50');await fill(page,'name1','Deuda sintética');await fill(page,'balance1','100');await fill(page,'minimum1','10');await fill(page,'rate1','0');await page.getByRole('button',{name:'Comparar estrategias'}).click();
+      await go(page,'Análisis');await page.getByRole('heading',{name:'Gastos y costo del crédito'}).waitFor();assert.equal(await page.locator('tbody tr').count(),4);
+      await go(page,'Simulador');await fill(page,'budget','50');await fill(page,'name1','Deuda sintética');await fill(page,'balance1','100');await fill(page,'minimum1','10');await fill(page,'rate1','0');await page.getByRole('button',{name:'Comparar estrategias'}).click();
       assert.equal(await page.getByText('2 meses',{exact:true}).count(),2);assert.equal(await page.locator('svg.payoff-chart').count(),2);await page.screenshot({path:path.join(output,name+'-simulador.png'),fullPage:true});
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Growth views fit viewport');
-      await page.getByRole('navigation').getByRole('link',{name:'Preferencias',exact:true}).click();await page.getByRole('button',{name:'Activar notificaciones',exact:true}).waitFor();await context.grantPermissions(['notifications']);await page.getByRole('button',{name:'Activar notificaciones',exact:true}).click();await page.getByRole('button',{name:'Desactivar notificaciones',exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('paymentplan-browser-alerts')),'enabled');await page.getByRole('button',{name:'Desactivar notificaciones',exact:true}).click();
-      await page.getByRole('navigation').getByRole('link',{name:'Tarjetas',exact:true}).click();const disposable=page.locator('.credit-card').filter({has:page.getByRole('heading',{name:'Tarjeta 4',exact:true})});await disposable.locator('.card-menu summary').click();page.once('dialog',dialog=>dialog.accept());await disposable.getByRole('button',{name:'Eliminar tarjeta e historial',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.credit-card').length===3);
+      await go(page,'Preferencias');await page.getByRole('button',{name:'Activar notificaciones',exact:true}).waitFor();await context.grantPermissions(['notifications']);await page.getByRole('button',{name:'Activar notificaciones',exact:true}).click();await page.getByRole('button',{name:'Desactivar notificaciones',exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('paymentplan-browser-alerts')),'enabled');await page.getByRole('button',{name:'Desactivar notificaciones',exact:true}).click();
+      await go(page,'Tarjetas');const disposable=page.locator('.credit-card').filter({has:page.getByRole('heading',{name:'Tarjeta 4',exact:true})});await disposable.locator('.card-menu summary').click();page.once('dialog',dialog=>dialog.accept());await disposable.getByRole('button',{name:'Eliminar tarjeta e historial',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.credit-card').length===3);
       console.log('PASS: '+name+', quota payments, multiple allocations, bank monthly preview, cancelled history, period close/reopen, offline education/insights/simulator and atomic card removal.');
-      await page.getByRole('navigation').getByRole('link',{name:'Presupuesto',exact:true}).click();
+      await go(page,'Presupuesto');
       await page.getByRole('heading',{name:'Tu presupuesto',level:1}).waitFor();
       await page.setViewportSize({width:viewport.width,height:700});
       assert(await page.locator('main tbody tr').count()>=26,'Budget includes the full installment horizon');

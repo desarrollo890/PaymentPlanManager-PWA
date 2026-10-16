@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { FinancialCommands } from '@paymentplan/application';
-import { applyChanges, assertPortfolio, emptyPortfolio, financeView, periodReport } from '@paymentplan/domain';
+import { applyChanges, assertPortfolio, emptyPortfolio, financeView, fixedLoanExtraSavings, periodReport } from '@paymentplan/domain';
 import type { Change, Portfolio } from '@paymentplan/domain';
 import { assertPayload } from '@paymentplan/contracts';
 
@@ -105,6 +105,16 @@ test('bank loans estimate monthly installments and accrue interest before record
   assert.equal(afterPayment.obligations.length, 11);
   assert.equal(afterPayment.obligations[0]!.dueDate, '2026-12-15');
   assert.throws(() => h.cmd.saveLoan({ ...h.p.loans[0]!.value, annualRateBasisPoints: 1500 }, id), /condiciones de amortización/);
+});
+test('fixed-fee loans save interest and installments with an extra capital payment', () => {
+  const h = harness();
+  h.commit(h.cmd.saveLoan({ person: 'Banco', description: 'Crédito', principalCents: 100000, balanceDate: h.context.today,
+    dueDate: '2027-10-15', loanType: 'bank', annualRateBasisPoints: 1200, termMonths: 12, firstPaymentDate: '2026-11-15',
+    includeReceivedMoney: false, archived: false }));
+  const loan = h.p.loans[0]!.value, saved = fixedLoanExtraSavings(loan, 0, 30000);
+  assert.ok(saved.savedInterestCents > 0 && saved.savedInstallments > 0 && saved.newLastDueDate < '2027-10-15');
+  assert.throws(() => fixedLoanExtraSavings(loan, 0, 0));
+  assert.throws(() => fixedLoanExtraSavings(loan, 99, 100));
 });
 test('bank loans support two fixed-end-of-month payments per month across calendar boundaries', () => {
   const h = harness();
