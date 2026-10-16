@@ -1332,6 +1332,21 @@ export const schemas: Readonly<Record<string, Schema>> = {
                 "type": "null"
               }
             ]
+          },
+          "voucherCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "voucherAccountId": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

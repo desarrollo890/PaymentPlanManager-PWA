@@ -225,6 +225,12 @@ export class FinancialCommands {
       const account = this.portfolio.cashAccounts.find(a => a.id === payroll && !a.voided);
       if (!account || account.value.kind !== 'debit' || account.value.archived) throw Error('Selecciona una cuenta de débito activa como cuenta de nómina.');
     }
+    const voucher = payload.voucherAccountId ?? null;
+    if ((payload.voucherCents ?? 0) > 0 && !voucher) throw Error('Elige la cuenta donde se depositan los vales.');
+    if (voucher !== null && voucher !== (previous?.voucherAccountId ?? null)) {
+      const account = this.portfolio.cashAccounts.find(a => a.id === voucher && !a.voided);
+      if (!account || account.value.kind !== 'debit' || account.value.archived) throw Error('Selecciona una cuenta de débito activa para los vales.');
+    }
     return this.checked([{ entityType: 'income', entityId: live(this.portfolio.incomes)[0]?.id ?? '11111111-1111-4111-8111-111111111111', payload, voided: false }]);
   }
   // Confirma el ingreso real de la quincena: lo marca como recibido en el presupuesto y lo abona a la cuenta de nómina.
@@ -242,10 +248,20 @@ export class FinancialCommands {
     const entryId = existing[0]?.id ?? await stableId('payroll:' + account.id + ':' + payday);
     const entry: CashEntry = { accountId: account.id, toAccountId: null, cardMovementId: null, date: payday, amountCents, kind: 'income', categoryId: null,
       description: existing[0]?.value.description ?? 'Ingreso de nómina' };
-    return this.checked([
+    const changes: Change[] = [
       { entityType: 'budget', entityId: live(this.portfolio.budgets).find(b => b.value.payday === payday)?.id ?? this.context.newId(), payload: budget, voided: false },
       { entityType: 'cashEntry', entityId: entryId, payload: entry, voided: false },
-    ]);
+    ];
+    // Los vales se abonan a su propia cuenta y no forman parte del ingreso del presupuesto.
+    const voucherAccount = this.portfolio.cashAccounts.find(a => a.id === config.voucherAccountId && !a.voided);
+    if ((config.voucherCents ?? 0) > 0 && voucherAccount && voucherAccount.value.kind === 'debit' && !voucherAccount.value.archived) {
+      const prior = live(this.portfolio.cashEntries).filter(e => e.value.accountId === voucherAccount.id && e.value.kind === 'income' && e.value.date === payday);
+      if (prior.length > 1) throw Error('Hay varios ingresos de esa fecha en la cuenta de vales. Corrígelos desde Cuentas.');
+      changes.push({ entityType: 'cashEntry', entityId: prior[0]?.id ?? await stableId('voucher:' + voucherAccount.id + ':' + payday),
+        payload: { accountId: voucherAccount.id, toAccountId: null, cardMovementId: null, date: payday, amountCents: prior[0]?.value.amountCents ?? config.voucherCents!, kind: 'income', categoryId: null,
+          description: prior[0]?.value.description ?? 'Vales de despensa' }, voided: false });
+    }
+    return this.checked(changes);
   }
   saveBudget(payload: Budget): Change[] { return this.checked([{ entityType: 'budget', entityId: live(this.portfolio.budgets).find(b => b.value.payday === payload.payday)?.id ?? this.context.newId(), payload, voided: false }]); }
   reminders(payload: ReminderPreferences): Change[] { return this.checked([{ entityType: 'reminderPreferences', entityId: live(this.portfolio.reminderPreferences)[0]?.id ?? '22222222-2222-4222-8222-222222222222', payload, voided: false }]); }

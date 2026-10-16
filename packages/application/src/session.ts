@@ -106,7 +106,7 @@ export class VaultSession {
       const parents = importedSeed ? [importedSeed.id] : entity?.heads.map(op => op.operationId) ?? [];
       const referenced = new Set<string>();
       const payload = change.payload as unknown as Record<string, unknown>;
-      for (const key of ['cardId', 'loanId', 'purchaseId', 'statementId', 'categoryId', 'movementId', 'recurrenceId', 'accountId', 'payrollAccountId', 'chargeAccountId', 'toAccountId', 'goalId', 'cardMovementId']) if (typeof payload[key] === 'string') referenced.add(payload[key]);
+      for (const key of ['cardId', 'loanId', 'purchaseId', 'statementId', 'categoryId', 'movementId', 'recurrenceId', 'accountId', 'payrollAccountId', 'voucherAccountId', 'chargeAccountId', 'toAccountId', 'goalId', 'cardMovementId']) if (typeof payload[key] === 'string') referenced.add(payload[key]);
       if (Array.isArray(payload.allocations)) for (const allocation of payload.allocations as { planId: string }[]) referenced.add(allocation.planId);
       if (Array.isArray(payload.includedMovementIds)) for (const id of payload.includedMovementIds) referenced.add(id);
       const dependencies = [...referenced].flatMap(id => operationIds.has(id) ? [operationIds.get(id)!] : this.revisionState.entities.find(e => e.entityId === id)?.heads.map(op => op.operationId) ?? []);

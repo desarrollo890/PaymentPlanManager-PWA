@@ -139,3 +139,13 @@ test('reconcile adjusts the account to the real bank balance and rejects a match
   assert.deepEqual(live(h.p.cashEntries).map(e => e.value.kind), ['income', 'expense']);
   assert.throws(() => h.cmd.reconcileCashAccount(id, -1));
 });
+
+test('receivePayroll also deposits the voucher amount in its own account, idempotently', async () => {
+  const h = harness(), main = h.account(), vouchers = h.account();
+  h.commit(h.cmd.saveIncome({ ...income(main), voucherCents: 150000, voucherAccountId: vouchers }));
+  h.commit(await h.cmd.receivePayroll('2026-10-15', 2000000)); h.commit(await h.cmd.receivePayroll('2026-10-15', 2000000));
+  const entries = live(h.p.cashEntries).filter(e => e.value.accountId === vouchers && e.value.date === '2026-10-15');
+  assert.equal(entries.length, 1); assert.equal(entries[0]!.value.amountCents, 150000);
+  assert.equal(cashBalance(h.p, vouchers, today), 100000 + 150000);
+  assert.throws(() => h.cmd.saveIncome({ ...income(main), voucherCents: 100, voucherAccountId: null }));
+});
