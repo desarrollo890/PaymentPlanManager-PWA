@@ -2,9 +2,10 @@ import type { Portfolio } from './portfolio.ts';
 import type { FinanceView } from './finance.ts';
 import { cashBalance } from './extensions.ts';
 import { addDays } from './dates.ts';
+import { activeTandas, tandaSchedule } from './tandas.ts';
 
 export interface ProjectionEvent {
-  readonly date: string; readonly label: string; readonly kind: 'income' | 'card' | 'loan';
+  readonly date: string; readonly label: string; readonly kind: 'income' | 'card' | 'loan' | 'tanda';
   // Positivo entra a la cuenta; negativo sale.
   readonly amountCents: number; readonly balanceCents: number; readonly overdue: boolean;
 }
@@ -34,6 +35,12 @@ export function payrollProjection(p: Portfolio, view: FinanceView, days = 90): P
   for (const o of view.obligations) {
     if (!o.chargeAccountName || o.chargeAccountName !== link.accountName || o.dueDate > through) continue;
     raw.push({ date: o.dueDate < today ? today : o.dueDate, label: `Cuota de ${view.loans.find(l => l.id === o.loanId)?.person ?? 'préstamo'}`, kind: 'loan', amountCents: -o.amountCents, overdue: o.dueDate < today });
+  }
+  for (const t of activeTandas(p)) {
+    for (const r of tandaSchedule(t)) {
+      if (r.date <= today || r.date > through) continue;
+      raw.push({ date: r.date, label: `Tanda ${t.name} (${r.number}/${t.participants})`, kind: 'tanda', amountCents: r.payoutCents - r.contributionCents, overdue: false });
+    }
   }
   // A igual fecha, el ingreso se aplica antes que los cargos.
   raw.sort((a, b) => a.date.localeCompare(b.date) || b.amountCents - a.amountCents);

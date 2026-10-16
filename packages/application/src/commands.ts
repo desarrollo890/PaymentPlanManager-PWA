@@ -1,8 +1,8 @@
 import { canonical } from '@paymentplan/contracts';
 import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
-  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance } from '@paymentplan/domain';
-import type { FinancialEntityType, Change, FinancialRecord, Portfolio } from '@paymentplan/domain';
+  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance, tandaSchedule } from '@paymentplan/domain';
+import type { FinancialEntityType, Change, FinancialRecord, Portfolio, Tanda } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 
 export interface CommandContext { readonly today: string; readonly now: string; readonly newId: () => string }
@@ -231,7 +231,36 @@ export class FinancialCommands {
       const account = this.portfolio.cashAccounts.find(a => a.id === voucher && !a.voided);
       if (!account || account.value.kind !== 'debit' || account.value.archived) throw Error('Selecciona una cuenta de débito activa para los vales.');
     }
-    return this.checked([{ entityType: 'income', entityId: live(this.portfolio.incomes)[0]?.id ?? '11111111-1111-4111-8111-111111111111', payload, voided: false }]);
+    const tandas = payload.tandas ?? previous?.tandas;
+    if (tandas) {
+      if (new Set(tandas.map(t => t.id)).size !== tandas.length) throw Error('Hay tandas repetidas.');
+      tandas.forEach(t => tandaSchedule(t));
+    }
+    const next: Income = tandas ? { ...payload, tandas } : payload;
+    return this.checked([{ entityType: 'income', entityId: live(this.portfolio.incomes)[0]?.id ?? '11111111-1111-4111-8111-111111111111', payload: next, voided: false }]);
+  }
+  // Alta o edición de una tanda; vive dentro de la configuración de ingresos.
+  saveTanda(payload: Omit<Tanda, 'id'>, id?: string): Change[] {
+    const income: Income = live(this.portfolio.incomes)[0]?.value ?? { income15Cents: 0, incomeEndCents: 0, expensesCents: 0, reserveCents: 0, payrollAccountId: null };
+    const tandas = income.tandas ?? [];
+    if (id && !tandas.some(t => t.id === id)) throw Error('La tanda no existe.');
+    const tanda: Tanda = { ...payload, id: id ?? this.context.newId(), name: payload.name.trim() };
+    if (!tanda.name) throw Error('Captura el nombre de la tanda.');
+    return this.saveIncome({ ...income, tandas: id ? tandas.map(t => t.id === id ? tanda : t) : [...tandas, tanda] });
+  }
+  // El cobro de tu turno lo confirmas tú: se deposita en la cuenta de nómina el día del turno.
+  async receiveTandaPayout(tandaId: string, amountCents?: number): Promise<Change[]> {
+    const config = live(this.portfolio.incomes)[0]?.value, tanda = config?.tandas?.find(t => t.id === tandaId);
+    const account = this.portfolio.cashAccounts.find(a => a.id === config?.payrollAccountId && !a.voided);
+    if (!tanda) throw Error('La tanda no existe.');
+    if (!account || account.value.kind !== 'debit' || account.value.archived) throw Error('Vincula primero una cuenta de débito de nómina en Preferencias.');
+    const round = tandaSchedule(tanda).find(r => r.number === tanda.turn)!;
+    if (round.date > this.context.today) throw Error('Todavía no llega tu turno de cobro.');
+    const amount = amountCents ?? round.payoutCents;
+    if (!Number.isSafeInteger(amount) || amount <= 0) throw Error('Captura un cobro mayor a cero.');
+    const id = await stableId('tandaPayout:' + tanda.id);
+    const entry: CashEntry = { accountId: account.id, toAccountId: null, cardMovementId: null, date: round.date, amountCents: amount, kind: 'income', categoryId: null, description: `Cobro de tanda ${tanda.name}` };
+    return this.checked([{ entityType: 'cashEntry', entityId: id, payload: entry, voided: false }]);
   }
   // Confirma el ingreso real de la quincena: lo marca como recibido en el presupuesto y lo abona a la cuenta de nómina.
   async receivePayroll(payday: string, amountCents: number): Promise<Change[]> {
@@ -260,6 +289,16 @@ export class FinancialCommands {
       changes.push({ entityType: 'cashEntry', entityId: prior[0]?.id ?? await stableId('voucher:' + voucherAccount.id + ':' + payday),
         payload: { accountId: voucherAccount.id, toAccountId: null, cardMovementId: null, date: payday, amountCents: prior[0]?.value.amountCents ?? config.voucherCents!, kind: 'income', categoryId: null,
           description: prior[0]?.value.description ?? 'Vales de despensa' }, voided: false });
+    }
+    // Aportaciones de tandas: cargo automático desde la cuenta de nómina; si ya existe (o la anulaste) no se vuelve a crear.
+    for (const tanda of config.tandas ?? []) {
+      if (tanda.archived) continue;
+      const round = tandaSchedule(tanda).find(r => r.date === payday);
+      if (!round) continue;
+      const id = await stableId(`tandaPay:${tanda.id}:${payday}`);
+      if (this.portfolio.cashEntries.some(e => e.id === id)) continue;
+      changes.push({ entityType: 'cashEntry', entityId: id, voided: false, payload: { accountId: account.id, toAccountId: null, cardMovementId: null, date: payday,
+        amountCents: round.contributionCents, kind: 'expense', categoryId: null, description: `Tanda ${tanda.name} · aportación ${round.number}/${tanda.participants}` } });
     }
     return this.checked(changes);
   }

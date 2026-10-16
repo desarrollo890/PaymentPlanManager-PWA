@@ -139,6 +139,15 @@ export type Income = {
   readonly "payrollAccountId"?: (Uuid) | (null);
   readonly "voucherCents"?: number;
   readonly "voucherAccountId"?: (Uuid) | (null);
+  readonly "tandas"?: ReadonlyArray<{
+  readonly "id": Uuid;
+  readonly "name": string;
+  readonly "contributionCents": number;
+  readonly "participants": number;
+  readonly "turn": number;
+  readonly "firstDate": string;
+  readonly "archived": boolean;
+}>;
 };
 
 export type Budget = {

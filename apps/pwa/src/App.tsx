@@ -21,6 +21,7 @@ import { BrowserReminders } from './browser-reminders.tsx';
 import { EducationView, InsightsView, PayoffView } from './growth-views.tsx';
 import { PlanningView, GoalBudget } from './planning-views.tsx';
 import { ConflictReview } from './conflicts.tsx';
+import { TandasPanel } from './tandas-panel.tsx';
 
 const google = new GoogleAccess(oauth.web.clientId);
 const sections = [ ['inicio', 'Inicio', 'home', 'Tu espacio financiero', 'HOY'],
@@ -214,6 +215,7 @@ export function App() {
           {view && section === 'analisis' && <InsightsView p={session.portfolio} today={today} view={view} />}
           {section === 'simulador' && <PayoffView />}
           {section === 'periodos' && <PeriodsView session={session} today={today} act={act} />}
+          {section === 'preferencias' && <TandasPanel session={session} today={today} busy={busy} blocked={blocked} act={act} />}
           {section === 'preferencias' && <><section className="panel"><h2>Configuración inicial</h2>{(() => { const inc = live(session.portfolio.incomes)[0], steps: [string, boolean][] = [['Ingresos configurados', !!inc && (inc.value.income15Cents > 0 || inc.value.incomeEndCents > 0)], ['Cuenta de nómina vinculada', !!inc?.value.payrollAccountId], ['Al menos una tarjeta o préstamo', live(session.portfolio.cards).length + live(session.portfolio.loans).length > 0], ['Respaldo o Google Drive autorizado', authorized]], done = steps.filter(s => s[1]).length;
               const last = view?.budgets.filter(b => b.status === 'received' && b.receivedIncomeCents !== b.expectedIncomeCents).at(-1);
               return <><progress aria-label="Avance de configuración" value={done} max={steps.length} /><ul className="plain-list">{steps.map(([label, ok]) => <li key={label}><span>{ok ? '✓' : '○'} {label}</span></li>)}</ul>{last && <p className="alert" role="status">Tu último ingreso real ({money(last.receivedIncomeCents ?? 0)}, {shortDate(last.payday)}) difiere del configurado ({money(last.expectedIncomeCents)}). Si cambió tu sueldo, actualiza los importes abajo.</p>}</>; })()}</section>

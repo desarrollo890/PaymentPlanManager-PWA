@@ -1374,7 +1374,7 @@ export function CalendarView({
   p: Portfolio;
 }) {
   const projection = payrollProjection(p, view),
-    kindLabel = { income: "Ingreso", card: "Tarjeta", loan: "Préstamo" } as const;
+    kindLabel = { income: "Ingreso", card: "Tarjeta", loan: "Préstamo", tanda: "Tanda" } as const;
   const [advance, setAdvance] = useState(() => {
     const saved = Number(localStorage.getItem("paymentplan-margin") ?? 2);
     return Number.isInteger(saved) && saved >= 0 && saved <= 10 ? saved : 2;
@@ -1890,6 +1890,12 @@ export function BudgetView({
                 </td>
                 <td className="numeric" data-label="Personas">
                   {money(b.loanPendingCents + b.loanPaidCents)}
+                  {(b.tandaContributionCents > 0 || b.tandaPayoutCents > 0) && (
+                    <small>
+                      Tanda −{money(b.tandaContributionCents)}
+                      {b.tandaPayoutCents > 0 ? ` · cobras +${money(b.tandaPayoutCents)}` : ""}
+                    </small>
+                  )}
                 </td>
                 <td
                   className={`numeric ${b.balanceCents < 0 ? "negative" : ""}`}

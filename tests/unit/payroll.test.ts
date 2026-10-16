@@ -149,3 +149,25 @@ test('receivePayroll also deposits the voucher amount in its own account, idempo
   assert.equal(cashBalance(h.p, vouchers, today), 100000 + 150000);
   assert.throws(() => h.cmd.saveIncome({ ...income(main), voucherCents: 100, voucherAccountId: null }));
 });
+test('tandas charge the payroll account on payday, project the budget and collect on the turn date', async () => {
+  const h = harness(), id = h.account(); h.commit(h.cmd.saveIncome(income(id)));
+  assert.throws(() => h.cmd.saveTanda({ name: 'Oficina', contributionCents: 50000, participants: 4, turn: 5, firstDate: '2026-10-15', archived: false }));
+  assert.throws(() => h.cmd.saveTanda({ name: 'Oficina', contributionCents: 50000, participants: 4, turn: 2, firstDate: '2026-10-16', archived: false }));
+  h.commit(h.cmd.saveTanda({ name: 'Oficina', contributionCents: 50000, participants: 4, turn: 2, firstDate: '2026-10-15', archived: false }));
+  h.commit(h.cmd.saveIncome(income(id)));
+  assert.equal(live(h.p.incomes)[0]!.value.tandas?.length, 1, 'saving income keeps tandas');
+  assert.equal(budgetFor(h, '2026-10-15').tandaContributionCents, 50000);
+  assert.equal(budgetFor(h, '2026-10-31').tandaPayoutCents, 200000);
+  h.commit(await h.cmd.receivePayroll('2026-10-15', 2000000)); h.commit(await h.cmd.receivePayroll('2026-10-15', 2000000));
+  const charges = live(h.p.cashEntries).filter(e => e.value.kind === 'expense' && e.value.description.startsWith('Tanda Oficina'));
+  assert.equal(charges.length, 1); assert.equal(charges[0]!.value.amountCents, 50000);
+  await assert.rejects(() => h.cmd.receiveTandaPayout(live(h.p.incomes)[0]!.value.tandas![0]!.id));
+});
+test('tanda payout is deposited once in the payroll account on the turn date', async () => {
+  const h = harness(), id = h.account(); h.commit(h.cmd.saveIncome(income(id)));
+  h.commit(h.cmd.saveTanda({ name: 'Familia', contributionCents: 50000, participants: 4, turn: 1, firstDate: '2026-10-15', archived: false }));
+  const tandaId = live(h.p.incomes)[0]!.value.tandas![0]!.id;
+  h.commit(await h.cmd.receiveTandaPayout(tandaId)); h.commit(await h.cmd.receiveTandaPayout(tandaId));
+  const entries = live(h.p.cashEntries).filter(e => e.value.description === 'Cobro de tanda Familia');
+  assert.equal(entries.length, 1); assert.equal(entries[0]!.value.amountCents, 200000); assert.equal(entries[0]!.value.date, '2026-10-15');
+});

@@ -6,6 +6,7 @@ import { bankLoanProjection, bankLoanSchedule, isProgressiveLoan, progressiveLoa
 import { cents, safeInteger, sumCents } from './money.ts';
 import { live, orderOf } from './portfolio.ts';
 import type { FinancialRecord, Portfolio } from './portfolio.ts';
+import { activeTandas, tandaSchedule, tandasOnPayday } from './tandas.ts';
 
 export interface BalanceAlert { readonly code: 'balanceMismatch' | 'limitExceeded' | 'creditBalance'; readonly amountCents: number }
 export interface QuotaBalance {
@@ -47,6 +48,7 @@ export interface BudgetView {
   readonly payday: string; readonly pendingCents: number; readonly loanPendingCents: number; readonly receivedLoanCents: number;
   readonly loanPaidCents: number; readonly balanceCents: number; readonly cardPaidCents: number;
   readonly incomeCents: number; readonly expensesCents: number; readonly reserveCents: number; readonly estimated: boolean;
+  readonly tandaContributionCents: number; readonly tandaPayoutCents: number;
   // Cuenta de nómina vinculada; recordedCents es el ingreso ya registrado en ella ese día (null si falta registrarlo).
   readonly payroll: { readonly accountId: string; readonly accountName: string; readonly recordedCents: number | null; readonly canRecord: boolean } | null;
 }
@@ -316,7 +318,8 @@ export function financeView(p: Portfolio, today: string): FinanceView {
   const cardHorizon = [...cards.flatMap(c => c.plans.filter(p => !p.cancelled).flatMap(p => p.quotas.map(q => q.dueDate))),
     ...live(p.movements).filter(m => m.value.scheduled || m.value.date > today).map(m => m.value.date),
     ...cards.flatMap(c => c.projections.map(s => s.dueDate)), ...owed.map(s => s.dueDate), today.slice(0, 8) + dateInMonth(civilDate(today).year, civilDate(today).month, 31).slice(8)].sort().at(-1)!;
-  const horizon = [cardHorizon, ...live(p.savingsGoals).filter(g => !g.value.archived && g.value.targetDate !== null).map(g => g.value.targetDate!), ...obligations.map(o => o.dueDate), ...live(p.loanPayments).filter(a => a.value.scheduled).map(a => a.value.date), ...live(p.budgets).map(b => b.value.payday)].sort().at(-1)!;
+  const tandaDates = activeTandas(p).flatMap(t => tandaSchedule(t).map(r => r.date));
+  const horizon = [cardHorizon, ...tandaDates, ...live(p.savingsGoals).filter(g => !g.value.archived && g.value.targetDate !== null).map(g => g.value.targetDate!), ...obligations.map(o => o.dueDate), ...live(p.loanPayments).filter(a => a.value.scheduled).map(a => a.value.date), ...live(p.budgets).map(b => b.value.payday)].sort().at(-1)!;
   const targets = new Map<string, CutView>();
   for (const s of [...current, ...cards.flatMap(c => c.projections)]) {
     const key = `${s.cardId}:${s.payday}`, old = targets.get(key);
@@ -344,11 +347,13 @@ export function financeView(p: Portfolio, today: string): FinanceView {
     const payroll = payrollAccount ? { accountId: payrollAccount.id, accountName: payrollAccount.value.name, recordedCents: recorded.length ? total(recorded, e => e.value.amountCents) : null,
       canRecord: date <= today && date >= payrollAccount.value.openingDate } : null;
     const receivedIncome = saved?.receivedIncomeCents ?? payroll?.recordedCents ?? null;
+    const tanda = tandasOnPayday(p, date);
     return { payday: date, pendingCents: pending, loanPendingCents: loanPending, receivedLoanCents: received, loanPaidCents: loanPaid,
+      tandaContributionCents: tanda.contributionCents, tandaPayoutCents: tanda.payoutCents,
       payroll, expectedIncomeCents: expectedIncome, receivedIncomeCents: receivedIncome,
       status: receivedIncome !== null ? 'received' as const : date <= today ? 'toConfirm' as const : 'expected' as const,
       cardPaidCents: cardPaid, incomeCents: income, expensesCents: expenses, reserveCents: reserve,
-      balanceCents: sumCents([income, received, -expenses, -reserve, -cardPaid, -pending, -loanPaid, -loanPending]),
+      balanceCents: sumCents([income, received, -expenses, -reserve, -cardPaid, -pending, -loanPaid, -loanPending, -tanda.contributionCents, tanda.payoutCents]),
       estimated: saved?.receivedIncomeCents == null || [...targets.values()].some(s => s.payday === date && s.estimated) };
   });
   return { today, cards, loans, budgets, horizon, obligations, debtCents: total(cards, c => Math.max(0, c.debtCents)),
