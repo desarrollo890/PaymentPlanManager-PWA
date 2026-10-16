@@ -1,7 +1,7 @@
 import { canonical } from '@paymentplan/contracts';
 import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
-  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate } from '@paymentplan/domain';
+  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance } from '@paymentplan/domain';
 import type { FinancialEntityType, Change, FinancialRecord, Portfolio } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 
@@ -295,6 +295,17 @@ export class FinancialCommands {
     return this.checked(changes);
   }
   saveCashAccount(payload: CashAccount, id?: string) { return this.saveExtension('cashAccount', { ...payload, name: payload.name.trim() }, id); }
+  // Ajusta el saldo registrado al saldo real del banco con un movimiento de diferencia, sin reescribir el historial.
+  reconcileCashAccount(accountId: string, realCents: number): Change[] {
+    const account = record(this.portfolio.cashAccounts, accountId);
+    if (account.value.archived) throw Error('Selecciona una cuenta activa.');
+    if (!Number.isSafeInteger(realCents) || realCents < 0) throw Error('Captura el saldo real de la cuenta.');
+    const today = this.context.today, diff = realCents - cashBalance(this.portfolio, accountId, today);
+    if (today < account.value.openingDate) throw Error('La fecha de hoy es anterior al saldo inicial de la cuenta.');
+    if (diff === 0) throw Error('El saldo registrado ya coincide con el saldo real.');
+    return this.saveCashEntry({ accountId, toAccountId: null, cardMovementId: null, date: today, amountCents: Math.abs(diff), kind: diff > 0 ? 'income' : 'expense',
+      description: 'Ajuste de conciliación', categoryId: null });
+  }
   saveCashEntry(payload: CashEntry, id?: string) {
     if (id && record(this.portfolio.cashEntries, id).value.kind === 'cardPayment') throw Error('El pago vinculado conserva ambos saldos. Anúlalo desde Cuentas antes de registrarlo de nuevo.');
     if (record(this.portfolio.cashAccounts, payload.accountId).value.archived || (payload.toAccountId && record(this.portfolio.cashAccounts, payload.toAccountId).value.archived)) throw Error('Selecciona cuentas activas.');

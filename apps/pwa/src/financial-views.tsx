@@ -6,6 +6,7 @@ import {
   homeSummary,
   live,
   paydaysThrough,
+  payrollProjection,
   progressiveSchedule,
   progressiveTerms,
   quotaBalances,
@@ -1340,10 +1341,14 @@ export function MovementsView({
 export function CalendarView({
   view,
   modal,
+  p,
 }: {
   view: FinanceView;
   modal: Modal;
+  p: Portfolio;
 }) {
+  const projection = payrollProjection(p, view),
+    kindLabel = { income: "Ingreso", card: "Tarjeta", loan: "Préstamo" } as const;
   const [advance, setAdvance] = useState(() => {
     const saved = Number(localStorage.getItem("paymentplan-margin") ?? 2);
     return Number.isInteger(saved) && saved >= 0 && saved <= 10 ? saved : 2;
@@ -1360,6 +1365,91 @@ export function CalendarView({
         a.payday.localeCompare(b.payday) || a.dueDate.localeCompare(b.dueDate),
     );
   return (
+    <>
+    <section className="panel payroll-projection">
+      <div className="section-heading">
+        <div>
+          <h2>Saldo proyectado de nómina</h2>
+          <p className="caption">
+            {projection
+              ? `Cuenta ${projection.accountName}, próximos 90 días. Suma los ingresos esperados y resta pagos de tarjetas y cuotas con cargo en esta cuenta. No incluye gastos esenciales ni reserva.`
+              : "Vincula una cuenta de nómina en Preferencias para proyectar tu saldo día a día."}
+          </p>
+        </div>
+      </div>
+      {projection && (
+        <>
+          <div className="focus-grid">
+            <div>
+              <small>Saldo hoy</small>
+              <strong>{money(projection.startCents)}</strong>
+            </div>
+            <div>
+              <small>Punto más bajo</small>
+              <strong className={projection.lowestCents < 0 ? "negative" : ""}>
+                {money(projection.lowestCents)}
+              </strong>
+              <small>{shortDate(projection.lowestDate)}</small>
+            </div>
+            <div>
+              <small>Estado</small>
+              <strong className={projection.firstShortfall ? "negative" : ""}>
+                {projection.firstShortfall
+                  ? `Faltaría desde el ${shortDate(projection.firstShortfall.date)}`
+                  : "Sin faltantes"}
+              </strong>
+            </div>
+          </div>
+          {projection.firstShortfall && (
+            <p className="alert error" role="alert">
+              El saldo quedaría en {money(projection.firstShortfall.balanceCents)} el{" "}
+              {shortDate(projection.firstShortfall.date)}. Adelanta un ingreso,
+              mueve un pago o reduce el cargo de esa fecha.
+            </p>
+          )}
+          {projection.events.length ? (
+            <div className="table-wrap">
+              <table className="budget-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Concepto</th>
+                    <th className="numeric">Movimiento</th>
+                    <th className="numeric">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projection.events.map((e, i) => (
+                    <tr key={i}>
+                      <td data-label="Fecha">
+                        {shortDate(e.date)}
+                        {e.overdue && <span className="status-badge status-toConfirm">Vencido</span>}
+                      </td>
+                      <td data-label="Concepto">
+                        {e.label}
+                        <small>{kindLabel[e.kind]}</small>
+                      </td>
+                      <td className="numeric" data-label="Movimiento">
+                        {e.amountCents > 0 ? "+" : ""}
+                        {money(e.amountCents)}
+                      </td>
+                      <td
+                        className={`numeric ${e.balanceCents < 0 ? "negative" : ""}`}
+                        data-label="Saldo"
+                      >
+                        {money(e.balanceCents)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="caption">No hay ingresos ni pagos previstos en los próximos 90 días.</p>
+          )}
+        </>
+      )}
+    </section>
     <section className="panel">
       <p className="caption">
         Calendario hasta {shortDate(view.horizon)}. Las proyecciones suponen que
@@ -1464,6 +1554,7 @@ export function CalendarView({
         </p>
       )}
     </section>
+    </>
   );
 }
 export function BudgetView({
@@ -1982,6 +2073,13 @@ export function LoansView({
                   act={act}
                 />
               )}
+              <LoanTimeline
+                loanId={l.id}
+                chargeAccountId={value.chargeAccountId ?? null}
+                view={view}
+                p={p}
+                modal={modal}
+              />
               <div className="inline-actions">
                 <button
                   className="secondary"
@@ -2088,6 +2186,82 @@ export function LoansView({
   );
 }
 export { PeriodsView } from "./period-views.tsx";
+// Cuenta de cargo, cuotas ya pagadas y próximas, con el pago directo cuando la cuota ya venció.
+function LoanTimeline({
+  loanId,
+  chargeAccountId,
+  view,
+  p,
+  modal,
+}: {
+  loanId: string;
+  chargeAccountId: string | null;
+  view: FinanceView;
+  p: Portfolio;
+  modal: Modal;
+}) {
+  const accountName = chargeAccountId
+      ? p.cashAccounts.find((a) => a.id === chargeAccountId)?.value.name
+      : undefined,
+    paid = live(p.loanPayments)
+      .filter((a) => a.value.loanId === loanId && !a.value.scheduled && a.value.date <= view.today)
+      .toSorted((a, b) => b.value.date.localeCompare(a.value.date)),
+    upcoming = view.obligations.filter((o) => o.loanId === loanId).slice(0, 4);
+  if (!accountName && !paid.length && !upcoming.length) return null;
+  const payroll = view.budgets.find((b) => b.payroll)?.payroll;
+  return (
+    <div className="loan-timeline">
+      {accountName && (
+        <p className="caption">
+          Cargo automático desde <strong>{accountName}</strong>
+          {upcoming[0] ? ` · próximo ${shortDate(upcoming[0].dueDate)} por ${money(upcoming[0].amountCents)}` : ""}
+        </p>
+      )}
+      <details>
+        <summary>
+          Línea de tiempo · {paid.length} pagos realizados
+          {upcoming.length ? ` · ${upcoming.length} próximas cuotas` : ""}
+        </summary>
+        <ul className="plain-list">
+          {upcoming.map((o) => {
+            const due = o.dueDate <= view.today,
+              blocked = !!payroll?.canRecord && payroll.recordedCents === null && o.payday <= view.today;
+            return (
+              <li key={o.dueDate}>
+                <span>
+                  {shortDate(o.dueDate)}
+                  <small>{due ? "Vencida" : "Próxima"}</small>
+                </span>
+                <span className="inline-actions">
+                  <strong>{money(o.amountCents)}</strong>
+                  {due && accountName && (blocked ? (
+                    <small>Confirma antes el ingreso</small>
+                  ) : (
+                    <button
+                      className="text-button"
+                      onClick={() => modal({ type: "loanInstallment", loanId, dueDate: o.dueDate })}
+                    >
+                      Pagar
+                    </button>
+                  ))}
+                </span>
+              </li>
+            );
+          })}
+          {paid.slice(0, 3).map((a) => (
+            <li key={a.id}>
+              <span>
+                {shortDate(a.value.date)}
+                <small>Pagada</small>
+              </span>
+              <strong>{money(a.value.amountCents)}</strong>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}
 function ProgressivePanel({
   loanId,
   loan,

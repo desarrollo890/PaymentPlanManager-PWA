@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { FinancialCommands } from '@paymentplan/application';
-import { applyChanges, budgetFocus, cashBalance, emptyPortfolio, financeView, homeSummary, live } from '@paymentplan/domain';
+import { applyChanges, budgetFocus, cashBalance, emptyPortfolio, financeView, homeSummary, live, payrollProjection } from '@paymentplan/domain';
 import type { Change, Portfolio } from '@paymentplan/domain';
 
 const today = '2026-10-20';
@@ -117,4 +117,25 @@ test('budget focus warns about a projected shortfall and whether the reserve cov
   h.commit(h.cmd.saveIncome({ ...income(id), income15Cents: 600000 }));
   const covered = budgetFocus(h.p, financeView(h.p, today))!.overdrafts[0]!;
   assert.equal(covered.shortCents, 200000); assert.equal(covered.reserveCovers, true);
+});
+
+test('payroll projection applies incomes, card and loan charges in order and flags a shortfall', async () => {
+  const h = harness(), id = h.account(); h.commit(h.cmd.saveIncome(income(id))); bank(h, id);
+  const view = financeView(h.p, today), projection = payrollProjection(h.p, view)!;
+  assert.equal(projection.accountId, id); assert.equal(projection.startCents, 100000);
+  assert.ok(projection.events.some(e => e.kind === 'income' && e.date === '2026-10-31' && e.amountCents === 2500000));
+  const loan = projection.events.find(e => e.kind === 'loan')!;
+  assert.equal(loan.overdue, true); assert.equal(loan.date, today); assert.ok(loan.amountCents < 0);
+  assert.equal(projection.events[0]!.balanceCents, 100000 + projection.events[0]!.amountCents);
+  assert.ok(projection.lowestCents < 0); assert.equal(projection.firstShortfall?.date, today);
+  assert.equal(payrollProjection(harness().p, financeView(harness().p, today)), null);
+});
+
+test('reconcile adjusts the account to the real bank balance and rejects a matching one', () => {
+  const h = harness(), id = h.account();
+  assert.throws(() => h.cmd.reconcileCashAccount(id, 100000), /ya coincide/);
+  h.commit(h.cmd.reconcileCashAccount(id, 150000)); assert.equal(cashBalance(h.p, id, today), 150000);
+  h.commit(h.cmd.reconcileCashAccount(id, 90000)); assert.equal(cashBalance(h.p, id, today), 90000);
+  assert.deepEqual(live(h.p.cashEntries).map(e => e.value.kind), ['income', 'expense']);
+  assert.throws(() => h.cmd.reconcileCashAccount(id, -1));
 });

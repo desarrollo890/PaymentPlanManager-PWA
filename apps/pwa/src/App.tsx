@@ -203,7 +203,7 @@ export function App() {
           {view && section === 'inicio' && <Dashboard view={view} modal={m => { if (!blocked) setModal(m); }} p={session.portfolio} />}
           {view && section === 'tarjetas' && <CardsView view={view} session={session} modal={m => { if (!blocked) setModal(m); }} act={act} />}
           {section === 'movimientos' && <><div className="section-heading"><span className="caption">Tus registros y movimientos bancarios</span><button className="secondary" disabled={busy || blocked || !view?.cards.length} onClick={() => setBankOpen(true)}>Importar CSV / Excel</button></div><MovementsView session={session} today={today} modal={m => { if (!blocked) setModal(m); }} act={act} /></>}
-          {view && section === 'plan' && <CalendarView view={view} modal={m => { if (!blocked) setModal(m); }} />}
+          {view && section === 'plan' && <CalendarView view={view} p={session.portfolio} modal={m => { if (!blocked) setModal(m); }} />}
           {view && section === 'presupuesto' && <BudgetView view={view} p={session.portfolio} modal={m => { if (!blocked) setModal(m); }} />}
           {(['categorias', 'recurrencias', 'cuentas', 'metas'] as const).some(s => s === section) && <PlanningView key={section} section={section as 'categorias' | 'recurrencias' | 'cuentas' | 'metas'} session={session} today={today} blocked={blocked} save={save} />}
           {view && section === 'presupuesto' && <GoalBudget p={session.portfolio} today={today} />}
