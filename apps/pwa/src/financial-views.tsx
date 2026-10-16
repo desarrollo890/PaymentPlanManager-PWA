@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { VaultSession } from "@paymentplan/application";
 import {
   addMonths,
+  budgetFocus,
   homeSummary,
   live,
   paydaysThrough,
@@ -1482,7 +1483,245 @@ export function BudgetView({
         (view.budgets.filter((b) => b.payday <= view.today).at(-1)?.payday ??
           view.today),
   );
+  const focus = budgetFocus(p, view),
+    statusLabel = {
+      expected: "Esperado",
+      toConfirm: "Por confirmar",
+      received: "Recibido",
+    } as const,
+    focusLabels = {
+      expenses: "Gastos esenciales",
+      reserve: "Reserva",
+      cards: "Tarjetas",
+      loans: "Préstamos",
+    } as const,
+    focusIncome = focus ? (focus.receivedCents ?? focus.expectedCents) : 0,
+    focusTotal = focus
+      ? Math.max(
+          focusIncome,
+          focus.segments.reduce((sum, s) => sum + s.cents, 0),
+        )
+      : 0,
+    waitingIncome = !!focus?.payroll?.canRecord && focus.payroll.recordedCents === null;
   return (
+    <>
+      {focus && focus.overdrafts.length > 0 && (
+        <section className="alert-panel" role="alert">
+          <h2>Posible faltante de dinero</h2>
+          <ul>
+            {focus.overdrafts.map((o) => (
+              <li key={o.payday}>
+                <span>
+                  <strong>
+                    Quincena del {shortDate(o.payday)}: faltan {money(o.shortCents)}
+                  </strong>
+                  <small>
+                    {o.reserveCovers
+                      ? "Tu reserva de esa quincena lo cubre; puedes reducirla."
+                      : o.largest
+                        ? `Valora pagar ${o.largest.name} (${money(o.largest.cents)}) en otra quincena o bajar gastos.`
+                        : "Reduce gastos o reserva en esa quincena."}
+                  </small>
+                </span>
+                <button
+                  className="secondary"
+                  onClick={() => modal({ type: "budget", payday: o.payday })}
+                >
+                  Ajustar
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {focus && (
+        <section className="panel budget-focus">
+          <div className="section-heading">
+            <div>
+              <h2>Quincena del {shortDate(focus.payday)}</h2>
+              <p className="caption">
+                {focus.status === "toConfirm"
+                  ? "Ya llegó la fecha: confirma cuánto recibiste."
+                  : focus.status === "received"
+                    ? "Ingreso confirmado."
+                    : "Aún no llega el ingreso; los montos son estimados."}
+              </p>
+            </div>
+            <span className={`status-badge status-${focus.status}`}>
+              {statusLabel[focus.status]}
+            </span>
+          </div>
+          <div className="focus-grid">
+            <div>
+              <small>Ingreso esperado</small>
+              <strong>{money(focus.expectedCents)}</strong>
+            </div>
+            <div>
+              <small>Ingreso recibido</small>
+              <strong>
+                {focus.receivedCents === null ? "—" : money(focus.receivedCents)}
+              </strong>
+            </div>
+            <div>
+              <small>Diferencia</small>
+              <strong
+                className={
+                  focus.differenceCents !== null && focus.differenceCents < 0
+                    ? "negative"
+                    : ""
+                }
+              >
+                {focus.differenceCents === null
+                  ? "—"
+                  : `${focus.differenceCents > 0 ? "+" : ""}${money(focus.differenceCents)}`}
+              </strong>
+            </div>
+            <div>
+              <small>Sobrante proyectado</small>
+              <strong className={focus.leftoverCents < 0 ? "negative" : ""}>
+                {money(focus.leftoverCents)}
+              </strong>
+            </div>
+            {focus.accountBalanceCents !== null && focus.payroll && (
+              <>
+                <div>
+                  <small>Saldo en {focus.payroll.accountName}</small>
+                  <strong>{money(focus.accountBalanceCents)}</strong>
+                </div>
+                <div>
+                  <small>Libre tras tarjetas y préstamos</small>
+                  <strong
+                    className={
+                      (focus.accountFreeCents ?? 0) < 0 ? "negative" : ""
+                    }
+                  >
+                    {money(focus.accountFreeCents ?? 0)}
+                  </strong>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="focus-actions">
+            {waitingIncome && focus.payroll && (
+              <button
+                className="primary"
+                onClick={() => modal({ type: "payroll", payday: focus.payday })}
+              >
+                Registrar ingreso en {focus.payroll.accountName}
+              </button>
+            )}
+            {!focus.payroll && focus.status === "toConfirm" && (
+              <button
+                className="primary"
+                onClick={() => modal({ type: "budget", payday: focus.payday })}
+              >
+                Registrar ingreso recibido
+              </button>
+            )}
+            {focus.canUpdateEstimate && (
+              <button
+                className="secondary"
+                onClick={() => modal({ type: "estimate", payday: focus.payday })}
+              >
+                Actualizar estimado en Preferencias
+              </button>
+            )}
+            <button
+              className="text-button"
+              onClick={() => modal({ type: "budget", payday: focus.payday })}
+            >
+              Editar quincena
+            </button>
+          </div>
+          {focus.canUpdateEstimate && (
+            <p className="caption">
+              Recibiste un monto distinto al configurado. Si no actualizas
+              Preferencias, solo esta quincena usa el monto real.
+            </p>
+          )}
+          <div
+            className="health-bar"
+            role="img"
+            aria-label={`Ingreso ${money(focusIncome)}, sobrante ${money(focus.leftoverCents)}`}
+          >
+            {focus.segments
+              .filter((s) => s.cents > 0)
+              .map((s) => (
+                <span
+                  key={s.key}
+                  className={`seg-${s.key}`}
+                  style={{ width: `${(s.cents / focusTotal) * 100}%` }}
+                  title={`${focusLabels[s.key]} ${money(s.cents)}`}
+                />
+              ))}
+            {focus.leftoverCents > 0 && (
+              <span
+                className="seg-left"
+                style={{ width: `${(focus.leftoverCents / focusTotal) * 100}%` }}
+                title={`Sobrante ${money(focus.leftoverCents)}`}
+              />
+            )}
+          </div>
+          <ul className="health-legend">
+            {focus.segments.map((s) => (
+              <li key={s.key}>
+                <i className={`seg-${s.key}`} />
+                {focusLabels[s.key]} <strong>{money(s.cents)}</strong>
+              </li>
+            ))}
+          </ul>
+          {(focus.cardPayments.length > 0 || focus.loanDues.length > 0) && (
+            <>
+              <h3>Pendiente en esta quincena</h3>
+              <ul className="plain-list">
+                {focus.cardPayments.map((c) => (
+                  <li key={c.cardName + c.dueDate}>
+                    <span>
+                      {c.cardName}
+                      <small>
+                        vence {shortDate(c.dueDate)} ·{" "}
+                        {c.estimated ? "estimado" : "confirmado"}
+                      </small>
+                    </span>
+                    <strong>{money(c.pendingCents)}</strong>
+                  </li>
+                ))}
+                {focus.loanDues.map((d) => (
+                  <li key={d.loanId + d.dueDate}>
+                    <span>
+                      {d.person}
+                      <small>
+                        vence {shortDate(d.dueDate)}
+                        {d.accountName ? ` · cargo en ${d.accountName}` : ""}
+                      </small>
+                    </span>
+                    <span className="inline-actions">
+                      <strong>{money(d.amountCents)}</strong>
+                      {d.accountName && d.dueDate <= view.today &&
+                        (waitingIncome ? (
+                          <small>Confirma antes el ingreso</small>
+                        ) : (
+                          <button
+                            className="text-button"
+                            onClick={() =>
+                              modal({
+                                type: "loanInstallment",
+                                loanId: d.loanId,
+                                dueDate: d.dueDate,
+                              })
+                            }
+                          >
+                            Pagar
+                          </button>
+                        ))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
     <section className="panel">
       <div className="section-heading">
         <p className="caption">
@@ -1499,7 +1738,7 @@ export function BudgetView({
         </label>
       </div>
       <div className="table-wrap">
-        <table>
+        <table className="budget-table">
           <thead>
             <tr>
               <th>Ingreso</th>
@@ -1513,34 +1752,36 @@ export function BudgetView({
           </thead>
           <tbody>
             {dates.map((b) => (
-              <tr key={b.payday}>
-                <td>
+              <tr
+                key={b.payday}
+                className={b.payday === focus?.payday ? "current-row" : ""}
+              >
+                <td data-label="Quincena">
                   {shortDate(b.payday)}
-                  <small>
-                    {b.estimated
-                      ? "Ingreso esperado / estimado"
-                      : "Ingreso recibido"}
-                  </small>
+                  <span className={`status-badge status-${b.status}`}>
+                    {statusLabel[b.status]}
+                  </span>
                 </td>
-                <td className="numeric">
+                <td className="numeric" data-label="Ingresos / préstamos">
                   {money(b.incomeCents + b.receivedLoanCents)}
                 </td>
-                <td className="numeric">
+                <td className="numeric" data-label="Gastos / reserva">
                   {money(b.expensesCents + b.reserveCents)}
                 </td>
-                <td className="numeric">
+                <td className="numeric" data-label="Tarjetas">
                   {money(b.pendingCents + b.cardPaidCents)}
                   <small>Pendiente {money(b.pendingCents)}</small>
                 </td>
-                <td className="numeric">
+                <td className="numeric" data-label="Personas">
                   {money(b.loanPendingCents + b.loanPaidCents)}
                 </td>
                 <td
                   className={`numeric ${b.balanceCents < 0 ? "negative" : ""}`}
+                  data-label="Balance"
                 >
                   {money(b.balanceCents)}
                 </td>
-                <td>
+                <td className="row-actions">
                   <button
                     className="text-button"
                     onClick={() => modal({ type: "budget", payday: b.payday })}
@@ -1651,6 +1892,7 @@ export function BudgetView({
       </div>
       <a href="#/aprender">Entender reserva y presupuesto →</a>
     </section>
+    </>
   );
 }
 export function LoansView({

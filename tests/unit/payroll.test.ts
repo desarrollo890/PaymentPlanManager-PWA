@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { FinancialCommands } from '@paymentplan/application';
-import { applyChanges, cashBalance, emptyPortfolio, financeView, homeSummary, live } from '@paymentplan/domain';
+import { applyChanges, budgetFocus, cashBalance, emptyPortfolio, financeView, homeSummary, live } from '@paymentplan/domain';
 import type { Change, Portfolio } from '@paymentplan/domain';
 
 const today = '2026-10-20';
@@ -94,4 +94,27 @@ test('home summary lists pending actions in order and totals cash, goals and deb
 test('home summary without data is empty and safe', () => {
   const h = harness(), home = homeSummary(h.p, financeView(h.p, today));
   assert.equal(home.actions.length, 0); assert.equal(home.hasAccounts, false); assert.equal(home.period?.payCents, 0); assert.equal(home.debtCents, 0);
+});
+
+test('budget focus tracks status, real vs estimated income and the payroll account balance', async () => {
+  const h = harness(), id = h.account(); h.commit(h.cmd.saveIncome(income(id)));
+  let focus = budgetFocus(h.p, financeView(h.p, today))!;
+  assert.equal(focus.payday, '2026-10-15'); assert.equal(focus.status, 'toConfirm');
+  assert.equal(focus.receivedCents, null); assert.equal(focus.differenceCents, null); assert.equal(focus.canUpdateEstimate, false);
+  h.commit(await h.cmd.receivePayroll('2026-10-15', 2100000));
+  focus = budgetFocus(h.p, financeView(h.p, today))!;
+  assert.equal(focus.status, 'received'); assert.equal(focus.differenceCents, 100000); assert.equal(focus.canUpdateEstimate, true);
+  assert.equal(focus.accountBalanceCents, 2200000); assert.equal(focus.accountFreeCents, 2200000);
+  h.commit(h.cmd.saveIncome({ ...income(id), income15Cents: 2100000 }));
+  assert.equal(budgetFocus(h.p, financeView(h.p, today))!.canUpdateEstimate, false);
+  assert.equal(budgetFor(h, '2026-10-31').status, 'expected');
+});
+
+test('budget focus warns about a projected shortfall and whether the reserve covers it', () => {
+  const h = harness(), id = h.account(); h.commit(h.cmd.saveIncome({ ...income(id), income15Cents: 100 }));
+  const focus = budgetFocus(h.p, financeView(h.p, today))!, first = focus.overdrafts[0]!;
+  assert.equal(first.payday, '2026-10-15'); assert.equal(first.shortCents, 799900); assert.equal(first.reserveCovers, false);
+  h.commit(h.cmd.saveIncome({ ...income(id), income15Cents: 600000 }));
+  const covered = budgetFocus(h.p, financeView(h.p, today))!.overdrafts[0]!;
+  assert.equal(covered.shortCents, 200000); assert.equal(covered.reserveCovers, true);
 });

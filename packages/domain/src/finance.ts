@@ -40,7 +40,10 @@ export interface LoanView {
     readonly accruedInterestCents: number; readonly lastStatementDate: string; readonly remainingInstallments: number };
 }
 export interface LoanObligation { readonly loanId: string; readonly dueDate: string; readonly payday: string; readonly amountCents: number; readonly scheduled: boolean; readonly chargeAccountName?: string }
+// expected: aún no llega la fecha; toConfirm: ya llegó y falta confirmar el ingreso; received: ingreso confirmado.
+export type BudgetStatus = 'expected' | 'toConfirm' | 'received';
 export interface BudgetView {
+  readonly status: BudgetStatus; readonly expectedIncomeCents: number; readonly receivedIncomeCents: number | null;
   readonly payday: string; readonly pendingCents: number; readonly loanPendingCents: number; readonly receivedLoanCents: number;
   readonly loanPaidCents: number; readonly balanceCents: number; readonly cardPaidCents: number;
   readonly incomeCents: number; readonly expensesCents: number; readonly reserveCents: number; readonly estimated: boolean;
@@ -328,7 +331,8 @@ export function financeView(p: Portfolio, today: string): FinanceView {
   const payrollAccount = live(p.cashAccounts).find(a => a.id === config.payrollAccountId && a.value.kind === 'debit');
   const budgets = [...dates].sort().map(date => {
     const saved = live(p.budgets).find(b => b.value.payday === date)?.value;
-    const income = saved?.receivedIncomeCents ?? saved?.expectedIncomeCents ?? (civilDate(date).day === 15 ? config.income15Cents : config.incomeEndCents);
+    const expectedIncome = saved?.expectedIncomeCents ?? (civilDate(date).day === 15 ? config.income15Cents : config.incomeEndCents);
+    const income = saved?.receivedIncomeCents ?? expectedIncome;
     const expenses = saved?.expensesCents ?? config.expensesCents, reserve = saved?.reserveCents ?? config.reserveCents;
     const pending = total([...targets.values()].filter(s => s.payday === date), s => s.pendingCents);
     const cardPaid = total(live(p.movements).filter(m => m.value.kind === 'payment' && !m.value.scheduled && m.value.date <= today &&
@@ -339,8 +343,10 @@ export function financeView(p: Portfolio, today: string): FinanceView {
     const recorded = payrollAccount ? live(p.cashEntries).filter(e => e.value.accountId === payrollAccount.id && e.value.kind === 'income' && e.value.date === date) : [];
     const payroll = payrollAccount ? { accountId: payrollAccount.id, accountName: payrollAccount.value.name, recordedCents: recorded.length ? total(recorded, e => e.value.amountCents) : null,
       canRecord: date <= today && date >= payrollAccount.value.openingDate } : null;
+    const receivedIncome = saved?.receivedIncomeCents ?? payroll?.recordedCents ?? null;
     return { payday: date, pendingCents: pending, loanPendingCents: loanPending, receivedLoanCents: received, loanPaidCents: loanPaid,
-      payroll,
+      payroll, expectedIncomeCents: expectedIncome, receivedIncomeCents: receivedIncome,
+      status: receivedIncome !== null ? 'received' as const : date <= today ? 'toConfirm' as const : 'expected' as const,
       cardPaidCents: cardPaid, incomeCents: income, expensesCents: expenses, reserveCents: reserve,
       balanceCents: sumCents([income, received, -expenses, -reserve, -cardPaid, -pending, -loanPaid, -loanPending]),
       estimated: saved?.receivedIncomeCents == null || [...targets.values()].some(s => s.payday === date && s.estimated) };

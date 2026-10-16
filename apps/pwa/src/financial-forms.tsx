@@ -2,7 +2,7 @@ import { FinancialCommands } from '@paymentplan/application';
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import type { Change } from '@paymentplan/domain';
-import { addDays, bankLoanLastDueDate, progressiveLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
+import { addDays, bankLoanLastDueDate, civilDate, progressiveLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
 import type { CutView } from '@paymentplan/domain';
 import type { Installment, Loan } from '@paymentplan/contracts';
 import { PaymentAllocation } from './payment-allocation.tsx';
@@ -10,7 +10,7 @@ import { Check, Field, FormDialog, MoneyField, SelectField, amount, money, optio
 
 export type FinancialModal = { type: 'card'; id?: string } | { type: 'movement'; id?: string; cardId?: string; planId?: string; quotaNumber?: number; capitalCents?: number; interestCents?: number } | { type: 'plan'; id?: string; cardId: string; purchaseId?: string }
   | { type: 'loan'; id?: string } | { type: 'loanPayment'; loanId: string } | { type: 'reconcile'; cardId: string }
-  | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string } | { type: 'payroll'; payday: string } | { type: 'loanInstallment'; loanId: string; dueDate: string };
+  | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string } | { type: 'payroll'; payday: string } | { type: 'estimate'; payday: string } | { type: 'loanInstallment'; loanId: string; dueDate: string };
 export function FinancialForm(props: FinancialFormProps) { return props.modal.type === 'allocation' ? <PaymentAllocation id={props.modal.id} session={props.session} today={props.today} close={props.close} save={props.save} /> : <FinancialEditor {...props} modal={props.modal} />; }
 type FinancialFormProps = { modal: FinancialModal; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void> };
 function FinancialEditor({ modal, session, today, close, save }: {
@@ -107,6 +107,11 @@ function FinancialEditor({ modal, session, today, close, save }: {
         case 'reserve': changes = cmd.reserve(modal.cardId, modal.cut.cutDate, parseMoney(data.get('reserved'))); break;
         case 'loanInstallment': changes = await cmd.payLoanInstallment(modal.loanId, modal.dueDate, parseMoney(data.get('amount'))); break;
         case 'payroll': changes = await cmd.receivePayroll(modal.payday, parseMoney(data.get('amount'))); break;
+        case 'estimate': {
+          const config = p.incomes.find(r => !r.voided)?.value, received = view.budgets.find(b => b.payday === modal.payday)?.receivedIncomeCents;
+          if (!config || received == null) throw Error('Primero confirma el ingreso de esa quincena.');
+          changes = cmd.saveIncome({ ...config, ...(civilDate(modal.payday).day === 15 ? { income15Cents: received } : { incomeEndCents: received }) }); break;
+        }
         case 'budget': changes = cmd.saveBudget({ payday: modal.payday, expectedIncomeCents: parseMoney(data.get('income')), receivedIncomeCents: optionalMoney(data, 'receivedIncome'),
           expensesCents: parseMoney(data.get('expenses')), reserveCents: parseMoney(data.get('reserve')), note: str(data, 'note') }); break;
       }
@@ -206,6 +211,10 @@ function FinancialEditor({ modal, session, today, close, save }: {
     const o = view.obligations.find(o => o.loanId === modal.loanId && o.dueDate === modal.dueDate), person = p.loans.find(l => l.id === modal.loanId)?.value.person ?? '';
     title = `Pagar cuota · ${person} · ${modal.dueDate}`;
     fields = <><MoneyField label="Importe cobrado" name="amount" value={o?.amountCents ?? null} hint={`Se descuenta de ${o?.chargeAccountName ?? 'la cuenta de cargo'} y se registra como pago del préstamo. Corrige el importe si el banco cobró otro.`} /></>;
+  } else if (modal.type === 'estimate') {
+    const b = view.budgets.find(b => b.payday === modal.payday)!, day15 = civilDate(modal.payday).day === 15;
+    title = 'Actualizar estimado de Preferencias';
+    fields = <p className="form-note">El ingreso {day15 ? 'del 15' : 'de fin de mes'} pasará de {money(b.expectedIncomeCents)} a {money(b.receivedIncomeCents ?? 0)} para las quincenas futuras. Las quincenas ya confirmadas no cambian.</p>;
   } else if (modal.type === 'payroll') {
     const b = view.budgets.find(b => b.payday === modal.payday)!;
     title = `Ingreso en ${b.payroll?.accountName ?? 'nómina'} · ${modal.payday}`;
