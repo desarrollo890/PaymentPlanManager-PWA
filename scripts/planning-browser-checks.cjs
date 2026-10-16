@@ -10,7 +10,7 @@ const {chromium}=require('playwright');
   for(const viewport of [{width:1440,height:1050},{width:390,height:844}]){
    const context=await browser.newContext({viewport}),page=await context.newPage(),errors=[];
    page.on('pageerror',e=>errors.push(e.message));await page.goto(url);
-   const fill=(name,value)=>page.locator(`input[name="${name}"]`).fill(value),nav=name=>page.getByRole('navigation').getByRole('link',{name,exact:true}).click();
+   const fill=(name,value)=>page.locator(`input[name="${name}"]`).fill(value),nav=async name=>{const link=page.getByRole('navigation',{name:'Navegación principal'}).getByRole('link',{name,exact:true});if(!(await link.isVisible()))await page.getByRole('button',{name:'Más',exact:true}).click();await link.click();};
    const save=async()=>{await page.getByRole('dialog').getByRole('button',{name:'Guardar',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog'));};
    await page.getByRole('heading',{name:'Crea tu cartera',exact:true}).waitFor();await fill('password','synthetic-planning-password');await fill('confirmation','synthetic-planning-password');await page.getByRole('button',{name:'Crear cartera',exact:true}).click();
    await page.getByRole('checkbox',{name:'Guardé la clave de recuperación en un lugar seguro'}).check();await page.getByRole('button',{name:'Abrir mi cartera',exact:true}).click();
