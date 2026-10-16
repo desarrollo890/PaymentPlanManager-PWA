@@ -1476,12 +1476,11 @@ export function BudgetView({
   p: Portfolio;
 }) {
   const [past, setPast] = useState(false);
+  const focusPayday = budgetFocus(p, view)?.payday;
   const dates = view.budgets.filter(
     (b) =>
       past ||
-      b.payday >=
-        (view.budgets.filter((b) => b.payday <= view.today).at(-1)?.payday ??
-          view.today),
+      (focusPayday ? b.payday > focusPayday : b.payday >= view.today),
   );
   const focus = budgetFocus(p, view),
     statusLabel = {
