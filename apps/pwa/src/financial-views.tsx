@@ -403,15 +403,20 @@ export function Dashboard({
                                 <td>
                                   {payment.estimated
                                     ? payment.current
-                                      ? "Estimado vigente"
+                                      ? payment.cutDate <= view.today
+                                        ? "Corte sin confirmar"
+                                        : "Estimado vigente"
                                       : "Proyección"
-                                    : "Confirmado"}
+                                    : payment.pendingCents <= 0
+                                      ? "Pagado"
+                                      : "Confirmado"}
                                 </td>
                                 <td className="numeric">
                                   {money(payment.pendingCents)}
                                 </td>
                                 <td>
                                   {payment.current &&
+                                    payment.estimated &&
                                     payment.cutDate <= view.today && (
                                       <button
                                         className="text-button"
