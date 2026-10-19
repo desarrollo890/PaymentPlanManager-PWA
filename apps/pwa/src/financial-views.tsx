@@ -10,6 +10,7 @@ import {
   live,
   paydaysThrough,
   payrollProjection,
+  totalProjection,
   progressiveSchedule,
   progressiveTerms,
   quotaBalances,
@@ -1378,7 +1379,10 @@ export function CalendarView({
   modal: Modal;
   p: Portfolio;
 }) {
-  const projection = payrollProjection(p, view),
+  const [scope, setScope] = useState<"payroll" | "total">("payroll");
+  const payrollP = payrollProjection(p, view),
+    totalP = totalProjection(p, view),
+    projection = scope === "total" ? totalP : payrollP,
     kindLabel = { income: "Ingreso", card: "Tarjeta", loan: "Préstamo", tanda: "Tanda" } as const;
   const [advance, setAdvance] = useState(() => {
     const saved = Number(localStorage.getItem("paymentplan-margin") ?? 2);
@@ -1400,12 +1404,32 @@ export function CalendarView({
     <section className="panel payroll-projection">
       <div className="section-heading">
         <div>
-          <h2>Saldo proyectado de nómina</h2>
+          <h2>{scope === "total" ? "Total disponible proyectado" : "Saldo proyectado de nómina"}</h2>
           <p className="caption">
             {projection
-              ? `Cuenta ${projection.accountName}, próximos 90 días. Suma los ingresos esperados y resta pagos de tarjetas y cuotas con cargo en esta cuenta. No incluye gastos esenciales ni reserva.`
+              ? scope === "total"
+                ? "Suma las cuentas marcadas como de uso libre (sin vales), descontando lo apartado para metas. Resta tarjetas según su cuenta de pago y cuotas con cargo a esas cuentas. No incluye gastos esenciales ni reserva."
+                : `Cuenta ${projection.accountName}, próximos 90 días. Suma los ingresos esperados y resta las tarjetas que pagas desde esta cuenta (o sin cuenta indicada) y las cuotas con cargo en ella. No incluye gastos esenciales ni reserva.`
               : "Vincula una cuenta de nómina en Preferencias para proyectar tu saldo día a día."}
           </p>
+        </div>
+        <div className="segmented" role="group" aria-label="Alcance de la proyección">
+          <button
+            type="button"
+            className={scope === "payroll" ? "active" : ""}
+            aria-pressed={scope === "payroll"}
+            onClick={() => setScope("payroll")}
+          >
+            Nómina
+          </button>
+          <button
+            type="button"
+            className={scope === "total" ? "active" : ""}
+            aria-pressed={scope === "total"}
+            onClick={() => setScope("total")}
+          >
+            Total disponible
+          </button>
         </div>
       </div>
       {projection && (

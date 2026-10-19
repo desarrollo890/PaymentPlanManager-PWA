@@ -53,6 +53,11 @@ export function goalSaved(p: Portfolio, goalId: string, date: string): number {
 export function accountReserved(p: Portfolio, accountId: string, date: string): number {
   return sumCents(live(p.savingsGoals).filter(g => g.value.accountId === accountId).map(g => goalSaved(p, g.id, date)));
 }
+export function accountFree(p: Portfolio, accountId: string): boolean {
+  const account = live(p.cashAccounts).find(a => a.id === accountId);
+  if (!account || account.value.archived) return false;
+  return account.value.freeUse ?? !live(p.incomes).some(i => i.value.voucherAccountId === accountId);
+}
 export function cashView(p: Portfolio, today: string) {
   const accounts = live(p.cashAccounts).map(a => ({ ...a, balanceCents: cashBalance(p, a.id, today), reservedCents: accountReserved(p, a.id, today), freeCents: sumCents([cashBalance(p, a.id, today), -accountReserved(p, a.id, today)]) }));
   const goals = live(p.savingsGoals).map(g => {
@@ -71,6 +76,10 @@ export function extensionIssues(p: Portfolio, today: string): FinancialIssue[] {
   for (const income of live(p.incomes)) {
     const payroll = income.value.payrollAccountId ?? null, account = accounts.find(a => a.id === payroll);
     if (payroll !== null && (!account || account.value.kind !== 'debit')) issue('La cuenta de nómina debe ser una cuenta de débito registrada.', income.id, payroll);
+  }
+  for (const card of live(p.cards)) {
+    const pay = card.value.payAccountId ?? null, account = accounts.find(a => a.id === pay);
+    if (pay !== null && (!account || account.value.kind !== 'debit')) issue('La cuenta de pago de la tarjeta debe ser una cuenta de débito registrada.', card.id, pay);
   }
   for (const loan of live(p.loans)) {
     const charge = loan.value.chargeAccountId ?? null, account = accounts.find(a => a.id === charge);

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { FinancialCommands } from '@paymentplan/application';
-import { applyChanges, budgetFocus, cashBalance, emptyPortfolio, financeView, homeSummary, live, payrollProjection } from '@paymentplan/domain';
+import { accountFree, applyChanges, budgetFocus, cashBalance, emptyPortfolio, financeView, homeSummary, live, payrollProjection, totalProjection } from '@paymentplan/domain';
 import type { Change, Portfolio } from '@paymentplan/domain';
 
 const today = '2026-10-20';
@@ -129,6 +129,23 @@ test('payroll projection applies incomes, card and loan charges in order and fla
   assert.equal(projection.events[0]!.balanceCents, 100000 + projection.events[0]!.amountCents);
   assert.ok(projection.lowestCents < 0); assert.equal(projection.firstShortfall?.date, today);
   assert.equal(payrollProjection(harness().p, financeView(harness().p, today)), null);
+});
+
+test('cards follow their payment account and the total projection only sums free-use accounts', () => {
+  const h = harness(), id = h.account(), other = h.account(); h.commit(h.cmd.saveIncome(income(id)));
+  const card = (payAccountId: string | null) => ({ name: 'Personal', bank: 'Banco', limitCents: 2000000, cutDay: 11, dueDay: 25, dueMonthOffset: null, color: '#234E70', initialDebtOrigin: 'currentPeriod' as const, payAccountId, archived: false });
+  assert.throws(() => h.cmd.saveCard(card(randomUUID()), { date: '2026-10-03', availableCents: 1000000, debtCents: 1000000 }));
+  h.commit(h.cmd.saveCard(card(null), { date: '2026-10-03', availableCents: 1000000, debtCents: 1000000 }));
+  const cardId = h.p.cards[0]!.id, cards = (p = payrollProjection(h.p, financeView(h.p, today))!) => p.events.filter(e => e.kind === 'card').length;
+  assert.ok(cards() > 0);
+  h.commit(h.cmd.saveCard(card(other), undefined, cardId));
+  assert.equal(cards(), 0);
+  const total = totalProjection(h.p, financeView(h.p, today))!;
+  assert.equal(total.startCents, 200000); assert.ok(cards(total) > 0);
+  h.commit(h.cmd.saveIncome({ ...income(id), voucherAccountId: other, voucherCents: 100000 }));
+  assert.equal(accountFree(h.p, other), false);
+  const free = totalProjection(h.p, financeView(h.p, today))!;
+  assert.equal(free.startCents, 100000); assert.equal(cards(free), 0);
 });
 
 test('reconcile adjusts the account to the real bank balance and rejects a matching one', () => {

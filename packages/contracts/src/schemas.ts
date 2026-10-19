@@ -474,6 +474,16 @@ export const schemas: Readonly<Record<string, Schema>> = {
               "previousStatement"
             ]
           },
+          "payAccountId": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "archived": {
             "type": "boolean"
           }
@@ -2457,6 +2467,9 @@ export const schemas: Readonly<Record<string, Schema>> = {
           "color": {
             "type": "string",
             "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "freeUse": {
+            "type": "boolean"
           },
           "archived": {
             "type": "boolean"

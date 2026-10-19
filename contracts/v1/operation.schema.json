@@ -471,6 +471,12 @@
             "previousStatement"
           ]
         },
+        "payAccountId": {
+          "anyOf": [
+            { "$ref": "#/$defs/uuid" },
+            { "type": "null" }
+          ]
+        },
         "archived": {
           "type": "boolean"
         }

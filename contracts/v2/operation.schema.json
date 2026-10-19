@@ -567,6 +567,9 @@
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$"
         },
+        "freeUse": {
+          "type": "boolean"
+        },
         "archived": {
           "type": "boolean"
         }

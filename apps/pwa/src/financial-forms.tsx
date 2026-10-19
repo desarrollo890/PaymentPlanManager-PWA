@@ -51,7 +51,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
           if (credit && debt) throw Error('Captura deuda o saldo a favor, no ambos.');
           changes = cmd.saveCard({ name: str(data, 'name'), bank: str(data, 'bank'), limitCents: parseMoney(data.get('limit')), cutDay: Number(str(data, 'cutDay')),
             dueDay: Number(str(data, 'dueDay')), dueMonthOffset: str(data, 'dueOffset') === 'auto' ? null : Number(str(data, 'dueOffset')),
-            color: str(data, 'color'), initialDebtOrigin: str(data, 'origin') as 'currentPeriod' | 'previousStatement' | 'unknown', archived: previous?.value.archived ?? false },
+            color: str(data, 'color'), initialDebtOrigin: str(data, 'origin') as 'currentPeriod' | 'previousStatement' | 'unknown', payAccountId: str(data, 'payAccount') || null, archived: previous?.value.archived ?? false },
           previous ? undefined : { date: str(data, 'date'), availableCents: parseMoney(data.get('available')), debtCents: debt - credit }, modal.id); break;
         }
         case 'movement': {
@@ -132,6 +132,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
       <Field label="Día de corte" name="cutDay" type="number" value={card?.cutDay ?? 11} min={1} max={31} /><Field label="Día límite de pago" name="dueDay" type="number" value={card?.dueDay ?? 25} min={1} max={31} />
       <SelectField label="Mes del vencimiento" name="dueOffset" value={card?.dueMonthOffset == null ? 'auto' : String(card.dueMonthOffset)}><option value="auto">Automático, después del corte</option><option value="0">Mismo mes del corte</option><option value="1">Mes siguiente al corte (ej. Plata)</option><option value="2">Dos meses después del corte</option></SelectField>
       <SelectField label="Origen de la deuda inicial" name="origin" value={card?.initialDebtOrigin ?? 'currentPeriod'}><option value="currentPeriod">Al periodo en curso / próximo corte</option><option value="previousStatement">Incluye deuda de un corte anterior</option><option value="unknown">No estoy seguro</option></SelectField>
+      <SelectField label="Cuenta desde la que pagas" name="payAccount" value={card?.payAccountId ?? ''}><option value="">Sin indicar (se supone la cuenta de nómina)</option>{live(p.cashAccounts).filter(a => a.value.kind === 'debit' && (!a.value.archived || a.id === card?.payAccountId)).map(a => <option key={a.id} value={a.id}>{a.value.name}</option>)}</SelectField>
       {!card && <><Field label="Fecha de los saldos iniciales" name="date" type="date" value={today} max={today} /><MoneyField label="Disponible inicial" name="available" value={null} />
         <MoneyField label="Deuda total inicial" name="debt" /><MoneyField label="Saldo a favor inicial" name="credit" hint="Solo si no tienes deuda. No se resta de otras tarjetas." /></>}
       <p className="form-note">La deuda total incluye el capital a meses. Registra después sus planes mediante «Dividir deuda». Disponible + deuda − saldo a favor debería coincidir con el límite; las diferencias generan alertas para revisar con tu banco.</p></>;

@@ -27,6 +27,7 @@ export type Card = {
   readonly "dueMonthOffset": (number) | (null);
   readonly "color": string;
   readonly "initialDebtOrigin": "unknown" | "currentPeriod" | "previousStatement";
+  readonly "payAccountId"?: (Uuid) | (null);
   readonly "archived": boolean;
 };
 
@@ -244,6 +245,7 @@ export type CashAccount = {
   readonly "openingDate": Date;
   readonly "openingCents": Money;
   readonly "color": string;
+  readonly "freeUse"?: boolean;
   readonly "archived": boolean;
 };
 
