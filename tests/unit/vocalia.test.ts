@@ -53,8 +53,28 @@ test('transfers are held money until the event is settled, and leave the free ba
   assert.equal(vocalHeld(h.p, s.account), 25000);
   const view = cashView(h.p, today).accounts.find(a => a.id === s.account)!;
   assert.equal(view.heldCents, 25000); assert.equal(view.freeCents, view.balanceCents - 25000);
+  assert.throws(() => h.cmd.saveVocalEvent({ ...h.p.vocalEvents.at(-1)!.value, settled: true }, s.eventId), /entrega/);
+  h.commit(h.cmd.recordVocalDelivery({ eventId: s.eventId, date: today, amountCents: 25000, method: 'transfer', note: '' }));
+  assert.equal(vocalHeld(h.p, s.account), 0);
   h.commit(h.cmd.saveVocalEvent({ ...h.p.vocalEvents.at(-1)!.value, settled: true }, s.eventId));
   assert.equal(vocalHeld(h.p, s.account), 0);
+});
+
+test('exempt students leave the pending list and expected quota; deliveries are capped by what was collected', () => {
+  const h = harness(), s = h.setup(4, 100000);
+  h.commit(h.cmd.setVocalExemption(s.eventId, s.students[3]!, 'Pagó en dirección'));
+  let e = vocalEventSummary(h.p, s.eventId, today);
+  assert.equal(e.owedCount, 3); assert.equal(e.exemptCount, 1); assert.equal(e.pendingCents, 75000);
+  assert.throws(() => h.cmd.recordVocalPayment({ eventId: s.eventId, studentId: s.students[3]!, date: today, amountCents: 25000, method: 'cash', note: '' }));
+  h.pay(s.eventId, s.students[0]!, 'cash');
+  assert.throws(() => h.cmd.setVocalExemption(s.eventId, s.students[0]!, ''));
+  assert.throws(() => h.cmd.recordVocalDelivery({ eventId: s.eventId, date: today, amountCents: 25001, method: 'cash', note: '' }));
+  assert.throws(() => h.cmd.recordVocalDelivery({ eventId: s.eventId, date: today, amountCents: 100, method: 'transfer', note: '' }));
+  h.commit(h.cmd.recordVocalDelivery({ eventId: s.eventId, date: today, amountCents: 10000, method: 'cash', note: '' }));
+  e = vocalEventSummary(h.p, s.eventId, today);
+  assert.equal(e.toDeliverCents, 15000); assert.equal(e.cashInHandCents, 15000);
+  h.commit(h.cmd.voidExtension('vocalExemption', h.p.vocalExemptions[0]!.id));
+  assert.equal(vocalEventSummary(h.p, s.eventId, today).owedCount, 4);
 });
 
 test('voided payments stop counting and the group summary hides individual amounts', () => {

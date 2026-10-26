@@ -1945,7 +1945,9 @@ export const schemas: Readonly<Record<string, Schema>> = {
           "vocalGroup",
           "vocalStudent",
           "vocalEvent",
-          "vocalPayment"
+          "vocalPayment",
+          "vocalExemption",
+          "vocalDelivery"
         ]
       },
       "deviceId": {
@@ -2243,6 +2245,26 @@ export const schemas: Readonly<Record<string, Schema>> = {
                 },
                 "payload": {
                   "$ref": "#/$defs/vocalPayment"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "vocalExemption"
+                },
+                "payload": {
+                  "$ref": "#/$defs/vocalExemption"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "vocalDelivery"
+                },
+                "payload": {
+                  "$ref": "#/$defs/vocalDelivery"
                 }
               }
             }
@@ -2824,6 +2846,61 @@ export const schemas: Readonly<Record<string, Schema>> = {
         "required": [
           "eventId",
           "studentId",
+          "date",
+          "amountCents",
+          "method",
+          "note"
+        ]
+      },
+      "vocalExemption": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "$ref": "#/$defs/uuid"
+          },
+          "studentId": {
+            "$ref": "#/$defs/uuid"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "eventId",
+          "studentId",
+          "reason"
+        ]
+      },
+      "vocalDelivery": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "$ref": "#/$defs/uuid"
+          },
+          "date": {
+            "$ref": "#/$defs/date"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "method": {
+            "enum": [
+              "cash",
+              "transfer"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "eventId",
           "date",
           "amountCents",
           "method",

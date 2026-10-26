@@ -5,7 +5,8 @@ import type { Change, VocalEventSummary, VocalGroupView } from '@paymentplan/dom
 import { Field, MoneyField, SelectField, csvCell, download, money, optionalMoney, parseMoney, shortDate, str } from './ui.tsx';
 
 type Act = (prepare: () => Change[] | Promise<Change[]>) => void;
-type Editing = { kind: 'group'; id?: string } | { kind: 'event'; id?: string } | { kind: 'student'; id: string } | { kind: 'payment'; eventId: string; studentId: string; id?: string };
+type Editing = { kind: 'group'; id?: string } | { kind: 'event'; id?: string } | { kind: 'student'; id: string } | { kind: 'payment'; eventId: string; studentId: string; id?: string }
+  | { kind: 'exempt'; eventId: string; studentId: string } | { kind: 'delivery'; eventId: string; id?: string };
 const methodLabel = { cash: 'Efectivo', transfer: 'Transferencia' } as const;
 const defaultCycle = (today: string) => { const y = Number(today.slice(0, 4)), start = Number(today.slice(5, 7)) >= 8 ? y : y - 1; return `${start}-${start + 1}`; };
 
@@ -48,6 +49,18 @@ export function VocaliaView({ session, today, busy, blocked, act }: { session: V
       <SelectField label="Forma de pago" name="method" value={old?.method ?? 'cash'}><option value="cash">Efectivo</option><option value="transfer">Transferencia</option></SelectField>
       <Field label="Nota (opcional)" name="note" value={old?.note} required={false} />
       <div className="inline-actions"><button className="primary" disabled={off}>Guardar pago</button><button type="button" className="text-button" onClick={() => setEditing(null)}>Cancelar</button></div></form>; };
+  const exemptForm = (e: VocalEventSummary) => { if (editing?.kind !== 'exempt' || editing.eventId !== e.id) return null; const student = e.students.find(s => s.id === editing.studentId);
+    return <form key={'ex' + editing.studentId} className="form-grid" onSubmit={ev => { ev.preventDefault(); const d = new FormData(ev.currentTarget); act(() => done(cmd().setVocalExemption(e.id, editing.studentId, str(d, 'reason')))); }}>
+      <p className="form-note">{student?.name} no cuenta para este evento: sale de pendientes y de la cuota esperada.</p>
+      <Field label="Motivo (opcional)" name="reason" required={false} hint="Ej. No participa, pagó directo en dirección." />
+      <div className="inline-actions"><button className="primary" disabled={off}>Marcar exento</button><button type="button" className="text-button" onClick={() => setEditing(null)}>Cancelar</button></div></form>; };
+  const deliveryForm = (e: VocalEventSummary) => { if (editing?.kind !== 'delivery' || editing.eventId !== e.id) return null; const old = editing.id ? p.vocalDeliveries.find(x => x.id === editing.id)?.value : undefined;
+    return <form key={'dl' + (editing.id ?? 'new')} className="form-grid" onSubmit={ev => { ev.preventDefault(); const d = new FormData(ev.currentTarget);
+      act(() => done(cmd().recordVocalDelivery({ eventId: e.id, date: str(d, 'date'), amountCents: parseMoney(d.get('amount')), method: str(d, 'method') as 'cash' | 'transfer', note: str(d, 'note') }, editing.id))); }}>
+      <Field label="Fecha de entrega" name="date" type="date" value={old?.date ?? today} max={today} /><MoneyField label="Importe entregado" name="amount" value={old?.amountCents ?? (e.cashInHandCents || e.transferHeldCents)} />
+      <SelectField label="Entregado en" name="method" value={old?.method ?? (e.cashInHandCents > 0 ? 'cash' : 'transfer')}><option value="cash">Efectivo</option><option value="transfer">Transferencia desde tu cuenta</option></SelectField>
+      <Field label="Nota (opcional)" name="note" value={old?.note} required={false} hint="Ej. Entregado a dirección, recibo 123." />
+      <div className="inline-actions"><button className="primary" disabled={off}>Guardar entrega</button><button type="button" className="text-button" onClick={() => setEditing(null)}>Cancelar</button></div></form>; };
   const pay = (e: VocalEventSummary, studentId: string, cents: number, method: 'cash' | 'transfer') => act(() => cmd().recordVocalPayment({ eventId: e.id, studentId, date: today, amountCents: cents, method, note: '' }));
   return <>
     <section className="panel"><div className="section-heading"><div><h2>Vocalía</h2>
@@ -79,24 +92,34 @@ export function VocaliaView({ session, today, busy, blocked, act }: { session: V
         {group.events.map(e => { const account = accounts.find(a => a.id === e.value.accountId), expanded = open === e.id, readOnly = e.value.settled || e.value.archived;
           return <article className="loan-card" key={e.id}><div className="section-heading"><h3>{e.value.name}<small> · {shortDate(e.value.date)}{e.value.settled && ' · Liquidado'}{e.overdue && !e.value.settled && ' · Con pendientes'}</small></h3>
             <div className="row-actions"><button className="text-button" disabled={off} onClick={() => setEditing({ kind: 'event', id: e.id })}>Editar</button>
-              <button className="text-button" disabled={off} onClick={() => act(() => cmd().saveVocalEvent({ ...e.value, settled: !e.value.settled }, e.id))}>{e.value.settled ? 'Reabrir' : 'Marcar liquidado'}</button></div></div>
+              <button className="text-button" onClick={() => act(() => cmd().saveVocalEvent({ ...e.value, settled: !e.value.settled }, e.id))} disabled={off || (!e.value.settled && e.toDeliverCents > 0)}>{e.value.settled ? 'Reabrir' : 'Marcar liquidado'}</button></div></div>
             <progress aria-label={'Avance de ' + e.value.name} value={Math.min(e.collectedCents, e.expectedCents)} max={Math.max(e.expectedCents, 1)} />
             <div className="focus-grid"><div><small>Recaudado</small><strong>{money(e.collectedCents)}</strong><small>meta {money(e.value.goalCents)}</small></div>
               <div><small>Falta por cobrar</small><strong className={e.pendingCents > 0 ? 'negative' : ''}>{money(e.pendingCents)}</strong><small>{e.paidCount} de {e.owedCount} alumnos pagaron</small></div>
               <div><small>Cuota por alumno</small><strong>{money(e.value.quotaCents)}</strong></div>
-              <div><small>Efectivo en mano</small><strong>{money(e.cashCents)}</strong>{e.transferCents > 0 && <small>Transferencias {money(e.transferCents)}{account && ` en ${account.value.name}`}</small>}</div></div>
+              <div><small>Efectivo en mano</small><strong>{money(e.cashInHandCents)}</strong>{e.transferHeldCents > 0 && <small>Transferencias {money(e.transferHeldCents)}{account && ` en ${account.value.name}`}</small>}</div>
+              <div><small>Por entregar</small><strong className={e.toDeliverCents > 0 ? 'negative' : ''}>{money(e.toDeliverCents)}</strong><small>entregado {money(e.deliveredCents)}</small></div></div>
             {e.expectedCents < e.value.goalCents && <p className="caption">Con la cuota actual se cubre {money(e.expectedCents)} de la meta: faltan {money(e.value.goalCents - e.expectedCents)} (por altas, bajas o redondeo).</p>}
             <div className="inline-actions"><button className="secondary" onClick={() => setOpen(expanded ? null : e.id)}>{expanded ? 'Ocultar cobros' : 'Ver cobros'}</button>
               <button className="text-button" onClick={() => void copy(vocalPendingReport(group.value, e), 'Listado de pendientes')}>Copiar pendientes</button>
               <button className="text-button" onClick={() => void copy(vocalSummaryText(group.value, e), 'Resumen')}>Copiar resumen del grupo</button>
               <button className="text-button" onClick={() => csv(group, e)}>Exportar CSV</button></div>
-            {expanded && <>{paymentForm(e)}<div className="table-wrap"><table><thead><tr><th>Alumno</th><th>Estado</th><th className="numeric">Pagado</th><th>Acciones</th></tr></thead><tbody>
+            {(e.deliveries.length > 0 || !readOnly) && <div className="settings-block"><div className="section-heading"><h4>Entregas a dirección</h4>
+              {!readOnly && <button className="secondary" disabled={off || e.toDeliverCents === 0} onClick={() => setEditing({ kind: 'delivery', eventId: e.id })}>Registrar entrega</button>}</div>
+              {deliveryForm(e)}{e.deliveries.map(x => <div className="settings-row" key={x.id}><span>{money(x.value.amountCents)} · {methodLabel[x.value.method]}<small>{shortDate(x.value.date)}{x.value.note && ` · ${x.value.note}`}</small></span>
+                {!readOnly && <div className="row-actions"><button className="text-button" disabled={off} onClick={() => setEditing({ kind: 'delivery', eventId: e.id, id: x.id })}>Editar</button>
+                  <button className="text-button" disabled={off} onClick={() => act(() => cmd().voidExtension('vocalDelivery', x.id))}>Anular</button></div>}</div>)}
+              {!readOnly && e.toDeliverCents > 0 && <p className="caption">Para liquidar el evento debes entregar todo lo recaudado ({money(e.toDeliverCents)} por entregar).</p>}</div>}
+            {expanded && <>{paymentForm(e)}{exemptForm(e)}<div className="table-wrap"><table><thead><tr><th>Alumno</th><th>Estado</th><th className="numeric">Pagado</th><th>Acciones</th></tr></thead><tbody>
               {e.students.map(s => <tr key={s.id}><td data-label="Alumno">{s.name}</td>
-                <td data-label="Estado">{!s.owed ? 'No aplica' : s.pendingCents === 0 ? 'Pagó' : s.paidCents > 0 ? `Abonó · debe ${money(s.pendingCents)}` : `Pendiente ${money(s.pendingCents)}`}{s.payments.map(x => <small key={x.id}>{shortDate(x.value.date)} · {methodLabel[x.value.method]}{x.value.note && ` · ${x.value.note}`}</small>)}</td>
+                <td data-label="Estado">{s.exemption ? 'Exento' : !s.owed ? 'No aplica' : s.pendingCents === 0 ? 'Pagó' : s.paidCents > 0 ? `Abonó · debe ${money(s.pendingCents)}` : `Pendiente ${money(s.pendingCents)}`}{s.exemption?.value.reason && <small>{s.exemption.value.reason}</small>}{s.payments.map(x => <small key={x.id}>{shortDate(x.value.date)} · {methodLabel[x.value.method]}{x.value.note && ` · ${x.value.note}`}</small>)}</td>
                 <td className="numeric" data-label="Pagado">{money(s.paidCents)}</td>
-                <td data-label="Acciones"><div className="row-actions">{!readOnly && (s.owed && s.pendingCents > 0 && s.paidCents === 0
+                <td data-label="Acciones"><div className="row-actions">{!readOnly && (s.exemption
+                  ? <button className="text-button" disabled={off} onClick={() => act(() => cmd().voidExtension('vocalExemption', s.exemption!.id))}>Quitar exención</button>
+                  : s.owed && s.pendingCents > 0 && s.paidCents === 0
                   ? <><button className="text-button" disabled={off} onClick={() => pay(e, s.id, s.pendingCents, 'cash')}>Pagó en efectivo</button><button className="text-button" disabled={off} onClick={() => pay(e, s.id, s.pendingCents, 'transfer')}>Pagó por transferencia</button>
-                    <button className="text-button" disabled={off} onClick={() => setEditing({ kind: 'payment', eventId: e.id, studentId: s.id })}>Otro importe</button></>
+                    <button className="text-button" disabled={off} onClick={() => setEditing({ kind: 'payment', eventId: e.id, studentId: s.id })}>Otro importe</button>
+                    <button className="text-button" disabled={off} onClick={() => setEditing({ kind: 'exempt', eventId: e.id, studentId: s.id })}>No participa / pagó en dirección</button></>
                   : s.payments.length ? s.payments.map(x => <span key={x.id}><button className="text-button" disabled={off} onClick={() => setEditing({ kind: 'payment', eventId: e.id, studentId: s.id, id: x.id })}>Editar pago</button>
                     <button className="text-button" disabled={off} onClick={() => act(() => cmd().voidExtension('vocalPayment', x.id))}>Anular</button></span>)
                   : <button className="text-button" disabled={off} onClick={() => setEditing({ kind: 'payment', eventId: e.id, studentId: s.id })}>Registrar pago</button>)}</div></td></tr>)}

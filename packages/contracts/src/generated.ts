@@ -311,6 +311,20 @@ export type VocalPayment = {
   readonly "note": string;
 };
 
+export type VocalExemption = {
+  readonly "eventId": Uuid;
+  readonly "studentId": Uuid;
+  readonly "reason": string;
+};
+
+export type VocalDelivery = {
+  readonly "eventId": Uuid;
+  readonly "date": Date;
+  readonly "amountCents": number;
+  readonly "method": "cash" | "transfer";
+  readonly "note": string;
+};
+
 export type OperationMetadata = {
   readonly "schemaVersion": 1 | 2;
   readonly "vaultId": string;
@@ -354,6 +368,8 @@ export interface EntityPayloads {
   readonly vocalStudent: VocalStudent;
   readonly vocalEvent: VocalEvent;
   readonly vocalPayment: VocalPayment;
+  readonly vocalExemption: VocalExemption;
+  readonly vocalDelivery: VocalDelivery;
 }
 
 export type EntityType = keyof EntityPayloads;

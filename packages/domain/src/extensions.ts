@@ -75,7 +75,9 @@ export function extensionIssues(p: Portfolio, today: string): FinancialIssue[] {
   const refs: readonly [string, readonly FinancialRecord<object>[]][] = [['categoryId', categories], ['accountId', accounts], ['toAccountId', accounts], ['goalId', goals], ['recurrenceId', live(p.recurrences)],
     ['groupId', live(p.vocalGroups)], ['eventId', live(p.vocalEvents)], ['studentId', live(p.vocalStudents)]];
   const rows: readonly FinancialRecord<object>[] = [...live(p.classifications), ...live(p.categoryRules), ...live(p.categoryBudgets), ...live(p.recurrences), ...live(p.occurrences), ...entries, ...goals, ...savings,
-    ...live(p.vocalStudents), ...live(p.vocalEvents), ...live(p.vocalPayments)];
+    ...live(p.vocalStudents), ...live(p.vocalEvents), ...live(p.vocalPayments), ...live(p.vocalExemptions), ...live(p.vocalDeliveries)];
+  for (const x of live(p.vocalDeliveries)) if (x.value.date > today) issue('La entrega de vocalía debe ser real.', x.id);
+  for (const x of live(p.vocalExemptions)) if (live(p.vocalPayments).some(y => y.value.eventId === x.value.eventId && y.value.studentId === x.value.studentId)) issue('Un alumno exento no puede tener pagos en el mismo evento.', x.id);
   for (const s of live(p.vocalStudents)) if (s.value.leftDate !== null && s.value.leftDate < s.value.joinedDate) issue('La baja del alumno no puede ser anterior a su alta.', s.id);
   for (const x of live(p.vocalPayments)) {
     const event = live(p.vocalEvents).find(e => e.id === x.value.eventId), student = live(p.vocalStudents).find(s => s.id === x.value.studentId);

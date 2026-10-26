@@ -1,7 +1,7 @@
 import { canonical } from '@paymentplan/contracts';
-import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, VocalGroup, VocalStudent, VocalEvent, VocalPayment, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
+import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, VocalGroup, VocalStudent, VocalEvent, VocalPayment, VocalDelivery, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
-  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance, tandaSchedule, suggestedQuota } from '@paymentplan/domain';
+  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance, tandaSchedule, suggestedQuota, vocalEventSummary } from '@paymentplan/domain';
 import type { FinancialEntityType, Change, FinancialRecord, Portfolio, Tanda } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 
@@ -401,18 +401,42 @@ export class FinancialCommands {
     const active = live(this.portfolio.vocalStudents).filter(s => s.value.groupId === input.groupId && s.value.leftDate === null).length;
     const quotaCents = input.quotaCents ?? suggestedQuota(input.goalCents, active);
     if (!Number.isSafeInteger(quotaCents) || quotaCents < 1) throw Error('Captura una cuota válida.');
+    if (input.settled && !(id && record(this.portfolio.vocalEvents, id).value.settled)) {
+      if (!id) throw Error('Crea el evento antes de liquidarlo.');
+      const left = vocalEventSummary(this.portfolio, id, this.context.today).toDeliverCents;
+      if (left > 0) throw Error('Registra la entrega del dinero recaudado antes de liquidar el evento.');
+    }
     return this.saveExtension('vocalEvent', { ...input, quotaCents, name: input.name.trim() }, id);
+  }
+  setVocalExemption(eventId: string, studentId: string, reason: string) {
+    const event = record(this.portfolio.vocalEvents, eventId), student = record(this.portfolio.vocalStudents, studentId);
+    if (event.value.groupId !== student.value.groupId) throw Error('El alumno no pertenece al grupo del evento.');
+    if (event.value.archived || event.value.settled) throw Error('Reabre el evento para modificar a sus alumnos.');
+    if (live(this.portfolio.vocalPayments).some(x => x.value.eventId === eventId && x.value.studentId === studentId)) throw Error('Anula primero el pago de este alumno.');
+    if (live(this.portfolio.vocalExemptions).some(x => x.value.eventId === eventId && x.value.studentId === studentId)) throw Error('El alumno ya está marcado como exento en este evento.');
+    return this.saveExtension('vocalExemption', { eventId, studentId, reason: reason.trim() });
+  }
+  recordVocalDelivery(payload: VocalDelivery, id?: string) {
+    const event = record(this.portfolio.vocalEvents, payload.eventId);
+    if (event.value.archived || event.value.settled) throw Error('Reabre el evento para registrar o modificar entregas.');
+    if (payload.date > this.context.today) throw Error('Registra la fecha real de la entrega.');
+    const summary = vocalEventSummary(this.portfolio, payload.eventId, this.context.today);
+    const others = summary.deliveries.filter(x => x.value.method === payload.method && x.id !== id).reduce((t, x) => t + x.value.amountCents, 0);
+    const available = (payload.method === 'cash' ? summary.cashCents : summary.transferCents) - others;
+    if (payload.amountCents > available) throw Error(`Solo hay $${(Math.max(0, available) / 100).toFixed(2)} recaudados en ${payload.method === 'cash' ? 'efectivo' : 'transferencia'} por entregar.`);
+    return this.saveExtension('vocalDelivery', { ...payload, note: payload.note.trim() }, id);
   }
   recordVocalPayment(payload: VocalPayment, id?: string) {
     const event = record(this.portfolio.vocalEvents, payload.eventId), student = record(this.portfolio.vocalStudents, payload.studentId);
     if (event.value.groupId !== student.value.groupId) throw Error('El alumno no pertenece al grupo del evento.');
     if (event.value.archived || event.value.settled) throw Error('Reabre el evento para registrar o modificar pagos.');
     if (payload.date > this.context.today) throw Error('Registra la fecha real en que recibiste el pago.');
+    if (live(this.portfolio.vocalExemptions).some(x => x.value.eventId === payload.eventId && x.value.studentId === payload.studentId)) throw Error('Quita la exención del alumno para registrarle un pago.');
     if (!id && live(this.portfolio.vocalPayments).some(x => x.value.eventId === payload.eventId && x.value.studentId === payload.studentId)) throw Error('Ese alumno ya tiene un pago en este evento. Edítalo o anúlalo antes de registrar otro.');
     return this.saveExtension('vocalPayment', { ...payload, note: payload.note.trim() }, id);
   }
   voidExtension(entityType: FinancialEntityType, id: string): Change[] {
-    const allowed = ['categoryRule', 'categoryBudget', 'cashEntry', 'savingsEntry', 'vocalPayment'];
+    const allowed = ['categoryRule', 'categoryBudget', 'cashEntry', 'savingsEntry', 'vocalPayment', 'vocalExemption', 'vocalDelivery'];
     if (!allowed.includes(entityType)) throw Error('Este registro se archiva para conservar sus relaciones.');
     const row = record(this.portfolio[extensionTable(entityType)] as readonly FinancialRecord<EntityPayloads[FinancialEntityType]>[], id);
     const changes: Change[] = [{ entityType, entityId: id, payload: row.value, voided: true } as Change];
