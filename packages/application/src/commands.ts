@@ -1,7 +1,7 @@
 import { canonical } from '@paymentplan/contracts';
 import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, VocalGroup, VocalStudent, VocalEvent, VocalPayment, VocalDelivery, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
-  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance, tandaSchedule, suggestedQuota, vocalEventSummary } from '@paymentplan/domain';
+  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance, tandaSchedule, suggestedQuota, vocalEventSummary, personalCapital } from '@paymentplan/domain';
 import type { FinancialEntityType, Change, FinancialRecord, Portfolio, Tanda } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 
@@ -88,7 +88,7 @@ export class FinancialCommands {
   }
   deleteLoan(id: string): Change[] {
     const loan = record(this.portfolio.loans, id);
-    if (loan.voided || this.portfolio.loanPayments.some(a => a.value.loanId === id)) throw Error('Solo puedes eliminar un préstamo sin historial de abonos.');
+    if (loan.voided || this.portfolio.loanPayments.some(a => a.value.loanId === id) || this.portfolio.loanAdvances.some(a => a.value.loanId === id)) throw Error('Solo puedes eliminar un préstamo sin historial de abonos ni nuevos préstamos.');
     return this.checked([{ entityType: 'loan', entityId: id, payload: loan.value, voided: true }]);
   }
   savePlan(input: Omit<Installment, 'recordedAt' | 'legacyOrdinal' | 'interestIncorporatedThrough'>, id?: string, newPurchase = false): Change[] {
@@ -188,6 +188,25 @@ export class FinancialCommands {
     }
     return this.checked([{ entityType: 'loan', entityId: id ?? this.context.newId(), payload: { ...input, person: input.person.trim(), description: input.description.trim(),
       ...(previous ? { recordedAt: previous.value.recordedAt, legacyOrdinal: previous.value.legacyOrdinal } : this.stamp()) }, voided: false }]);
+  }
+  // Otro préstamo de la misma persona: aumenta el saldo de su ficha. Una ficha liquidada o archivada se reabre sola.
+  addLoanAdvance(loanId: string, date: string, amountCents: number, description: string, includeReceivedMoney: boolean): Change[] {
+    const loan = record(this.portfolio.loans, loanId);
+    if (loan.voided || loan.value.loanType === 'bank') throw Error('Solo las fichas de préstamo personal admiten un nuevo préstamo.');
+    if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw Error('Captura un importe mayor a cero.');
+    if (date > this.context.today) throw Error('Registra la fecha real en que recibiste el dinero.');
+    if (date < loan.value.balanceDate) throw Error('La fecha no puede ser anterior al inicio de la ficha.');
+    const changes: Change[] = [];
+    if (loan.value.archived) changes.push({ entityType: 'loan', entityId: loanId, payload: { ...loan.value, archived: false }, voided: false });
+    changes.push({ entityType: 'loanAdvance', entityId: this.context.newId(), payload: { loanId, date, amountCents, description: description.trim(), includeReceivedMoney }, voided: false });
+    return this.checked(changes);
+  }
+  voidLoanAdvance(id: string): Change[] {
+    const advance = record(this.portfolio.loanAdvances, id), loan = record(this.portfolio.loans, advance.value.loanId);
+    const paid = live(this.portfolio.loanPayments).filter(a => a.value.loanId === loan.id && !a.value.scheduled && a.value.date <= this.context.today).reduce((t, a) => t + a.value.amountCents, 0);
+    const capital = personalCapital(this.portfolio, loan.value, loan.id, this.context.today) - (advance.voided ? 0 : advance.value.amountCents);
+    if (!advance.voided && paid > capital) throw Error('Los abonos registrados superan el capital sin este préstamo. Anula primero los abonos que correspondan.');
+    return this.checked([{ entityType: 'loanAdvance', entityId: id, payload: advance.value, voided: true }]);
   }
   loanPayment(loanId: string, date: string, amountCents: number, description: string): Change[] {
     if (record(this.portfolio.loans, loanId).value.archived) throw Error('Reabre el préstamo antes de registrar un abono.');

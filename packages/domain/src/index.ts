@@ -8,6 +8,7 @@ export * from './finance.ts';
 export * from './loans.ts';
 export * from './tandas.ts';
 export * from './vocalia.ts';
+export * from './loan-advances.ts';
 export * from './progressive-loans.ts';
 export * from './validation.ts';
 export * from './periods.ts';

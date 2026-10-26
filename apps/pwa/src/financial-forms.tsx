@@ -9,7 +9,7 @@ import { PaymentAllocation } from './payment-allocation.tsx';
 import { Check, Field, FormDialog, MoneyField, SelectField, amount, money, optionalMoney, parseMoney, str } from './ui.tsx';
 
 export type FinancialModal = { type: 'card'; id?: string } | { type: 'movement'; id?: string; cardId?: string; planId?: string; quotaNumber?: number; capitalCents?: number; interestCents?: number } | { type: 'plan'; id?: string; cardId: string; purchaseId?: string }
-  | { type: 'loan'; id?: string } | { type: 'loanPayment'; loanId: string } | { type: 'reconcile'; cardId: string }
+  | { type: 'loan'; id?: string } | { type: 'loanPayment'; loanId: string } | { type: 'loanAdvance'; loanId: string } | { type: 'reconcile'; cardId: string }
   | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string } | { type: 'payroll'; payday: string } | { type: 'estimate'; payday: string } | { type: 'loanInstallment'; loanId: string; dueDate: string };
 export function FinancialForm(props: FinancialFormProps) { return props.modal.type === 'allocation' ? <PaymentAllocation id={props.modal.id} session={props.session} today={props.today} close={props.close} save={props.save} /> : <FinancialEditor {...props} modal={props.modal} />; }
 type FinancialFormProps = { modal: FinancialModal; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void> };
@@ -94,8 +94,12 @@ function FinancialEditor({ modal, session, today, close, save }: {
             loanType, annualRateBasisPoints, paymentFrequency, termMonths, firstPaymentDate, ...progressiveFields,
             includeReceivedMoney: data.has('received'), archived: previous?.value.archived ?? false, chargeAccountId: loanType === 'bank' ? str(data, 'chargeAccount') || null : null };
           const dueDate = progressive ? progressiveLastDueDate({ ...base, dueDate: null } as Loan) : loanType === 'bank' && firstPaymentDate && termMonths ? bankLoanLastDueDate(firstPaymentDate, termMonths, paymentFrequency) : str(data, 'dueDate') || null;
+          const key = base.person.trim().toLocaleLowerCase('es-MX');
+          if (loanType === 'personal' && live(p.loans).some(l => l.id !== modal.id && l.value.loanType !== 'bank' && l.value.person.trim().toLocaleLowerCase('es-MX') === key))
+            throw Error(`Ya tienes una ficha con ${base.person.trim()}. Usa «Pedir más» en esa ficha para sumar otro préstamo.`);
           changes = cmd.saveLoan({ ...base, dueDate }, modal.id); break;
         }
+        case 'loanAdvance': changes = cmd.addLoanAdvance(modal.loanId, str(data, 'date'), parseMoney(data.get('amount')), str(data, 'description'), data.has('received')); break;
         case 'loanPayment': changes = cmd.loanPayment(modal.loanId, str(data, 'date'), parseMoney(data.get('amount')), str(data, 'description')); break;
         case 'reconcile': {
           const debt = parseMoney(data.get('debt')), credit = parseMoney(data.get('credit'));
@@ -190,6 +194,12 @@ function FinancialEditor({ modal, session, today, close, save }: {
         <><Field label="Fecha acordada de pago (opcional)" name="dueDate" type="date" value={loan?.dueDate ?? ''} required={false} />
         <p className="form-note">Pago único o abonos sin intereses. Deja desmarcada la opción de dinero recibido si estás capturando una deuda anterior.</p></>}
       <Check name="received" label="También sumar este dinero recibido a mi presupuesto" checked={loan?.includeReceivedMoney} /></>;
+  } else if (modal.type === 'loanAdvance') {
+    const loan = view.loans.find(l => l.id === modal.loanId)!;
+    title = 'Pedir prestado otra vez';
+    fields = <><p className="form-note">{loan.person} · saldo actual {money(loan.balanceCents)}. El nuevo importe se suma al saldo de esta misma ficha.</p><Field label="Fecha en que recibiste el dinero" name="date" type="date" value={today} max={today} />
+      <MoneyField label="Importe recibido" name="amount" value={null} /><Field label="Concepto (opcional)" name="description" required={false} />
+      <Check name="received" label="También sumar este dinero recibido a mi presupuesto" /></>;
   } else if (modal.type === 'loanPayment') {
     const loan = view.loans.find(l => l.id === modal.loanId)!;
     title = loan.loanType === 'bank' ? 'Registrar pago bancario' : 'Registrar abono a persona';

@@ -1947,7 +1947,8 @@ export const schemas: Readonly<Record<string, Schema>> = {
           "vocalEvent",
           "vocalPayment",
           "vocalExemption",
-          "vocalDelivery"
+          "vocalDelivery",
+          "loanAdvance"
         ]
       },
       "deviceId": {
@@ -2265,6 +2266,16 @@ export const schemas: Readonly<Record<string, Schema>> = {
                 },
                 "payload": {
                   "$ref": "#/$defs/vocalDelivery"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "loanAdvance"
+                },
+                "payload": {
+                  "$ref": "#/$defs/loanAdvance"
                 }
               }
             }
@@ -2905,6 +2916,37 @@ export const schemas: Readonly<Record<string, Schema>> = {
           "amountCents",
           "method",
           "note"
+        ]
+      },
+      "loanAdvance": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "loanId": {
+            "$ref": "#/$defs/uuid"
+          },
+          "date": {
+            "$ref": "#/$defs/date"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "includeReceivedMoney": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "loanId",
+          "date",
+          "amountCents",
+          "description",
+          "includeReceivedMoney"
         ]
       }
     }

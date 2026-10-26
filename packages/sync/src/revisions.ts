@@ -12,6 +12,7 @@ const financialBundles: Partial<Record<Operation['entityType'], readonly string[
   savingsEntry: ['goalId', 'date', 'amountCents', 'direction'],
   vocalEvent: ['groupId', 'goalCents', 'quotaCents', 'accountId', 'settled'],
   vocalPayment: ['eventId', 'studentId', 'date', 'amountCents', 'method'],
+  loanAdvance: ['loanId', 'date', 'amountCents', 'includeReceivedMoney'],
   vocalDelivery: ['eventId', 'date', 'amountCents', 'method'],
   vocalExemption: ['eventId', 'studentId'],
   recurrence: ['cardId', 'kind', 'amountCents', 'startDate', 'endDate', 'frequency', 'enabled', 'categoryId'],

@@ -8,9 +8,10 @@ import { bankLoanLastDueDate, bankLoanProjection, bankLoanSchedule, isProgressiv
 import { civilDate, cutOnOrAfter, dueDateFor } from './dates.ts';
 import { extensionIssues } from './extensions.ts';
 import { sumCents } from './money.ts';
+import { personalCapital } from './loan-advances.ts';
 
 export const entityTables = { card: 'cards', balance: 'balances', movement: 'movements', installment: 'installments', statement: 'statements', loan: 'loans',
-  loanPayment: 'loanPayments', income: 'incomes', budget: 'budgets', category: 'categories', classification: 'classifications', categoryRule: 'categoryRules', categoryBudget: 'categoryBudgets', recurrence: 'recurrences', occurrence: 'occurrences', cashAccount: 'cashAccounts', cashEntry: 'cashEntries', savingsGoal: 'savingsGoals', savingsEntry: 'savingsEntries', vocalGroup: 'vocalGroups', vocalStudent: 'vocalStudents', vocalEvent: 'vocalEvents', vocalPayment: 'vocalPayments', vocalExemption: 'vocalExemptions', vocalDelivery: 'vocalDeliveries', closure: 'closures', reminderPreferences: 'reminderPreferences', reminderState: 'reminderStates' } as const;
+  loanPayment: 'loanPayments', income: 'incomes', budget: 'budgets', category: 'categories', classification: 'classifications', categoryRule: 'categoryRules', categoryBudget: 'categoryBudgets', recurrence: 'recurrences', occurrence: 'occurrences', cashAccount: 'cashAccounts', cashEntry: 'cashEntries', savingsGoal: 'savingsGoals', savingsEntry: 'savingsEntries', vocalGroup: 'vocalGroups', vocalStudent: 'vocalStudents', vocalEvent: 'vocalEvents', vocalPayment: 'vocalPayments', vocalExemption: 'vocalExemptions', vocalDelivery: 'vocalDeliveries', loanAdvance: 'loanAdvances', closure: 'closures', reminderPreferences: 'reminderPreferences', reminderState: 'reminderStates' } as const;
 export type FinancialEntityType = Exclude<EntityType, 'device'>;
 export type Change = { [K in FinancialEntityType]: { readonly entityType: K; readonly entityId: string; readonly payload: EntityPayloads[K]; readonly voided: boolean } }[FinancialEntityType];
 export interface FinancialIssue { readonly message: string; readonly entityIds: readonly string[] }
@@ -119,12 +120,18 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
         (loan.value.termMonths ?? null) !== null || (loan.value.firstPaymentDate ?? null) !== null || (loan.value.amortizationMethod ?? 'annuity') !== 'annuity' ||
         (loan.value.remainingInstallments ?? null) !== null || (loan.value.nextCapitalCents ?? null) !== null)
         issue('Los préstamos personales no deben contener condiciones de amortización bancaria.', loan.id);
-      if (sumCents(payments.map(a => a.value.amountCents)) > loan.value.principalCents)
+      if (sumCents(payments.map(a => a.value.amountCents)) > personalCapital(p, loan.value, loan.id, today))
         issue('Revisa el préstamo: sus abonos no pueden superar el capital.', loan.id, ...payments.map(a => a.id));
     }
     if (loan.value.includeReceivedMoney && loan.value.dueDate !== null && loan.value.dueDate < loan.value.balanceDate) issue('El préstamo recibido no puede vencer antes de recibir el dinero.', loan.id);
-    if (loan.value.loanType !== 'bank' && loan.value.archived && sumCents(payments.filter(a => !a.value.scheduled && a.value.date <= today).map(a => a.value.amountCents)) !== loan.value.principalCents)
+    if (loan.value.loanType !== 'bank' && loan.value.archived && sumCents(payments.filter(a => !a.value.scheduled && a.value.date <= today).map(a => a.value.amountCents)) !== personalCapital(p, loan.value, loan.id, today))
       issue('Solo puedes archivar un préstamo liquidado.', loan.id);
+  }
+  for (const a of live(p.loanAdvances)) {
+    const loan = live(p.loans).find(l => l.id === a.value.loanId);
+    if (!loan || loan.value.loanType === 'bank') issue('El nuevo préstamo debe pertenecer a una ficha de préstamo personal.', a.id);
+    else if (a.value.date < loan.value.balanceDate) issue('El nuevo préstamo no puede ser anterior al inicio de la ficha.', a.id, loan.id);
+    if (a.value.date > today) issue('El nuevo préstamo debe tener una fecha real.', a.id);
   }
   for (const type of ['income', 'reminderPreferences'] as const) if (p[entityTables[type]].filter(r => !r.voided).length > 1) issue(`Hay dos configuraciones de ${type}. Resuelve cuál conservar.`, ...p[entityTables[type]].filter(r => !r.voided).map(r => r.id));
   for (const b of live(p.budgets)) if (b.value.payday !== paydayForBudget(b.value.payday)) issue('El presupuesto debe ser del 15 o último día del mes.', b.id);

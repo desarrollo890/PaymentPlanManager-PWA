@@ -2218,13 +2218,18 @@ export function LoansView({
                 >
                   {l.loanType === "bank" ? "Registrar pago" : "Registrar abono"}
                 </button>
+                {l.loanType !== "bank" && (
+                  <button className="secondary" onClick={() => modal({ type: "loanAdvance", loanId: l.id })}>
+                    Pedir más
+                  </button>
+                )}
                 <button
                   className="text-button"
                   onClick={() => modal({ type: "loan", id: l.id })}
                 >
                   Editar
                 </button>
-                {!p.loanPayments.some((a) => a.value.loanId === l.id) && (
+                {!p.loanPayments.some((a) => a.value.loanId === l.id) && !p.loanAdvances.some((a) => a.value.loanId === l.id) && (
                   <button
                     className="text-button danger"
                     onClick={() => {
@@ -2256,7 +2261,30 @@ export function LoansView({
                 )}
               </div>
               <details className="payment-history">
-                <summary>Historial de abonos</summary>
+                <summary>Historial de abonos y préstamos</summary>
+                {p.loanAdvances
+                  .filter((a) => a.value.loanId === l.id)
+                  .map((a) => (
+                    <div className="settings-row" key={a.id}>
+                      <span>
+                        {shortDate(a.value.date)} · Te prestó {money(a.value.amountCents)}
+                        <small>
+                          {a.value.description || "Nuevo préstamo"}
+                          {a.voided ? " · Anulado" : ""}
+                        </small>
+                      </span>
+                      {!a.voided && (
+                        <div className="row-actions">
+                          <button
+                            className="text-button"
+                            onClick={() => act(() => session.commands(view.today).voidLoanAdvance(a.id))}
+                          >
+                            Anular
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 {p.loanPayments
                   .filter((a) => a.value.loanId === l.id)
                   .map((a) => (

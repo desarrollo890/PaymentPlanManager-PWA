@@ -3,6 +3,7 @@ import { addDays, addMonths, civilDate, cutOnOrAfter, cutOnOrBefore, dateInMonth
 import { installmentQuotas } from './installments.ts';
 import type { InstallmentQuota } from './installments.ts';
 import { bankLoanProjection, bankLoanSchedule, isProgressiveLoan, progressiveLoanStates } from './loans.ts';
+import { personalCapital } from './loan-advances.ts';
 import { cents, safeInteger, sumCents } from './money.ts';
 import { live, orderOf } from './portfolio.ts';
 import type { FinancialRecord, Portfolio } from './portfolio.ts';
@@ -292,7 +293,7 @@ export function financeView(p: Portfolio, today: string): FinanceView {
         paymentFrequency: r.value.paymentFrequency ?? 'monthly',
         ...(isProgressiveLoan(r.value) ? { progressive: { ...progressiveLoanStates(r.value, payments, today), remainingInstallments: schedule.length - schedule.filter(row => row.dueDate <= today).length } } : {}) };
     }
-    return { id: r.id, person: r.value.person, loanType: 'personal' as const, balanceCents: r.value.principalCents - paid, paidCents: paid,
+    return { id: r.id, person: r.value.person, loanType: 'personal' as const, balanceCents: personalCapital(p, r.value, r.id, today) - paid, paidCents: paid,
       scheduledCents: total(payments.filter(a => a.value.scheduled || a.value.date > today), a => a.value.amountCents),
       annualRateBasisPoints: null, installmentPaymentCents: null, nextPaymentDate: null, paymentFrequency: null };
   }).sort((a, b) => Number(p.loans.find(r => r.id === a.id)!.value.archived) - Number(p.loans.find(r => r.id === b.id)!.value.archived) || b.balanceCents - a.balanceCents || a.person.localeCompare(b.person));
@@ -329,6 +330,7 @@ export function financeView(p: Portfolio, today: string): FinanceView {
   for (const date of paydaysThrough(addMonths(today, -1, 1), horizon)) dates.add(date);
   live(p.budgets).forEach(b => dates.add(b.value.payday)); obligations.forEach(o => dates.add(o.payday));
   live(p.loans).filter(l => l.value.includeReceivedMoney).forEach(l => dates.add(paydayFor(l.value.balanceDate)));
+  live(p.loanAdvances).filter(a => a.value.includeReceivedMoney).forEach(a => dates.add(paydayFor(a.value.date)));
   live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today).forEach(a => dates.add(paydayFor(a.value.date)));
   const config = live(p.incomes)[0]?.value ?? { income15Cents: 0, incomeEndCents: 0, expensesCents: 0, reserveCents: 0, payrollAccountId: null };
   const payrollAccount = live(p.cashAccounts).find(a => a.id === config.payrollAccountId && a.value.kind === 'debit');
@@ -340,7 +342,8 @@ export function financeView(p: Portfolio, today: string): FinanceView {
     const pending = total([...targets.values()].filter(s => s.payday === date), s => s.pendingCents);
     const cardPaid = total(live(p.movements).filter(m => m.value.kind === 'payment' && !m.value.scheduled && m.value.date <= today &&
       (cards.flatMap(c => c.cuts).find(s => s.id === m.value.statementId)?.payday ?? paydayFor(m.value.date)) === date), m => m.value.amountCents);
-    const received = total(live(p.loans).filter(l => l.value.includeReceivedMoney && l.value.balanceDate <= today && paydayFor(l.value.balanceDate) === date), l => l.value.principalCents);
+    const received = total(live(p.loans).filter(l => l.value.includeReceivedMoney && l.value.balanceDate <= today && paydayFor(l.value.balanceDate) === date), l => l.value.principalCents)
+      + total(live(p.loanAdvances).filter(a => a.value.includeReceivedMoney && a.value.date <= today && paydayFor(a.value.date) === date), a => a.value.amountCents);
     const loanPaid = total(live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today && paydayFor(a.value.date) === date), a => a.value.amountCents);
     const loanPending = total(obligations.filter(o => o.payday === date), o => o.amountCents);
     const recorded = payrollAccount ? live(p.cashEntries).filter(e => e.value.accountId === payrollAccount.id && e.value.kind === 'income' && e.value.date === date) : [];

@@ -1,4 +1,4 @@
-import type { Category, Classification, CategoryRule, CategoryBudget, Recurrence, Occurrence, CashAccount, CashEntry, SavingsGoal, SavingsEntry, VocalGroup, VocalStudent, VocalEvent, VocalPayment, VocalExemption, VocalDelivery, Balance, Budget, Card, Closure, Income, Installment, Loan, LoanPayment, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
+import type { Category, Classification, CategoryRule, CategoryBudget, Recurrence, Occurrence, CashAccount, CashEntry, SavingsGoal, SavingsEntry, VocalGroup, VocalStudent, VocalEvent, VocalPayment, VocalExemption, VocalDelivery, LoanAdvance, Balance, Budget, Card, Closure, Income, Installment, Loan, LoanPayment, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 
 // Resolved records, including tombstones needed to protect history and restoration.
 export interface FinancialRecord<T> { readonly id: string; readonly value: T; readonly voided: boolean }
@@ -19,6 +19,7 @@ export interface Portfolio {
   readonly vocalPayments: readonly FinancialRecord<VocalPayment>[];
   readonly vocalExemptions: readonly FinancialRecord<VocalExemption>[];
   readonly vocalDeliveries: readonly FinancialRecord<VocalDelivery>[];
+  readonly loanAdvances: readonly FinancialRecord<LoanAdvance>[];
   readonly cards: readonly FinancialRecord<Card>[];
   readonly balances: readonly FinancialRecord<Balance>[];
   readonly movements: readonly FinancialRecord<Movement>[];
@@ -33,7 +34,7 @@ export interface Portfolio {
   readonly reminderStates: readonly FinancialRecord<ReminderState>[];
 }
 export function emptyPortfolio(): Portfolio {
-  return { categories: [], classifications: [], categoryRules: [], categoryBudgets: [], recurrences: [], occurrences: [], cashAccounts: [], cashEntries: [], savingsGoals: [], savingsEntries: [], vocalGroups: [], vocalStudents: [], vocalEvents: [], vocalPayments: [], vocalExemptions: [], vocalDeliveries: [], cards: [], balances: [], movements: [], installments: [], statements: [], loans: [], loanPayments: [], incomes: [], budgets: [], closures: [], reminderPreferences: [], reminderStates: [] };
+  return { categories: [], classifications: [], categoryRules: [], categoryBudgets: [], recurrences: [], occurrences: [], cashAccounts: [], cashEntries: [], savingsGoals: [], savingsEntries: [], vocalGroups: [], vocalStudents: [], vocalEvents: [], vocalPayments: [], vocalExemptions: [], vocalDeliveries: [], loanAdvances: [], cards: [], balances: [], movements: [], installments: [], statements: [], loans: [], loanPayments: [], incomes: [], budgets: [], closures: [], reminderPreferences: [], reminderStates: [] };
 }
 export function live<T>(records: readonly FinancialRecord<T>[]): FinancialRecord<T>[] { return records.filter(r => !r.voided); }
 export function orderOf(value: { readonly recordedAt: string | null; readonly legacyOrdinal: number | null }): string {

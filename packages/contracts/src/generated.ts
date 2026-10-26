@@ -325,6 +325,14 @@ export type VocalDelivery = {
   readonly "note": string;
 };
 
+export type LoanAdvance = {
+  readonly "loanId": Uuid;
+  readonly "date": Date;
+  readonly "amountCents": number;
+  readonly "description": string;
+  readonly "includeReceivedMoney": boolean;
+};
+
 export type OperationMetadata = {
   readonly "schemaVersion": 1 | 2;
   readonly "vaultId": string;
@@ -370,6 +378,7 @@ export interface EntityPayloads {
   readonly vocalPayment: VocalPayment;
   readonly vocalExemption: VocalExemption;
   readonly vocalDelivery: VocalDelivery;
+  readonly loanAdvance: LoanAdvance;
 }
 
 export type EntityType = keyof EntityPayloads;
