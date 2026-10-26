@@ -277,6 +277,40 @@ export type SavingsEntry = {
   readonly "description": string;
 };
 
+export type VocalGroup = {
+  readonly "name": string;
+  readonly "cycle": string;
+  readonly "color": string;
+  readonly "archived": boolean;
+};
+
+export type VocalStudent = {
+  readonly "groupId": Uuid;
+  readonly "name": string;
+  readonly "joinedDate": Date;
+  readonly "leftDate": (Date) | (null);
+};
+
+export type VocalEvent = {
+  readonly "groupId": Uuid;
+  readonly "name": string;
+  readonly "date": Date;
+  readonly "goalCents": number;
+  readonly "quotaCents": number;
+  readonly "accountId": (Uuid) | (null);
+  readonly "settled": boolean;
+  readonly "archived": boolean;
+};
+
+export type VocalPayment = {
+  readonly "eventId": Uuid;
+  readonly "studentId": Uuid;
+  readonly "date": Date;
+  readonly "amountCents": number;
+  readonly "method": "cash" | "transfer";
+  readonly "note": string;
+};
+
 export type OperationMetadata = {
   readonly "schemaVersion": 1 | 2;
   readonly "vaultId": string;
@@ -316,6 +350,10 @@ export interface EntityPayloads {
   readonly cashEntry: CashEntry;
   readonly savingsGoal: SavingsGoal;
   readonly savingsEntry: SavingsEntry;
+  readonly vocalGroup: VocalGroup;
+  readonly vocalStudent: VocalStudent;
+  readonly vocalEvent: VocalEvent;
+  readonly vocalPayment: VocalPayment;
 }
 
 export type EntityType = keyof EntityPayloads;

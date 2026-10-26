@@ -1941,7 +1941,11 @@ export const schemas: Readonly<Record<string, Schema>> = {
           "cashAccount",
           "cashEntry",
           "savingsGoal",
-          "savingsEntry"
+          "savingsEntry",
+          "vocalGroup",
+          "vocalStudent",
+          "vocalEvent",
+          "vocalPayment"
         ]
       },
       "deviceId": {
@@ -2199,6 +2203,46 @@ export const schemas: Readonly<Record<string, Schema>> = {
                 },
                 "payload": {
                   "$ref": "#/$defs/savingsEntry"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "vocalGroup"
+                },
+                "payload": {
+                  "$ref": "#/$defs/vocalGroup"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "vocalStudent"
+                },
+                "payload": {
+                  "$ref": "#/$defs/vocalStudent"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "vocalEvent"
+                },
+                "payload": {
+                  "$ref": "#/$defs/vocalEvent"
+                }
+              }
+            },
+            {
+              "properties": {
+                "entityType": {
+                  "const": "vocalPayment"
+                },
+                "payload": {
+                  "$ref": "#/$defs/vocalPayment"
                 }
               }
             }
@@ -2631,6 +2675,159 @@ export const schemas: Readonly<Record<string, Schema>> = {
           "amountCents",
           "direction",
           "description"
+        ]
+      },
+      "vocalGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "cycle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "cycle",
+          "color",
+          "archived"
+        ]
+      },
+      "vocalStudent": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "groupId": {
+            "$ref": "#/$defs/uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "joinedDate": {
+            "$ref": "#/$defs/date"
+          },
+          "leftDate": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "groupId",
+          "name",
+          "joinedDate",
+          "leftDate"
+        ]
+      },
+      "vocalEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "groupId": {
+            "$ref": "#/$defs/uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "date": {
+            "$ref": "#/$defs/date"
+          },
+          "goalCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "quotaCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "accountId": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settled": {
+            "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groupId",
+          "name",
+          "date",
+          "goalCents",
+          "quotaCents",
+          "accountId",
+          "settled",
+          "archived"
+        ]
+      },
+      "vocalPayment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "$ref": "#/$defs/uuid"
+          },
+          "studentId": {
+            "$ref": "#/$defs/uuid"
+          },
+          "date": {
+            "$ref": "#/$defs/date"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "method": {
+            "enum": [
+              "cash",
+              "transfer"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "eventId",
+          "studentId",
+          "date",
+          "amountCents",
+          "method",
+          "note"
         ]
       }
     }

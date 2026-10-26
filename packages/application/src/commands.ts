@@ -1,7 +1,7 @@
 import { canonical } from '@paymentplan/contracts';
-import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
+import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, VocalGroup, VocalStudent, VocalEvent, VocalPayment, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
-  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance, tandaSchedule } from '@paymentplan/domain';
+  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance, tandaSchedule, suggestedQuota } from '@paymentplan/domain';
 import type { FinancialEntityType, Change, FinancialRecord, Portfolio, Tanda } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 
@@ -382,8 +382,37 @@ export class FinancialCommands {
     if (record(this.portfolio.savingsGoals, payload.goalId).value.archived) throw Error('Reactiva la meta para modificar su reserva.');
     return this.saveExtension('savingsEntry', { ...payload, description: payload.description.trim() }, id);
   }
+  saveVocalGroup(payload: VocalGroup, id?: string) { return this.saveExtension('vocalGroup', { ...payload, name: payload.name.trim(), cycle: payload.cycle.trim() }, id); }
+  saveVocalStudent(payload: VocalStudent, id?: string) {
+    const name = payload.name.trim();
+    if (record(this.portfolio.vocalGroups, payload.groupId).value.archived) throw Error('Reactiva el grupo para modificar sus alumnos.');
+    if (payload.joinedDate > this.context.today) throw Error('El alta del alumno no puede ser futura.');
+    if (payload.leftDate !== null && (payload.leftDate < payload.joinedDate || payload.leftDate > this.context.today)) throw Error('Revisa la fecha de baja.');
+    const key = name.toLocaleLowerCase('es-MX');
+    if (live(this.portfolio.vocalStudents).some(s => s.id !== id && s.value.groupId === payload.groupId && s.value.name.trim().toLocaleLowerCase('es-MX') === key && s.value.leftDate === null)) throw Error('Ya hay un alumno activo con ese nombre en el grupo.');
+    return this.saveExtension('vocalStudent', { ...payload, name }, id);
+  }
+  // quotaCents null reparte la meta entre los alumnos activos del grupo y redondea hacia arriba.
+  saveVocalEvent(input: Omit<VocalEvent, 'quotaCents'> & { quotaCents: number | null }, id?: string) {
+    const group = record(this.portfolio.vocalGroups, input.groupId);
+    if (group.value.archived) throw Error('Reactiva el grupo para crear o modificar eventos.');
+    if (id && record(this.portfolio.vocalEvents, id).value.groupId !== input.groupId) throw Error('Un evento no cambia de grupo.');
+    if (input.accountId !== null && record(this.portfolio.cashAccounts, input.accountId).value.archived) throw Error('Selecciona una cuenta activa.');
+    const active = live(this.portfolio.vocalStudents).filter(s => s.value.groupId === input.groupId && s.value.leftDate === null).length;
+    const quotaCents = input.quotaCents ?? suggestedQuota(input.goalCents, active);
+    if (!Number.isSafeInteger(quotaCents) || quotaCents < 1) throw Error('Captura una cuota válida.');
+    return this.saveExtension('vocalEvent', { ...input, quotaCents, name: input.name.trim() }, id);
+  }
+  recordVocalPayment(payload: VocalPayment, id?: string) {
+    const event = record(this.portfolio.vocalEvents, payload.eventId), student = record(this.portfolio.vocalStudents, payload.studentId);
+    if (event.value.groupId !== student.value.groupId) throw Error('El alumno no pertenece al grupo del evento.');
+    if (event.value.archived || event.value.settled) throw Error('Reabre el evento para registrar o modificar pagos.');
+    if (payload.date > this.context.today) throw Error('Registra la fecha real en que recibiste el pago.');
+    if (!id && live(this.portfolio.vocalPayments).some(x => x.value.eventId === payload.eventId && x.value.studentId === payload.studentId)) throw Error('Ese alumno ya tiene un pago en este evento. Edítalo o anúlalo antes de registrar otro.');
+    return this.saveExtension('vocalPayment', { ...payload, note: payload.note.trim() }, id);
+  }
   voidExtension(entityType: FinancialEntityType, id: string): Change[] {
-    const allowed = ['categoryRule', 'categoryBudget', 'cashEntry', 'savingsEntry'];
+    const allowed = ['categoryRule', 'categoryBudget', 'cashEntry', 'savingsEntry', 'vocalPayment'];
     if (!allowed.includes(entityType)) throw Error('Este registro se archiva para conservar sus relaciones.');
     const row = record(this.portfolio[extensionTable(entityType)] as readonly FinancialRecord<EntityPayloads[FinancialEntityType]>[], id);
     const changes: Change[] = [{ entityType, entityId: id, payload: row.value, voided: true } as Change];

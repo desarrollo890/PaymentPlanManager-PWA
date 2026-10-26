@@ -4,6 +4,7 @@ import type { FinancialRecord, Portfolio } from './portfolio.ts';
 import { live } from './portfolio.ts';
 import { addDays, addMonths, civilDate, paydaysThrough, paydayFor } from './dates.ts';
 import { sumCents } from './money.ts';
+import { vocalHeld } from './vocalia.ts';
 
 export function normalizeMerchant(value: string): string { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-MX').replace(/\s+/g, ' ').trim(); }
 export function categorySuggestions(p: Portfolio, movementId: string): string[] {
@@ -59,7 +60,7 @@ export function accountFree(p: Portfolio, accountId: string): boolean {
   return account.value.freeUse ?? !live(p.incomes).some(i => i.value.voucherAccountId === accountId);
 }
 export function cashView(p: Portfolio, today: string) {
-  const accounts = live(p.cashAccounts).map(a => ({ ...a, balanceCents: cashBalance(p, a.id, today), reservedCents: accountReserved(p, a.id, today), freeCents: sumCents([cashBalance(p, a.id, today), -accountReserved(p, a.id, today)]) }));
+  const accounts = live(p.cashAccounts).map(a => { const heldCents = vocalHeld(p, a.id); return { ...a, balanceCents: cashBalance(p, a.id, today), reservedCents: accountReserved(p, a.id, today), heldCents, freeCents: sumCents([cashBalance(p, a.id, today), -accountReserved(p, a.id, today), -heldCents]) }; });
   const goals = live(p.savingsGoals).map(g => {
     const savedCents = goalSaved(p, g.id, today), remainingCents = Math.max(0, g.value.targetCents - savedCents);
     const paydays = g.value.targetDate !== null && g.value.targetDate >= today ? paydaysThrough(today, g.value.targetDate) : [];
@@ -71,8 +72,16 @@ export function cashView(p: Portfolio, today: string) {
 export function extensionIssues(p: Portfolio, today: string): FinancialIssue[] {
   const issues: FinancialIssue[] = [], issue = (message: string, ...entityIds: string[]) => issues.push({ message, entityIds });
   const categories = live(p.categories), accounts = live(p.cashAccounts), goals = live(p.savingsGoals), entries = live(p.cashEntries), savings = live(p.savingsEntries);
-  const refs: readonly [string, readonly FinancialRecord<object>[]][] = [['categoryId', categories], ['accountId', accounts], ['toAccountId', accounts], ['goalId', goals], ['recurrenceId', live(p.recurrences)]];
-  const rows: readonly FinancialRecord<object>[] = [...live(p.classifications), ...live(p.categoryRules), ...live(p.categoryBudgets), ...live(p.recurrences), ...live(p.occurrences), ...entries, ...goals, ...savings];
+  const refs: readonly [string, readonly FinancialRecord<object>[]][] = [['categoryId', categories], ['accountId', accounts], ['toAccountId', accounts], ['goalId', goals], ['recurrenceId', live(p.recurrences)],
+    ['groupId', live(p.vocalGroups)], ['eventId', live(p.vocalEvents)], ['studentId', live(p.vocalStudents)]];
+  const rows: readonly FinancialRecord<object>[] = [...live(p.classifications), ...live(p.categoryRules), ...live(p.categoryBudgets), ...live(p.recurrences), ...live(p.occurrences), ...entries, ...goals, ...savings,
+    ...live(p.vocalStudents), ...live(p.vocalEvents), ...live(p.vocalPayments)];
+  for (const s of live(p.vocalStudents)) if (s.value.leftDate !== null && s.value.leftDate < s.value.joinedDate) issue('La baja del alumno no puede ser anterior a su alta.', s.id);
+  for (const x of live(p.vocalPayments)) {
+    const event = live(p.vocalEvents).find(e => e.id === x.value.eventId), student = live(p.vocalStudents).find(s => s.id === x.value.studentId);
+    if (x.value.date > today) issue('El pago de la cuota debe ser real.', x.id);
+    if (event && student && event.value.groupId !== student.value.groupId) issue('El pago mezcla un alumno y un evento de grupos distintos.', x.id, event.id, student.id);
+  }
   for (const income of live(p.incomes)) {
     const payroll = income.value.payrollAccountId ?? null, account = accounts.find(a => a.id === payroll);
     if (payroll !== null && (!account || account.value.kind !== 'debit')) issue('La cuenta de nómina debe ser una cuenta de débito registrada.', income.id, payroll);

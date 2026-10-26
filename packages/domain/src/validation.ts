@@ -10,7 +10,7 @@ import { extensionIssues } from './extensions.ts';
 import { sumCents } from './money.ts';
 
 export const entityTables = { card: 'cards', balance: 'balances', movement: 'movements', installment: 'installments', statement: 'statements', loan: 'loans',
-  loanPayment: 'loanPayments', income: 'incomes', budget: 'budgets', category: 'categories', classification: 'classifications', categoryRule: 'categoryRules', categoryBudget: 'categoryBudgets', recurrence: 'recurrences', occurrence: 'occurrences', cashAccount: 'cashAccounts', cashEntry: 'cashEntries', savingsGoal: 'savingsGoals', savingsEntry: 'savingsEntries', closure: 'closures', reminderPreferences: 'reminderPreferences', reminderState: 'reminderStates' } as const;
+  loanPayment: 'loanPayments', income: 'incomes', budget: 'budgets', category: 'categories', classification: 'classifications', categoryRule: 'categoryRules', categoryBudget: 'categoryBudgets', recurrence: 'recurrences', occurrence: 'occurrences', cashAccount: 'cashAccounts', cashEntry: 'cashEntries', savingsGoal: 'savingsGoals', savingsEntry: 'savingsEntries', vocalGroup: 'vocalGroups', vocalStudent: 'vocalStudents', vocalEvent: 'vocalEvents', vocalPayment: 'vocalPayments', closure: 'closures', reminderPreferences: 'reminderPreferences', reminderState: 'reminderStates' } as const;
 export type FinancialEntityType = Exclude<EntityType, 'device'>;
 export type Change = { [K in FinancialEntityType]: { readonly entityType: K; readonly entityId: string; readonly payload: EntityPayloads[K]; readonly voided: boolean } }[FinancialEntityType];
 export interface FinancialIssue { readonly message: string; readonly entityIds: readonly string[] }

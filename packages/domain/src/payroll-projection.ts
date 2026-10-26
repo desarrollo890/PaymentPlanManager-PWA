@@ -2,6 +2,7 @@ import type { Portfolio } from './portfolio.ts';
 import { live } from './portfolio.ts';
 import type { FinanceView } from './finance.ts';
 import { accountFree, accountReserved, cashBalance } from './extensions.ts';
+import { vocalHeld } from './vocalia.ts';
 import { addDays } from './dates.ts';
 import { sumCents } from './money.ts';
 import { activeTandas, tandaSchedule } from './tandas.ts';
@@ -36,7 +37,7 @@ export function totalProjection(p: Portfolio, view: FinanceView, days = 90): Pay
 function project(p: Portfolio, view: FinanceView, ids: ReadonlySet<string>, accountName: string, netOfGoals: boolean, days: number): PayrollProjection {
   const today = view.today, through = addDays(today, days);
   const payroll = view.budgets.find(b => b.payroll)?.payroll ?? null, payrollIn = payroll !== null && ids.has(payroll.accountId);
-  const start = sumCents([...ids].map(id => cashBalance(p, id, today) - (netOfGoals ? accountReserved(p, id, today) : 0)));
+  const start = sumCents([...ids].map(id => cashBalance(p, id, today) - (netOfGoals ? accountReserved(p, id, today) + vocalHeld(p, id) : 0)));
   const raw: Omit<ProjectionEvent, 'balanceCents'>[] = [];
   if (payrollIn) for (const b of view.budgets) {
     if (b.payday > today && b.payday <= through && b.incomeCents > 0) raw.push({ date: b.payday, label: 'Ingreso de nómina', kind: 'income', amountCents: b.incomeCents, overdue: false });

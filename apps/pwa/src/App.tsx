@@ -22,10 +22,12 @@ import { EducationView, InsightsView, PayoffView } from './growth-views.tsx';
 import { PlanningView, GoalBudget } from './planning-views.tsx';
 import { ConflictReview } from './conflicts.tsx';
 import { TandasPanel } from './tandas-panel.tsx';
+import { VocaliaView } from './vocalia-view.tsx';
 
 const google = new GoogleAccess(oauth.web.clientId);
 const sections = [ ['inicio', 'Inicio', 'home', 'Tu espacio financiero', 'HOY'],
   ['cuentas', 'Cuentas', 'wallet', 'Tu efectivo y débito', 'DINERO'], ['movimientos', 'Movimientos', 'activity', 'Tus movimientos', 'DINERO'],
+  ['vocalia', 'Vocalía', 'book', 'Cuotas escolares de los padres', 'DINERO'],
   ['tarjetas', 'Tarjetas', 'card', 'Tus tarjetas', 'DEUDAS'], ['prestamos', 'Préstamos', 'people', 'Préstamos personales y bancarios', 'DEUDAS'],
   ['presupuesto', 'Presupuesto', 'report', 'Tu presupuesto', 'PLANEACIÓN'], ['plan', 'Calendario', 'calendar', 'Tu calendario de pagos', 'PLANEACIÓN'],
   ['recurrencias', 'Recurrencias', 'repeat', 'Cargos recurrentes', 'PLANEACIÓN'], ['metas', 'Metas', 'target', 'Tus metas de ahorro', 'PLANEACIÓN'],
@@ -213,6 +215,7 @@ export function App() {
           {view && <BrowserReminders p={session.portfolio} view={view} controls={section === 'preferencias'} />}
           {view && section === 'aprender' && <EducationView view={view} />}
           {view && section === 'analisis' && <InsightsView p={session.portfolio} today={today} view={view} />}
+          {section === 'vocalia' && <VocaliaView session={session} today={today} busy={busy} blocked={blocked} act={act} />}
           {section === 'simulador' && <PayoffView />}
           {section === 'periodos' && <PeriodsView session={session} today={today} act={act} />}
           {section === 'preferencias' && <TandasPanel session={session} today={today} busy={busy} blocked={blocked} act={act} />}
