@@ -153,9 +153,10 @@ export class FinancialCommands {
     if (input.cutDate > this.context.today) throw Error('Confirma el corte cuando llegue su fecha; los futuros siguen siendo proyecciones.');
     const card = record(this.portfolio.cards, cardId), previous = statementsFor(this.portfolio, card, this.context.today).find(s => s.id === id || s.value.cutDate === input.cutDate);
     if (confirmEstimate && (!previous || previous.value.targetCents !== input.targetCents)) throw Error('El estimado cambió. Vuelve a consultarlo antes de confirmar.');
-    const same = previous && previous.value.cutDate === input.cutDate && previous.value.targetCents === input.targetCents;
-    const included = same && confirmEstimate && previous.value.estimated ? live(this.portfolio.movements).filter(m => m.value.cardId === cardId &&
-      m.value.kind === 'payment' && !m.value.scheduled && m.value.date === input.cutDate).map(m => m.id) : same && !previous.value.estimated ? previous.value.includedPaymentIds : [];
+    // El importe del banco al corte ya incluye los pagos fechados ese día, aunque lo hayas corregido a mano.
+    const keepIncluded = previous && !previous.value.estimated && previous.value.cutDate === input.cutDate;
+    const included = keepIncluded ? previous.value.includedPaymentIds : live(this.portfolio.movements).filter(m => m.value.cardId === cardId &&
+      m.value.kind === 'payment' && !m.value.scheduled && m.value.date === input.cutDate).map(m => m.id);
     return this.checked([{ entityType: 'statement', entityId: previous && !previous.id.startsWith('estimate:') ? previous.id : this.context.newId(), payload: { ...input,
       cardId, estimated: false, balanceReferenceDate: null, includedPaymentIds: included, reservedCents: previous?.value.reservedCents ?? 0 }, voided: false }]);
   }
