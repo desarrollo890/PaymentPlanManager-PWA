@@ -39,17 +39,6 @@ test('bank-confirmed deferral can recalculate an unconfirmed current cut but nev
   confirmed.context.today = '2026-10-13';
   assert.throws(() => confirmed.cmd.savePlan({ ...terms(confirmedCardId), startDate: '2026-10-11', firstCutDate: '2026-10-11' }), /recién emitido/);
 });
-test('payments dated on the cut date stay inside a corrected bank amount and are not discounted twice', () => {
-  const h = harness(), cardId = h.addCard(); h.context.today = '2026-10-12';
-  const pay = (amountCents: number) => h.commit(h.cmd.recordMovement({ cardId, date: '2026-10-11', amountCents, kind: 'payment', description: 'Bonificación', allocations: [], statementId: null }));
-  pay(100000); pay(150000);
-  const cut = () => financeView(h.p, h.context.today).cards[0]!.cuts.find(c => c.cutDate === '2026-10-11')!;
-  const estimate = cut().targetCents;
-  h.commit(h.cmd.saveStatement(cardId, { cutDate: '2026-10-11', dueDate: '2026-10-25', targetCents: estimate + 5000, minimumCents: 0, initialPaidCents: 0 }));
-  assert.equal(cut().pendingCents, estimate + 5000); assert.equal(cut().paidCents, 0);
-  h.commit(h.cmd.saveStatement(cardId, { cutDate: '2026-10-11', dueDate: '2026-10-25', targetCents: estimate + 7000, minimumCents: 0, initialPaidCents: 0 }));
-  assert.equal(cut().pendingCents, estimate + 7000);
-});
 test('plan editing keeps identity and protects payment history while permitting description correction', () => {
   const h = harness(), cardId = h.addCard(); h.commit(h.cmd.savePlan(terms(cardId))); const plan = h.p.installments[0]!;
   h.commit(h.cmd.savePlan({ ...terms(cardId), principalCents: 900000 }, plan.id));
@@ -92,6 +81,15 @@ test('confirmed bank targets persist as movements recalculate the portfolio', ()
   h.commit(h.cmd.recordMovement({ cardId, date: '2026-10-12', amountCents: 100000, kind: 'expense', description: 'Después del corte', statementId: null, allocations: [] }));
   assert.equal(financeView(h.p, h.context.today).cards[0]!.cuts[0]!.targetCents, 800000);
   assert.throws(() => h.cmd.saveStatement(cardId, { cutDate: '2026-11-11', dueDate: '2026-11-25', targetCents: 1, minimumCents: 0, initialPaidCents: 0 }), /fecha/);
+});
+test('a bank cut that already includes registered payments does not subtract them again', () => {
+  const run = (includes: boolean) => {
+    const h = harness(), cardId = h.addCard(); h.context.today = '2026-10-12';
+    h.commit(h.cmd.recordMovement({ cardId, date: '2026-10-11', amountCents: 10000, kind: 'payment', description: 'Bonificación', statementId: null, allocations: [] }));
+    h.commit(h.cmd.saveStatement(cardId, { cutDate: '2026-10-11', dueDate: '2026-10-25', targetCents: 85000, minimumCents: 0, initialPaidCents: 0 }, false, undefined, includes));
+    return financeView(h.p, h.context.today).cards[0]!.cuts.find(c => c.cutDate === '2026-10-11')!.pendingCents;
+  };
+  assert.equal(run(true), 85000); assert.equal(run(false), 75000);
 });
 test('loan abonos reserve capital and cannot overpay even before the scheduled date', () => {
   const h = harness(); h.commit(h.cmd.saveLoan({ person: 'Persona', description: 'Préstamo', principalCents: 100000, balanceDate: h.context.today, dueDate: '2026-10-20', includeReceivedMoney: false, archived: false }));

@@ -107,7 +107,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
           changes = cmd.reconcile(modal.cardId, { date: str(data, 'date'), debtCents: debt - credit, availableCents: parseMoney(data.get('available')) }); break;
         }
         case 'cut': changes = cmd.saveStatement(modal.cardId, { cutDate: str(data, 'date'), dueDate: str(data, 'dueDate'), targetCents: parseMoney(data.get('target')),
-          minimumCents: parseMoney(data.get('minimum')), initialPaidCents: parseMoney(data.get('paid')) }, !modal.create && modal.cut.estimated && parseMoney(data.get('target')) === modal.cut.targetCents, modal.create ? undefined : modal.cut.id); break;
+          minimumCents: parseMoney(data.get('minimum')), initialPaidCents: parseMoney(data.get('paid')) }, !modal.create && modal.cut.estimated && parseMoney(data.get('target')) === modal.cut.targetCents, modal.create ? undefined : modal.cut.id, data.get('includesPayments') === 'on'); break;
         case 'reserve': changes = cmd.reserve(modal.cardId, modal.cut.cutDate, parseMoney(data.get('reserved'))); break;
         case 'loanInstallment': changes = await cmd.payLoanInstallment(modal.loanId, modal.dueDate, parseMoney(data.get('amount'))); break;
         case 'payroll': changes = await cmd.receivePayroll(modal.payday, parseMoney(data.get('amount'))); break;
@@ -217,7 +217,8 @@ function FinancialEditor({ modal, session, today, close, save }: {
     title = modal.create ? 'Registrar otro corte' : 'Revisar y confirmar corte'; fields = <><p className="form-note">Estimado del sistema: {money(c.targetCents)}. Confirma únicamente cuando lo hayas comparado con tu banco; puedes editarlo.</p>
       <Field label="Fecha del corte" name="date" type="date" value={c.cutDate} max={today} /><Field label="Fecha límite de pago" name="dueDate" type="date" value={c.dueDate} />
       <MoneyField label="Pago para no generar intereses" name="target" value={c.targetCents} /><MoneyField label="Pago mínimo reportado" name="minimum" value={stored?.minimumCents ?? 0} />
-      <MoneyField label="Pagado antes de registrarlo aquí" name="paid" value={stored?.initialPaidCents ?? 0} /></>;
+      <MoneyField label="Pagado antes de registrarlo aquí" name="paid" value={stored?.initialPaidCents ?? 0} />
+      <label className="check"><input type="checkbox" name="includesPayments" /> El importe del banco ya incluye los pagos y bonificaciones que registré desde el corte</label></>;
   } else if (modal.type === 'loanInstallment') {
     const o = view.obligations.find(o => o.loanId === modal.loanId && o.dueDate === modal.dueDate), person = p.loans.find(l => l.id === modal.loanId)?.value.person ?? '';
     title = `Pagar cuota · ${person} · ${modal.dueDate}`;

@@ -149,14 +149,16 @@ export class FinancialCommands {
     changes.push({ entityType: 'balance', entityId: this.context.newId(), payload: { ...value, cardId, includedMovementIds: included.map(m => m.id), interestIncluded: true, ...this.stamp() }, voided: false });
     return this.checked(changes);
   }
-  saveStatement(cardId: string, input: Pick<Statement, 'cutDate' | 'dueDate' | 'targetCents' | 'minimumCents' | 'initialPaidCents'>, confirmEstimate = false, id?: string): Change[] {
+  saveStatement(cardId: string, input: Pick<Statement, 'cutDate' | 'dueDate' | 'targetCents' | 'minimumCents' | 'initialPaidCents'>, confirmEstimate = false, id?: string, bankIncludesPayments = false): Change[] {
     if (input.cutDate > this.context.today) throw Error('Confirma el corte cuando llegue su fecha; los futuros siguen siendo proyecciones.');
     const card = record(this.portfolio.cards, cardId), previous = statementsFor(this.portfolio, card, this.context.today).find(s => s.id === id || s.value.cutDate === input.cutDate);
     if (confirmEstimate && (!previous || previous.value.targetCents !== input.targetCents)) throw Error('El estimado cambió. Vuelve a consultarlo antes de confirmar.');
-    // El importe del banco al corte ya incluye los pagos fechados ese día, aunque lo hayas corregido a mano.
-    const keepIncluded = previous && !previous.value.estimated && previous.value.cutDate === input.cutDate;
-    const included = keepIncluded ? previous.value.includedPaymentIds : live(this.portfolio.movements).filter(m => m.value.cardId === cardId &&
-      m.value.kind === 'payment' && !m.value.scheduled && m.value.date === input.cutDate).map(m => m.id);
+    const same = previous && previous.value.cutDate === input.cutDate && previous.value.targetCents === input.targetCents;
+    const stored = previous && !previous.id.startsWith('estimate:') ? previous.id : null;
+    const included = bankIncludesPayments ? live(this.portfolio.movements).filter(m => m.value.cardId === cardId && m.value.kind === 'payment' && !m.value.scheduled &&
+      m.value.date >= input.cutDate && m.value.date <= this.context.today && (!m.value.statementId || m.value.statementId === stored || m.value.statementId === previous?.id)).map(m => m.id)
+      : same && confirmEstimate && previous.value.estimated ? live(this.portfolio.movements).filter(m => m.value.cardId === cardId &&
+      m.value.kind === 'payment' && !m.value.scheduled && m.value.date === input.cutDate).map(m => m.id) : same && !previous.value.estimated ? previous.value.includedPaymentIds : [];
     return this.checked([{ entityType: 'statement', entityId: previous && !previous.id.startsWith('estimate:') ? previous.id : this.context.newId(), payload: { ...input,
       cardId, estimated: false, balanceReferenceDate: null, includedPaymentIds: included, reservedCents: previous?.value.reservedCents ?? 0 }, voided: false }]);
   }
