@@ -1,5 +1,19 @@
 # Guía de nuevas funciones
 
+## Registrar con texto o voz
+
+Con la cartera desbloqueada, pulsa **Texto o voz** en la cabecera. Escribe una frase como «Gasté 250 en supermercado con Santander», «Recibí 500 en Nómina» o «Juan me prestó 300» y pulsa **Interpretar**. El reconocimiento de la operación es local: usa nombres exactos registrados y cifras numéricas, entiende hoy, ayer y fechas ISO (`2026-11-05`), pero no todas las formas de hablar. Si no reconoce algún dato o encuentra nombres repetidos, selecciónalo o corrígelo. Revisa operación, destino, importe y fecha antes de confirmar; nunca se guarda automáticamente.
+
+Admite gastos y pagos de tarjeta, ingresos y gastos de cuentas, abonos a préstamos personales y dinero adicional de una persona. Para una persona sin ficha selecciona «Nuevo préstamo de una persona sin ficha». Un pago de tarjeta puede descontarse también de una cuenta si seleccionas su origen; deja el origen vacío para una bonificación. Los movimientos de préstamos no modifican cuentas y la opción de sumar el dinero recibido al presupuesto es independiente.
+
+El botón de micrófono solo aparece si el navegador o entorno Android proporciona reconocimiento de voz. Antes de usarlo, confirma el aviso: el proveedor del dispositivo puede enviar el audio a sus servidores y requerir internet; la aplicación no controla ese procesamiento. Si no hay reconocimiento integrado, se puede usar el dictado del teclado del dispositivo, sujeto a sus propios ajustes de privacidad. El texto y el formulario siguen funcionando sin conexión una vez cargada la aplicación. La cartera debe desbloquearse normalmente; la función no mantiene una sesión abierta ni omite el bloqueo.
+
+### Capturas sin desbloquear
+
+Abre y desbloquea primero la cartera en cada dispositivo y espera el mensaje «Captura sin desbloquear preparada en este dispositivo». Al bloquearla, elige la cartera local y pulsa **Capturar sin desbloquear**. Escribe o dicta y guarda el pendiente. No cambia ningún saldo: al desbloquear, aparece en **Capturas pendientes** para revisar, corregir, registrar o descartar. «Hoy» y «ayer» se calculan respecto a la fecha de captura; revisa siempre la fecha propuesta.
+
+La frase y la fecha se cifran localmente con una clave pública; la clave privada se guarda cifrada con la clave de la cartera. La confirmación del movimiento y el retiro del pendiente se guardan en la misma transacción local. La bandeja no se sincroniza ni forma parte del respaldo de la cartera: si borras los datos locales o pierdes el dispositivo antes de confirmar, perderás las capturas pendientes. La PWA y la APK mantienen bandejas independientes. Una persona con acceso al dispositivo puede intentar agregar o borrar pendientes, por eso no se registran automáticamente. El texto visible en pantalla y los proveedores de voz o teclado no quedan protegidos por este cifrado.
+
 ## Consultar y pagar planes
 
 En Tarjetas pulsa Planes. Cada plan permite desplegar cuotas, corte, fecha de pago y saldo restante. Los cancelados se conservan para consulta sin generar obligaciones. Pagar cuota prepara un movimiento; revisa fecha e importe antes de guardarlo.

@@ -23,6 +23,8 @@ import { PlanningView, GoalBudget } from './planning-views.tsx';
 import { ConflictReview } from './conflicts.tsx';
 import { TandasPanel } from './tandas-panel.tsx';
 import { VocaliaView } from './vocalia-view.tsx';
+import { QuickCapture } from './quick-capture-view.tsx';
+import { CaptureInbox, LockedCapture } from './capture-inbox-view.tsx';
 
 const google = new GoogleAccess(oauth.web.clientId);
 const sections = [ ['inicio', 'Inicio', 'home', 'Tu espacio financiero', 'HOY'],
@@ -62,6 +64,8 @@ export function App() {
   const [creation, setCreation] = useState<Awaited<ReturnType<typeof createVault>> | null>(null);
   const [migration, setMigration] = useState<ImportPreview | null>(null);
   const [bankOpen, setBankOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [lockedCapture, setLockedCapture] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false), [offlineUnavailable, setOfflineUnavailable] = useState(false);
   useEffect(() => { const update = () => setUpdateAvailable(true), offline = () => setOfflineUnavailable(true);
     window.addEventListener('paymentplan-update', update); window.addEventListener('paymentplan-offline-unavailable', offline);
@@ -72,7 +76,7 @@ export function App() {
   const refreshVaults = useCallback(async () => { const entries = await store.list(); setVaults(entries); setSelectedVault(v => v || entries[0]?.vaultId || ''); setLoaded(true); }, [store]);
   useEffect(() => { void refreshVaults().catch(e => { setError(message(e)); setLoaded(true); }); }, [refreshVaults]);
   useEffect(() => { const update = () => setSection(selectedSection()); window.addEventListener('hashchange', update); return () => window.removeEventListener('hashchange', update); }, []);
-  const lock = useCallback(() => { sessionRef.current?.lock(); sessionRef.current = null; setSession(null); google.forget(); setAuthorized(false); setModal(null); setBankOpen(false); setBackup(null); setMigration(null); setRemoteHeaders([]); setError(''); setNotice('Cartera bloqueada.'); }, []);
+  const lock = useCallback(() => { sessionRef.current?.lock(); sessionRef.current = null; setSession(null); google.forget(); setAuthorized(false); setModal(null); setQuickOpen(false); setLockedCapture(false); setBankOpen(false); setBackup(null); setMigration(null); setRemoteHeaders([]); setError(''); setNotice('Cartera bloqueada.'); }, []);
   useEffect(() => {
     const nativeError = (event: Event) => setError((event as CustomEvent<string>).detail);
     const resume = () => { if (sessionRef.current && Date.now() - lastActivity.current > 15 * 60_000) lock(); };
@@ -104,10 +108,10 @@ export function App() {
     sessionRef.current?.lock(); sessionRef.current = current; lastActivity.current = Date.now(); setSession(current); setRevision(v => v + 1);
     setCreation(null); setBackup(null); setRemoteHeaders([]); setNewMode(false); setRecoverMode(false); setNotice('Cartera desbloqueada.'); await refreshVaults();
   }
-  async function save(changes: Change[]) {
+  async function save(changes: Change[], inboxId?: string) {
     if (!session || busyRef.current) throw Error('Espera a que termine la operación en curso.');
     busyRef.current = true; setBusy(true);
-    try { await session.commit(changes, today); setRevision(v => v + 1); channel.current?.postMessage({ vaultId: session.header.vaultId }); setNotice('Cambios guardados y cifrados en este dispositivo.'); }
+    try { await session.commit(changes, today, false, inboxId); setRevision(v => v + 1); channel.current?.postMessage({ vaultId: session.header.vaultId }); setNotice('Cambios guardados y cifrados en este dispositivo.'); }
     catch (e) { if (e instanceof LocalRevisionError) { await session.refresh(); setRevision(v => v + 1); } throw e; }
     finally { busyRef.current = false; setBusy(false); }
   }
@@ -168,10 +172,10 @@ export function App() {
       <nav id="primary-navigation" aria-label="Navegación principal">{sections.map(([id, label, icon, , group], i) => <Fragment key={id}>{group !== sections[i - 1]?.[4] && <p className="nav-group" aria-hidden="true">{group}</p>}<a href={`#/${id}`} aria-label={label} title={label} className={`nav-item ${section === id ? 'active' : ''}`} aria-current={section === id ? 'page' : undefined}><Icon name={icon} /><span>{label}</span></a></Fragment>)}</nav>
       <div className="sidebar-note"><Icon name="shield" /><p>Tu información cifrada.<br />Tu plan, en cada quincena.</p></div></aside>
     <div className="main-shell"><header className="topbar"><span>Finanzas personales <span className="separator">/</span> <strong>{sectionData[1]}</strong></span>
-      {session && <div className="header-actions"><button className="primary" disabled={busy || blocked || !view?.cards.length} onClick={() => setModal({ type: 'movement' })}><Icon name="plus" size={16} /><span>Registrar movimiento</span></button>
+      {session && <div className="header-actions"><button className="secondary" disabled={busy || blocked} onClick={() => setQuickOpen(true)}>Texto o voz</button><button className="primary" disabled={busy || blocked || !view?.cards.length} onClick={() => setModal({ type: 'movement' })}><Icon name="plus" size={16} /><span>Registrar movimiento</span></button>
         <button className="icon-button" aria-label="Sincronizar" title={authorized ? 'Sincronizar' : 'Autoriza Google en Preferencias'} disabled={busy || !authorized} onClick={() => void run(sync)}><Icon name="sync" /></button>
         <button className="icon-button" aria-label="Bloquear cartera" title="Bloquear cartera" disabled={busy} onClick={lock}><Icon name="lock" /></button></div>}</header>
-      {updateAvailable && <p className="alert shell-update" role="status">Hay una versión nueva disponible. Se bloqueará la cartera para actualizar.<button className="text-button" disabled={busy || Boolean(modal) || bankOpen || Boolean(migration) || Boolean(backup)} onClick={() => { lock(); applyUpdate(); }}>Actualizar aplicación</button></p>}
+      {updateAvailable && <p className="alert shell-update" role="status">Hay una versión nueva disponible. Se bloqueará la cartera para actualizar.<button className="text-button" disabled={busy || Boolean(modal) || quickOpen || lockedCapture || bankOpen || Boolean(migration) || Boolean(backup)} onClick={() => { lock(); applyUpdate(); }}>Actualizar aplicación</button></p>}
       <main id="main" tabIndex={-1} ref={contentScroll}><div className="page-heading"><div><p className="eyebrow">UN PLAN PARA TUS PRÓXIMAS QUINCENAS</p><h1>{sectionData[3]}</h1><p className="subtitle">{session ? 'Tus registros conectados. Tus decisiones, más claras.' : 'Un espacio personal, protegido por tu contraseña.'}</p></div><span className="currency-tag">MXN</span></div>
         {error && <p role="alert" className="alert error">{error}<button className="text-button" onClick={() => setError('')}>Cerrar</button></p>}{notice && <p role="status" className="notice">{notice}</p>}
         {offlineUnavailable && <p className="alert">No se pudo preparar el acceso sin conexión. Revisa el almacenamiento y vuelve a abrir la aplicación con conexión.</p>}
@@ -198,11 +202,14 @@ export function App() {
               <Field label={recoverMode ? 'Nueva contraseña maestra' : 'Contraseña maestra'} name="password" type="password" />
               {(newMode || recoverMode || (!vaults.length && !remoteHeaders.length && !backup)) && <Field label="Repite la contraseña" name="confirmation" type="password" />}
               <p className="caption">Al menos 12 caracteres. Cifrado local AES-256-GCM; la contraseña y los tokens permanecen en memoria durante esta sesión.</p><button className="primary" disabled={busy}>{busy ? 'Verificando…' : backup ? 'Importar respaldo' : newMode || (!vaults.length && !remoteHeaders.length) ? 'Crear cartera' : recoverMode ? 'Cambiar contraseña y desbloquear' : 'Desbloquear'}</button></form>
+            {!newMode && !recoverMode && !backup && vaults.some(v => v.vaultId === selectedVault) && <button type="button" className="secondary" disabled={busy} onClick={() => setLockedCapture(true)}>Capturar sin desbloquear</button>}
+            {lockedCapture && <LockedCapture store={store} vaultId={selectedVault} today={today} close={() => setLockedCapture(false)} saved={() => { setLockedCapture(false); setNotice('Captura cifrada guardada en este dispositivo; revísala al desbloquear.'); }} />}
             <div className="inline-actions">{vaults.length > 0 && <button className="text-button" onClick={() => { setNewMode(!newMode); setRecoverMode(false); }}> {newMode ? 'Volver a mi cartera' : 'Crear otra cartera'}</button>}{(vaults.length > 0 || backup) && <button className="text-button" onClick={() => { setRecoverMode(!recoverMode); setNewMode(false); }}>{recoverMode ? 'Usar contraseña' : 'Olvidé mi contraseña'}</button>}
               <label className="file-button secondary">Importar respaldo cifrado<input type="file" accept=".json" onChange={e => void run(() => readBackup(e.target.files?.[0]))} /></label>{backup && <button className="text-button" onClick={() => setBackup(null)}>Cancelar importación</button>}</div>
             <hr /><h3>¿Ya tienes tu cartera en otro dispositivo?</h3><p className="caption">Autoriza Drive para buscar tu cartera cifrada. Google es opcional para trabajar en este dispositivo.</p>{googleButtons}</>}
           </section> : <>
           {blocked && <ConflictReview session={session} today={today} issues={problems} busy={busy} perform={work => void run(async () => { await work(); setRevision(v => v + 1); channel.current?.postMessage({ vaultId: session.header.vaultId }); })} />}
+          <CaptureInbox session={session} today={today} blocked={blocked} save={save} />
           {view && section === 'inicio' && remindersFor(session.portfolio, view).length > 0 && <section className="panel"><h2>Tus avisos</h2>{remindersFor(session.portfolio, view).map(r => <div className="settings-row" key={r.key}><span><strong className={r.overdue ? 'negative' : ''}>{r.title}</strong><small>{shortDate(r.date)} · {money(r.amountCents)} · los pagos requieren que los realices tú</small></span><div className="row-actions"><button className="text-button" disabled={busy || blocked} onClick={() => act(() => session.commands(today).dismissReminder({ reminderKey: r.key, postponedUntil: null }))}>Atendido</button><button className="text-button" disabled={busy || blocked} onClick={() => act(() => session.commands(today).dismissReminder({ reminderKey: r.key, postponedUntil: addDays(today, 1) }))}>Mañana</button></div></div>)}</section>}
           {view && section === 'inicio' && <Dashboard view={view} modal={m => { if (!blocked) setModal(m); }} p={session.portfolio} />}
           {view && section === 'tarjetas' && <CardsView view={view} session={session} modal={m => { if (!blocked) setModal(m); }} act={act} />}
@@ -240,6 +247,7 @@ export function App() {
               <div className="inline-actions"><button className="secondary" disabled={busy} onClick={() => void run(async () => download(`paymentplan-respaldo-${today}.json`, JSON.stringify(await session.backup())))}>Descargar respaldo cifrado</button><label className="file-button secondary">Importar respaldo cifrado<input type="file" accept=".json" onChange={e => void run(() => readBackup(e.target.files?.[0]))} /></label></div>
               <p className="caption">Cartera {session.header.vaultId.slice(0, 8)} · America/Mexico_City · bloqueo tras 15 minutos sin actividad.</p></section></>}
           {modal && !blocked && <FinancialForm key={JSON.stringify(modal)} modal={modal} session={session} today={today} close={() => setModal(null)} save={save} />}
+          {quickOpen && !blocked && <QuickCapture session={session} today={today} close={() => setQuickOpen(false)} save={save} />}
           {bankOpen && !blocked && <BankImport session={session} today={today} close={() => setBankOpen(false)} save={save} />}
           {backup && <Dialog title="Importar respaldo cifrado" close={() => setBackup(null)}><form onSubmit={e => { e.preventDefault(); const data = new FormData(e.currentTarget); void run(() => importBackup(str(data, 'password'))); }}><p>Se fusionarán los registros sin duplicar sus identificadores. Si hay diferencias financieras, podrás revisarlas.</p><Field label="Contraseña del respaldo" name="password" type="password" /><button className="primary" disabled={busy}>Verificar e importar</button></form></Dialog>}
           {migration && <Dialog title="Revisar migración" close={() => setMigration(null)}><p>{migration.changes.length} registros nuevos · {migration.skipped} registros ya existentes.</p><p>Deuda de tarjetas {money(migration.view.debtCents)} · préstamos {money(migration.view.loanDebtCents)}</p><div className="table-wrap"><table><thead><tr><th>Tarjeta</th><th>Disponible</th><th>Deuda</th><th>A meses</th></tr></thead><tbody>{migration.view.cards.map(c => <tr key={c.id}><td>{c.name}</td><td>{money(c.availableCents)}</td><td>{money(c.debtCents)}</td><td>{money(c.installmentDebtCents)}</td></tr>)}</tbody></table></div>{migration.warnings.map(w => <p className="alert" key={w}>{w}</p>)}<p className="caption">Compara estos saldos con la aplicación anterior antes de confirmar.</p><button className="primary" disabled={busy || blocked} onClick={() => void run(async () => { await session.commit(migration.changes, today); setMigration(null); setRevision(v => v + 1); setNotice('Migración guardada y cifrada.'); })}>Confirmar migración</button></Dialog>}

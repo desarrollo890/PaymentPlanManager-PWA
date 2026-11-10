@@ -84,7 +84,7 @@ export class VaultSession {
     if (this.hasRevisionConflicts || this.issues(today).length) throw Error('Resuelve los conflictos antes de registrar cambios financieros.');
     return new FinancialCommands(this.portfolio, { today, now: new Date().toISOString(), newId: () => crypto.randomUUID() });
   }
-  async commit(changes: readonly Change[], today: string, resolution = false): Promise<void> {
+  async commit(changes: readonly Change[], today: string, resolution = false, inboxId?: string): Promise<void> {
     this.ensureUnlocked(); if (!this.stored) throw Error('Carga la cartera antes de registrar cambios.');
     if (!changes.length) return;
     if (!resolution && (this.hasRevisionConflicts || this.issues(today).length)) throw Error('Resuelve los conflictos antes de continuar.');
@@ -133,7 +133,7 @@ export class VaultSession {
       const batchId = crypto.randomUUID(), batch: Batch = { schemaVersion: operations.some(op => op.schemaVersion === 2) ? 2 : 1, vaultId: this.header.vaultId, batchId, deviceId: this.deviceId, operations };
       assertBatch(batch); blocks.push(await this.cipher.seal(encodeJson(batch), { vaultId: this.header.vaultId, keyId: this.header.keyId, blockId: batchId, purpose: 'batch' })); this.ensureUnlocked();
     }
-    await this.store.commit(this.header.vaultId, this.stored.metadata.version, sequence, blocks, true); await this.refresh();
+    await this.store.commit(this.header.vaultId, this.stored.metadata.version, sequence, blocks, true, inboxId); await this.refresh();
   }
   async resolve(entityId: string, headId: string, today: string): Promise<void> {
     const entity = this.revisions.entities.find(e => e.entityId === entityId), head = entity?.heads.find(op => op.operationId === headId);
