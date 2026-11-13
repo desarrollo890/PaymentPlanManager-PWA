@@ -3,9 +3,10 @@ import type { Portfolio } from './portfolio.ts';
 import type { FinanceView } from './finance.ts';
 import { cashView, categorySpending } from './extensions.ts';
 import { sumCents } from './money.ts';
+import { payrollReceiptDate } from './dates.ts';
 
 export type HomeAction =
-  | { readonly kind: 'payroll'; readonly payday: string; readonly accountName: string }
+  | { readonly kind: 'payroll'; readonly payday: string; readonly availableDate: string; readonly accountName: string }
   | { readonly kind: 'loanInstallment'; readonly loanId: string; readonly dueDate: string; readonly person: string; readonly amountCents: number; readonly accountName: string; readonly waitingForPayroll: boolean }
   | { readonly kind: 'cut'; readonly cardId: string; readonly cardName: string; readonly cutDate: string };
 
@@ -27,8 +28,8 @@ export function homeSummary(p: Portfolio, view: FinanceView): HomeSummary {
   const current = view.budgets.filter(b => b.payday <= today).at(-1), next = view.budgets.find(b => b.payday > today), budget = current ?? next ?? null;
   const actions: HomeAction[] = [];
   for (const b of view.budgets) {
-    if (b.payday > today || !b.payroll || !b.payroll.canRecord || b.payroll.recordedCents !== null) continue;
-    actions.push({ kind: 'payroll', payday: b.payday, accountName: b.payroll.accountName });
+    if (!b.payroll || !b.payroll.canRecord || b.payroll.recordedCents !== null) continue;
+    actions.push({ kind: 'payroll', payday: b.payday, availableDate: payrollReceiptDate(b.payday), accountName: b.payroll.accountName });
   }
   const pendingPayroll = new Set(actions.filter(a => a.kind === 'payroll').map(a => a.kind === 'payroll' ? a.payday : ''));
   for (const o of view.obligations) {

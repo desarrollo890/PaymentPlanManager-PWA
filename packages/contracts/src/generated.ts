@@ -254,6 +254,7 @@ export type CashEntry = {
   readonly "toAccountId": (Uuid) | (null);
   readonly "cardMovementId": (Uuid) | (null);
   readonly "date": Date;
+  readonly "payrollPayday"?: Date;
   readonly "amountCents": number;
   readonly "kind": "income" | "expense" | "transfer" | "cardPayment";
   readonly "description": string;

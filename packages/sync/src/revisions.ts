@@ -7,7 +7,7 @@ export interface RevisionEntity {
 export interface RevisionState { readonly operations: readonly Operation[]; readonly entities: readonly RevisionEntity[]; readonly pendingOperationIds: readonly string[] }
 const financialBundles: Partial<Record<Operation['entityType'], readonly string[]>> = {
   cashAccount: ['openingDate', 'openingCents', 'archived'],
-  cashEntry: ['accountId', 'toAccountId', 'cardMovementId', 'date', 'amountCents', 'kind'],
+  cashEntry: ['accountId', 'toAccountId', 'cardMovementId', 'date', 'payrollPayday', 'amountCents', 'kind'],
   savingsGoal: ['accountId', 'targetCents', 'targetDate', 'archived'],
   savingsEntry: ['goalId', 'date', 'amountCents', 'direction'],
   vocalEvent: ['groupId', 'goalCents', 'quotaCents', 'accountId', 'settled'],

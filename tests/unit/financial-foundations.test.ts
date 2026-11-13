@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { amortize, installmentQuotas, paydayFor, cutOnOrAfter, cutOnOrBefore, dueDateFor,
-  suggestedPaymentDate, paydaysThrough, civilDate, addDays, addMonths, cents, sumCents, percentage, roundRatio } from '@paymentplan/domain';
+  suggestedPaymentDate, paydaysThrough, civilDate, addDays, addMonths, payrollReceiptDate, cents, sumCents, percentage, roundRatio } from '@paymentplan/domain';
 import type { AmortizationTerms, InstallmentTerms, InstallmentQuota, QuotaAmounts } from '@paymentplan/domain';
 
 interface Reference {
@@ -83,6 +83,15 @@ test('payday horizon includes every period through November next year', () => {
   assert(dates.includes('2027-02-28'));
   assert.deepEqual(paydaysThrough('2024-02-16', '2024-03-14'), ['2024-02-29']);
   assert.throws(() => paydaysThrough('2027-01-01', '2026-01-01'));
+});
+
+test('payroll deposits move weekend payday dates back to Friday', () => {
+  assert.equal(payrollReceiptDate('2026-11-15'), '2026-11-13');
+  assert.equal(payrollReceiptDate('2026-11-30'), '2026-11-30');
+  assert.equal(payrollReceiptDate('2027-01-31'), '2027-01-29');
+  assert.equal(payrollReceiptDate('2027-02-28'), '2027-02-26');
+  assert.equal(payrollReceiptDate('2027-02-15'), '2027-02-15');
+  assert.throws(() => payrollReceiptDate('2026-11-14'));
 });
 
 test('civil calculations are identical in Mexico, UTC and far eastern time zones', () => {

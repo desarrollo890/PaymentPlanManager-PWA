@@ -1,7 +1,7 @@
 import { canonical } from '@paymentplan/contracts';
 import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, VocalGroup, VocalStudent, VocalEvent, VocalPayment, VocalDelivery, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
 import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
-  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, civilDate, cashBalance, tandaSchedule, suggestedQuota, vocalEventSummary, personalCapital } from '@paymentplan/domain';
+  live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, payrollReceiptDate, civilDate, cashBalance, tandaSchedule, suggestedQuota, vocalEventSummary, personalCapital } from '@paymentplan/domain';
 import type { FinancialEntityType, Change, FinancialRecord, Portfolio, Tanda } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 
@@ -285,19 +285,22 @@ export class FinancialCommands {
     return this.checked([{ entityType: 'cashEntry', entityId: id, payload: entry, voided: false }]);
   }
   // Confirma el ingreso real de la quincena: lo marca como recibido en el presupuesto y lo abona a la cuenta de nómina.
-  async receivePayroll(payday: string, amountCents: number): Promise<Change[]> {
+  async receivePayroll(payday: string, amountCents: number, receivedDate = payday > this.context.today ? this.context.today : payday): Promise<Change[]> {
     const config = live(this.portfolio.incomes)[0]?.value, accountId = config?.payrollAccountId ?? null;
     const account = this.portfolio.cashAccounts.find(a => a.id === accountId && !a.voided);
     if (!config || !account || account.value.kind !== 'debit' || account.value.archived) throw Error('Vincula primero una cuenta de débito de nómina en Preferencias.');
-    if (paydayFor(payday) !== payday || payday > this.context.today) throw Error('Solo puedes registrar ingresos del 15 o fin de mes que ya ocurrieron.');
+    if (paydayFor(payday) !== payday || receivedDate < payrollReceiptDate(payday) || receivedDate > this.context.today)
+      throw Error('La fecha de depósito debe ser el viernes de adelanto o una fecha posterior que ya haya ocurrido.');
+    if (receivedDate < account.value.openingDate) throw Error('La fecha del depósito no puede ser anterior a la fecha inicial de la cuenta.');
     if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw Error('Captura un ingreso mayor a cero.');
     const saved = live(this.portfolio.budgets).find(b => b.value.payday === payday)?.value;
     const budget: Budget = { payday, expectedIncomeCents: saved?.expectedIncomeCents ?? (civilDate(payday).day === 15 ? config.income15Cents : config.incomeEndCents),
       receivedIncomeCents: amountCents, expensesCents: saved?.expensesCents ?? config.expensesCents, reserveCents: saved?.reserveCents ?? config.reserveCents, note: saved?.note ?? '' };
-    const existing = live(this.portfolio.cashEntries).filter(e => e.value.accountId === account.id && e.value.kind === 'income' && e.value.date === payday);
+    const existing = live(this.portfolio.cashEntries).filter(e => e.value.accountId === account.id && e.value.kind === 'income' &&
+      (e.value.payrollPayday === payday || e.value.date === receivedDate || e.value.date === payday));
     if (existing.length > 1) throw Error('Hay varios ingresos de esa fecha en la cuenta de nómina. Corrígelos desde Cuentas.');
     const entryId = existing[0]?.id ?? await stableId('payroll:' + account.id + ':' + payday);
-    const entry: CashEntry = { accountId: account.id, toAccountId: null, cardMovementId: null, date: payday, amountCents, kind: 'income', categoryId: null,
+    const entry: CashEntry = { accountId: account.id, toAccountId: null, cardMovementId: null, date: receivedDate, payrollPayday: payday, amountCents, kind: 'income', categoryId: null,
       description: existing[0]?.value.description ?? 'Ingreso de nómina' };
     const changes: Change[] = [
       { entityType: 'budget', entityId: live(this.portfolio.budgets).find(b => b.value.payday === payday)?.id ?? this.context.newId(), payload: budget, voided: false },
@@ -306,10 +309,12 @@ export class FinancialCommands {
     // Los vales se abonan a su propia cuenta y no forman parte del ingreso del presupuesto.
     const voucherAccount = this.portfolio.cashAccounts.find(a => a.id === config.voucherAccountId && !a.voided);
     if ((config.voucherCents ?? 0) > 0 && voucherAccount && voucherAccount.value.kind === 'debit' && !voucherAccount.value.archived) {
-      const prior = live(this.portfolio.cashEntries).filter(e => e.value.accountId === voucherAccount.id && e.value.kind === 'income' && e.value.date === payday);
+      const prior = live(this.portfolio.cashEntries).filter(e => e.value.accountId === voucherAccount.id && e.value.kind === 'income' &&
+        (e.value.payrollPayday === payday || e.value.date === receivedDate || e.value.date === payday));
       if (prior.length > 1) throw Error('Hay varios ingresos de esa fecha en la cuenta de vales. Corrígelos desde Cuentas.');
       changes.push({ entityType: 'cashEntry', entityId: prior[0]?.id ?? await stableId('voucher:' + voucherAccount.id + ':' + payday),
-        payload: { accountId: voucherAccount.id, toAccountId: null, cardMovementId: null, date: payday, amountCents: prior[0]?.value.amountCents ?? config.voucherCents!, kind: 'income', categoryId: null,
+        payload: { accountId: voucherAccount.id, toAccountId: null, cardMovementId: null, date: receivedDate, payrollPayday: payday,
+          amountCents: prior[0]?.value.amountCents ?? config.voucherCents!, kind: 'income', categoryId: null,
           description: prior[0]?.value.description ?? 'Vales de despensa' }, voided: false });
     }
     // Aportaciones de tandas: cargo automático desde la cuenta de nómina; si ya existe (o la anulaste) no se vuelve a crear.
@@ -319,7 +324,7 @@ export class FinancialCommands {
       if (!round) continue;
       const id = await stableId(`tandaPay:${tanda.id}:${payday}`);
       if (this.portfolio.cashEntries.some(e => e.id === id)) continue;
-      changes.push({ entityType: 'cashEntry', entityId: id, voided: false, payload: { accountId: account.id, toAccountId: null, cardMovementId: null, date: payday,
+      changes.push({ entityType: 'cashEntry', entityId: id, voided: false, payload: { accountId: account.id, toAccountId: null, cardMovementId: null, date: receivedDate,
         amountCents: round.contributionCents, kind: 'expense', categoryId: null, description: `Tanda ${tanda.name} · aportación ${round.number}/${tanda.participants}` } });
     }
     return this.checked(changes);

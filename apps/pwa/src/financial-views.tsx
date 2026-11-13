@@ -96,7 +96,7 @@ export function Dashboard({
                 <li key={"p" + a.payday}>
                   <span>
                     <strong>Confirmar ingreso del {shortDate(a.payday)}</strong>
-                    <small>Se abona a {a.accountName}</small>
+                    <small>{a.availableDate < a.payday ? `Disponible desde ${shortDate(a.availableDate)} · ` : ''}Se abona a {a.accountName}</small>
                   </span>
                   <button
                     className="primary"

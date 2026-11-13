@@ -53,6 +53,13 @@ export function paydayFor(value: string): string {
   return day >= 15 ? dateInMonth(year, month, 15) : addMonths(value, -1, 31);
 }
 
+export function payrollReceiptDate(payday: string): string {
+  const { year, month, day } = civilDate(payday);
+  if (day !== 15 && day !== daysInMonth(year, month)) throw new RangeError('La fecha debe ser el 15 o el último día del mes.');
+  const weekday = new Date(payday + 'T00:00:00Z').getUTCDay();
+  return weekday === 6 ? addDays(payday, -1) : weekday === 0 ? addDays(payday, -2) : payday;
+}
+
 export function cutOnOrAfter(cutDay: number, value: string): string {
   const { year, month } = civilDate(value);
   const cut = dateInMonth(year, month, cutDay);

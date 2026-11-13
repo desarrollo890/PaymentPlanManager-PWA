@@ -1,5 +1,5 @@
 import type { Balance, Card, Installment, Movement, Statement } from '@paymentplan/contracts';
-import { addDays, addMonths, civilDate, cutOnOrAfter, cutOnOrBefore, dateInMonth, dueDateFor, paydayFor, paydaysThrough, suggestedPaymentDate } from './dates.ts';
+import { addDays, addMonths, civilDate, cutOnOrAfter, cutOnOrBefore, dateInMonth, dueDateFor, paydayFor, payrollReceiptDate, paydaysThrough, suggestedPaymentDate } from './dates.ts';
 import { installmentQuotas } from './installments.ts';
 import type { InstallmentQuota } from './installments.ts';
 import { bankLoanProjection, bankLoanSchedule, isProgressiveLoan, progressiveLoanStates } from './loans.ts';
@@ -346,15 +346,17 @@ export function financeView(p: Portfolio, today: string): FinanceView {
       + total(live(p.loanAdvances).filter(a => a.value.includeReceivedMoney && a.value.date <= today && paydayFor(a.value.date) === date), a => a.value.amountCents);
     const loanPaid = total(live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today && paydayFor(a.value.date) === date), a => a.value.amountCents);
     const loanPending = total(obligations.filter(o => o.payday === date), o => o.amountCents);
-    const recorded = payrollAccount ? live(p.cashEntries).filter(e => e.value.accountId === payrollAccount.id && e.value.kind === 'income' && e.value.date === date) : [];
+    const recorded = payrollAccount ? live(p.cashEntries).filter(e => e.value.accountId === payrollAccount.id && e.value.kind === 'income' &&
+      (e.value.payrollPayday === date || (!e.value.payrollPayday && e.value.date === date))) : [];
+    const availableDate = payrollAccount && payrollAccount.value.openingDate > payrollReceiptDate(date) ? payrollAccount.value.openingDate : payrollReceiptDate(date);
     const payroll = payrollAccount ? { accountId: payrollAccount.id, accountName: payrollAccount.value.name, recordedCents: recorded.length ? total(recorded, e => e.value.amountCents) : null,
-      canRecord: date <= today && date >= payrollAccount.value.openingDate } : null;
+      canRecord: availableDate <= today } : null;
     const receivedIncome = saved?.receivedIncomeCents ?? payroll?.recordedCents ?? null;
     const tanda = tandasOnPayday(p, date);
     return { payday: date, pendingCents: pending, loanPendingCents: loanPending, receivedLoanCents: received, loanPaidCents: loanPaid,
       tandaContributionCents: tanda.contributionCents, tandaPayoutCents: tanda.payoutCents,
       payroll, expectedIncomeCents: expectedIncome, receivedIncomeCents: receivedIncome,
-      status: receivedIncome !== null ? 'received' as const : date <= today ? 'toConfirm' as const : 'expected' as const,
+      status: receivedIncome !== null ? 'received' as const : payroll?.canRecord ? 'toConfirm' as const : date <= today ? 'toConfirm' as const : 'expected' as const,
       cardPaidCents: cardPaid, incomeCents: income, expensesCents: expenses, reserveCents: reserve,
       balanceCents: sumCents([income, received, -expenses, -reserve, -cardPaid, -pending, -loanPaid, -loanPending, -tanda.contributionCents, tanda.payoutCents]),
       estimated: saved?.receivedIncomeCents == null || [...targets.values()].some(s => s.payday === date && s.estimated) };

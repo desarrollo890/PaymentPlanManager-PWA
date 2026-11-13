@@ -2591,6 +2591,9 @@ export const schemas: Readonly<Record<string, Schema>> = {
           "date": {
             "$ref": "#/$defs/date"
           },
+          "payrollPayday": {
+            "$ref": "#/$defs/date"
+          },
           "amountCents": {
             "type": "integer",
             "minimum": 1,

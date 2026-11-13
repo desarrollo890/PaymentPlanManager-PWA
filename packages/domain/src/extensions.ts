@@ -2,7 +2,7 @@ import type { CashEntry, Recurrence } from '@paymentplan/contracts';
 import type { FinancialIssue } from './validation.ts';
 import type { FinancialRecord, Portfolio } from './portfolio.ts';
 import { live } from './portfolio.ts';
-import { addDays, addMonths, civilDate, paydaysThrough, paydayFor } from './dates.ts';
+import { addDays, addMonths, civilDate, paydaysThrough, paydayFor, payrollReceiptDate } from './dates.ts';
 import { sumCents } from './money.ts';
 import { vocalHeld } from './vocalia.ts';
 
@@ -116,6 +116,8 @@ export function extensionIssues(p: Portfolio, today: string): FinancialIssue[] {
   for (const e of entries) {
     const v = e.value, account = accounts.find(a => a.id === v.accountId), destination = accounts.find(a => a.id === v.toAccountId);
     if (v.date > today || (account && v.date < account.value.openingDate) || (destination && v.date < destination.value.openingDate)) issue('El movimiento de cuenta debe ser real y posterior a sus saldos iniciales.', e.id);
+    if (v.payrollPayday && (v.kind !== 'income' || v.payrollPayday !== paydayFor(v.payrollPayday) || v.date < payrollReceiptDate(v.payrollPayday)))
+      issue('El depósito de nómina debe vincular un ingreso con su quincena válida y una fecha real no anterior al adelanto.', e.id);
     if ((v.kind === 'transfer') !== (v.toAccountId !== null) || v.toAccountId === v.accountId || (v.kind === 'cardPayment') !== (v.cardMovementId !== null)) issue('Revisa la cuenta destino y la relación con el pago de tarjeta.', e.id);
     if (v.categoryId !== null && v.kind !== 'expense') issue('Solo los gastos de cuenta llevan categoría.', e.id);
     if (v.cardMovementId !== null) {

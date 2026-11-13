@@ -6,13 +6,13 @@ import { accountFree, applyChanges, budgetFocus, cashBalance, emptyPortfolio, fi
 import type { Change, Portfolio } from '@paymentplan/domain';
 
 const today = '2026-10-20';
-function harness() {
-  let state: Portfolio = emptyPortfolio(); const context = { today, now: today + 'T18:00:00Z', newId: randomUUID };
-  return { get p() { return state; }, get cmd() { return new FinancialCommands(state, context); }, commit(changes: Change[]) { state = applyChanges(state, changes); },
+function harness(currentDate = today) {
+  let state: Portfolio = emptyPortfolio(); const context = { today: currentDate, now: currentDate + 'T18:00:00Z', newId: randomUUID };
+  return { get p() { return state; }, context, get cmd() { return new FinancialCommands(state, context); }, commit(changes: Change[]) { state = applyChanges(state, changes); },
     account(kind: 'cash' | 'debit' = 'debit', archived = false) { this.commit(this.cmd.saveCashAccount({ name: 'Nómina', kind, openingDate: '2026-09-01', openingCents: archived ? 0 : 100000, color: '#123456', archived })); return state.cashAccounts.at(-1)!.id; } };
 }
 const income = (payrollAccountId: string | null) => ({ income15Cents: 2000000, incomeEndCents: 2500000, expensesCents: 500000, reserveCents: 300000, payrollAccountId });
-const budgetFor = (h: ReturnType<typeof harness>, payday: string) => financeView(h.p, today).budgets.find(b => b.payday === payday)!;
+const budgetFor = (h: ReturnType<typeof harness>, payday: string, asOf = h.context.today) => financeView(h.p, asOf).budgets.find(b => b.payday === payday)!;
 
 test('payroll account must be an active debit account', () => {
   const h = harness();
@@ -45,6 +45,36 @@ test('future paydays and missing links are rejected; no link keeps the previous 
   await assert.rejects(h.cmd.receivePayroll('2026-10-15', 0));
   const plain = harness(); plain.commit(plain.cmd.saveIncome({ income15Cents: 1, incomeEndCents: 1, expensesCents: 0, reserveCents: 0 }));
   assert.equal(budgetFor(plain, '2026-10-15').payroll, null);
+});
+
+test('weekend payroll can be confirmed on the preceding Friday and keeps its actual deposit date', async () => {
+  const before = harness('2026-11-12'), beforeAccount = before.account(); before.commit(before.cmd.saveIncome(income(beforeAccount)));
+  assert.equal(budgetFor(before, '2026-11-15').payroll?.canRecord, false);
+  await assert.rejects(before.cmd.receivePayroll('2026-11-15', 2000000));
+
+  const h = harness('2026-11-13'), id = h.account(); h.commit(h.cmd.saveIncome(income(id)));
+  const budget = budgetFor(h, '2026-11-15');
+  assert.equal(budget.payroll?.canRecord, true);
+  assert.equal(budget.status, 'toConfirm');
+  assert.equal(homeSummary(h.p, financeView(h.p, h.context.today)).actions.some(a => a.kind === 'payroll' && a.payday === '2026-11-15'), true);
+
+  h.commit(await h.cmd.receivePayroll('2026-11-15', 2000000, '2026-11-13'));
+  const view = financeView(h.p, h.context.today), received = view.budgets.find(b => b.payday === '2026-11-15')!;
+  assert.equal(received.payroll?.recordedCents, 2000000);
+  assert.equal(received.receivedIncomeCents, 2000000);
+  assert.equal(cashBalance(h.p, id, '2026-11-13'), 2100000);
+  const entry = live(h.p.cashEntries).find(e => e.value.payrollPayday === '2026-11-15')!;
+  assert.equal(entry.value.date, '2026-11-13');
+  assert.equal(view.budgets.find(b => b.payday === '2026-10-31')!.payroll?.recordedCents, null);
+  assert.equal(homeSummary(h.p, view).actions.some(a => a.kind === 'payroll' && a.payday === '2026-11-15'), false);
+});
+
+test('month-end weekend payroll is available the preceding Friday and cannot be dated earlier', async () => {
+  const h = harness('2027-01-29'), id = h.account(); h.commit(h.cmd.saveIncome(income(id)));
+  assert.equal(budgetFor(h, '2027-01-31').payroll?.canRecord, true);
+  await assert.rejects(h.cmd.receivePayroll('2027-01-31', 100, '2027-01-28'), /viernes/);
+  h.commit(await h.cmd.receivePayroll('2027-01-31', 100, '2027-01-29'));
+  assert.equal(live(h.p.cashEntries).find(e => e.value.payrollPayday === '2027-01-31')!.value.date, '2027-01-29');
 });
 
 const bank = (h: ReturnType<typeof harness>, chargeAccountId: string | null) => h.commit(h.cmd.saveLoan({ person: 'Santander', description: 'Crédito', principalCents: 27250475, balanceDate: '2026-09-30', dueDate: '2026-12-31',

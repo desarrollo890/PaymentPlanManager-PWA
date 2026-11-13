@@ -2,7 +2,7 @@ import { FinancialCommands } from '@paymentplan/application';
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import type { Change } from '@paymentplan/domain';
-import { addDays, bankLoanLastDueDate, civilDate, progressiveLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
+import { addDays, bankLoanLastDueDate, civilDate, payrollReceiptDate, progressiveLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
 import type { CutView } from '@paymentplan/domain';
 import type { Installment, Loan } from '@paymentplan/contracts';
 import { PaymentAllocation } from './payment-allocation.tsx';
@@ -110,7 +110,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
           minimumCents: parseMoney(data.get('minimum')), initialPaidCents: parseMoney(data.get('paid')) }, !modal.create && modal.cut.estimated && parseMoney(data.get('target')) === modal.cut.targetCents, modal.create ? undefined : modal.cut.id, data.get('includesPayments') === 'on'); break;
         case 'reserve': changes = cmd.reserve(modal.cardId, modal.cut.cutDate, parseMoney(data.get('reserved'))); break;
         case 'loanInstallment': changes = await cmd.payLoanInstallment(modal.loanId, modal.dueDate, parseMoney(data.get('amount'))); break;
-        case 'payroll': changes = await cmd.receivePayroll(modal.payday, parseMoney(data.get('amount'))); break;
+        case 'payroll': changes = await cmd.receivePayroll(modal.payday, parseMoney(data.get('amount')), str(data, 'date')); break;
         case 'estimate': {
           const config = p.incomes.find(r => !r.voided)?.value, received = view.budgets.find(b => b.payday === modal.payday)?.receivedIncomeCents;
           if (!config || received == null) throw Error('Primero confirma el ingreso de esa quincena.');
@@ -230,7 +230,10 @@ function FinancialEditor({ modal, session, today, close, save }: {
   } else if (modal.type === 'payroll') {
     const b = view.budgets.find(b => b.payday === modal.payday)!;
     title = `Ingreso en ${b.payroll?.accountName ?? 'nómina'} · ${modal.payday}`;
-    fields = <><MoneyField label="Ingreso recibido" name="amount" value={b.incomeCents} hint="Se abonará a la cuenta de nómina y se marcará como recibido en el presupuesto. Si ya lo capturaste en Cuentas, no lo repitas." /></>;
+    const account = p.cashAccounts.find(a => a.id === b.payroll?.accountId), earliest = account && account.value.openingDate > payrollReceiptDate(modal.payday) ? account.value.openingDate : payrollReceiptDate(modal.payday);
+    const receivedDate = today < modal.payday ? today : payrollReceiptDate(modal.payday);
+    fields = <><Field label="Fecha real del depósito" name="date" type="date" value={receivedDate} min={earliest} max={today} />
+      <MoneyField label="Ingreso recibido" name="amount" value={b.incomeCents} hint="Se abona a la cuenta con la fecha real del depósito y se vincula a la quincena correspondiente. Si ya lo capturaste en Cuentas, no lo repitas." /></>;
   } else {
     const saved = p.budgets.find(b => b.value.payday === modal.payday)?.value, b = view.budgets.find(b => b.payday === modal.payday)!;
     title = `Presupuesto · ${modal.payday}`; fields = <><MoneyField label="Ingreso esperado" name="income" value={saved?.expectedIncomeCents ?? b.incomeCents} />
