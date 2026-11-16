@@ -94,3 +94,45 @@ test('progressive loans expose used amount, cut balance and balance to date', ()
   assert.equal(paid.progressive!.usedAmountCents, terms.balanceCents - rows[0]!.capitalCents);
   assert.throws(() => new FinancialCommands(state, context).saveLoan({ ...state.loans[0]!.value, nextCapitalCents: 1 }, id), /condiciones de amortización/);
 });
+test('a real early payment can confirm a different installment amount without inventing another payment', () => {
+  let state: Portfolio = emptyPortfolio();
+  const context = { today: '2026-10-13', now: '2026-10-13T18:00:00Z', newId: randomUUID };
+  const commit = (changes: Change[]) => { state = applyChanges(state, changes); };
+  commit(new FinancialCommands(state, context).saveLoan({ person: 'Banco', description: 'Crédito', principalCents: terms.balanceCents,
+    balanceDate: terms.lastPaymentDate, dueDate: '2026-12-31', loanType: 'bank', annualRateBasisPoints: 3500, paymentFrequency: 'biweekly',
+    termMonths: null, firstPaymentDate: terms.firstPaymentDate, amortizationMethod: 'progressive', remainingInstallments: 6,
+    nextCapitalCents: terms.nextCapitalCents, vatBasisPoints: 1600, exemptInterestBasisPoints: 650, includeReceivedMoney: false, archived: false }));
+  const loanId = state.loans[0]!.id, estimate = progressiveSchedule(terms)[0]!;
+  const paid = estimate.paymentCents - 5000;
+  commit(new FinancialCommands(state, context).loanPayment(loanId, context.today, paid, 'Cuota'));
+  const paymentId = state.loanPayments[0]!.id;
+  context.today = '2026-10-16';
+  assert.equal(financeView(state, context.today).obligations.find(o => o.dueDate === '2026-10-15')!.amountCents, 5000);
+  commit(new FinancialCommands(state, context).confirmLoanInstallment(paymentId, '2026-10-15'));
+  const view = financeView(state, context.today);
+  assert.equal(view.obligations.some(o => o.dueDate === '2026-10-15'), false);
+  assert.equal(view.obligations[0]!.dueDate, '2026-10-31');
+  assert.equal(view.loans[0]!.progressive!.usedAmountCents, terms.balanceCents - estimate.capitalCents);
+  assert.equal(state.loanPayments.length, 1);
+  assert.equal(state.loanPayments[0]!.value.date, '2026-10-13');
+  assert.equal(state.loanPayments[0]!.value.amountCents, paid);
+  assert.equal(view.budgets.find(b => b.payday === '2026-10-15')!.loanPaidCents, paid);
+  assert.throws(() => new FinancialCommands(state, context).loanPayment(loanId, context.today, 1, 'Duplicado', '2026-10-15'), /ya tiene/);
+  commit(new FinancialCommands(state, context).confirmLoanInstallment(paymentId, null));
+  assert.equal(financeView(state, context.today).obligations.find(o => o.dueDate === '2026-10-15')!.amountCents, 5000);
+  commit(new FinancialCommands(state, context).confirmLoanInstallment(paymentId, '2026-10-15'));
+  commit(new FinancialCommands(state, context).changeLoanPayment(paymentId, 'void'));
+  assert.equal(financeView(state, context.today).obligations.find(o => o.dueDate === '2026-10-15')!.amountCents, estimate.paymentCents);
+  commit(new FinancialCommands(state, context).changeLoanPayment(paymentId, 'restore'));
+  assert.equal(financeView(state, context.today).obligations.some(o => o.dueDate === '2026-10-15'), false);
+});
+test('confirmed progressive capital is capped by the amount actually paid', () => {
+  let state: Portfolio = emptyPortfolio();
+  const context = { today: '2026-10-16', now: '2026-10-16T18:00:00Z', newId: randomUUID };
+  state = applyChanges(state, new FinancialCommands(state, context).saveLoan({ person: 'Banco', description: 'Crédito', principalCents: terms.balanceCents,
+    balanceDate: terms.lastPaymentDate, dueDate: '2026-12-31', loanType: 'bank', annualRateBasisPoints: 3500, paymentFrequency: 'biweekly',
+    termMonths: null, firstPaymentDate: terms.firstPaymentDate, amortizationMethod: 'progressive', remainingInstallments: 6,
+    nextCapitalCents: terms.nextCapitalCents, vatBasisPoints: 1600, exemptInterestBasisPoints: 650, includeReceivedMoney: false, archived: false }));
+  state = applyChanges(state, new FinancialCommands(state, context).loanPayment(state.loans[0]!.id, '2026-10-13', 100, 'Pago', '2026-10-15'));
+  assert.equal(financeView(state, context.today).loans[0]!.balanceCents, terms.balanceCents - 100);
+});

@@ -2298,9 +2298,15 @@ export function LoansView({
                             : a.value.scheduled || a.value.date > view.today
                               ? "Programado"
                               : "Realizado"}
+                          {a.value.settledInstallmentDate && ` · Cuota ${shortDate(a.value.settledInstallmentDate)} confirmada`}
                         </small>
                       </span>
                       <div className="row-actions">
+                        {l.loanType === "bank" && !value.archived && !a.voided && !a.value.scheduled && a.value.date <= view.today && (
+                          <button className="text-button" onClick={() => modal({ type: "loanSettlement", paymentId: a.id })}>
+                            {a.value.settledInstallmentDate ? "Corregir cuota" : "Confirmar cuota"}
+                          </button>
+                        )}
                         {!a.voided && a.value.scheduled && (
                           <button
                             className="text-button"

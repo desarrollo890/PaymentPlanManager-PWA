@@ -62,6 +62,13 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
           await fill(page,'firstPaymentDate',firstPayment.toISOString().slice(0,10)); await save(page);
           await page.getByText('12.50%',{exact:true}).waitFor();
           await page.getByText('Cuota',{exact:true}).waitFor();
+          const loanCard=page.locator('.loan-card').filter({has:page.getByRole('heading',{name:/Banco sintético/})});
+          await loanCard.getByRole('button',{name:'Registrar pago',exact:true}).click();
+          await fill(page,'amount','1'); await fill(page,'description','Pago de prueba'); await save(page);
+          await loanCard.locator('.payment-history summary').click(); await loanCard.getByRole('button',{name:'Confirmar cuota',exact:true}).click();
+          await page.locator('select[name="settledInstallmentDate"]').selectOption(firstPayment.toISOString().slice(0,10)); await save(page);
+          assert.match(await loanCard.locator('.payment-history').textContent(),/confirmada/);
+          assert.equal(await loanCard.getByText('Pago de prueba',{exact:false}).count(),1);
           await page.getByRole('button',{name:'Registrar préstamo',exact:true}).click();
           await page.locator('select[name="loanType"]').selectOption('bank'); await page.locator('select[name="paymentFrequency"]').selectOption('biweekly');
           await fill(page,'person','Banco quincenal sintético'); await fill(page,'description','Crédito quincenal sintético'); await fill(page,'capital','1000');

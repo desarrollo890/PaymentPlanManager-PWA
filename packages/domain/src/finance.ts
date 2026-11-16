@@ -337,7 +337,7 @@ export function financeView(p: Portfolio, today: string): FinanceView {
   live(p.budgets).forEach(b => dates.add(b.value.payday)); obligations.forEach(o => dates.add(o.payday));
   live(p.loans).filter(l => l.value.includeReceivedMoney).forEach(l => dates.add(paydayFor(l.value.balanceDate)));
   live(p.loanAdvances).filter(a => a.value.includeReceivedMoney).forEach(a => dates.add(paydayFor(a.value.date)));
-  live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today).forEach(a => dates.add(paydayFor(a.value.date)));
+  live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today).forEach(a => dates.add(paydayFor(a.value.settledInstallmentDate ?? a.value.date)));
   const config = live(p.incomes)[0]?.value ?? { income15Cents: 0, incomeEndCents: 0, expensesCents: 0, reserveCents: 0, payrollAccountId: null };
   const payrollAccount = live(p.cashAccounts).find(a => a.id === config.payrollAccountId && a.value.kind === 'debit');
   const budgets = [...dates].sort().map(date => {
@@ -350,7 +350,7 @@ export function financeView(p: Portfolio, today: string): FinanceView {
       (cards.flatMap(c => c.cuts).find(s => s.id === m.value.statementId)?.payday ?? paydayFor(m.value.date)) === date), m => m.value.amountCents);
     const received = total(live(p.loans).filter(l => l.value.includeReceivedMoney && l.value.balanceDate <= today && paydayFor(l.value.balanceDate) === date), l => l.value.principalCents)
       + total(live(p.loanAdvances).filter(a => a.value.includeReceivedMoney && a.value.date <= today && paydayFor(a.value.date) === date), a => a.value.amountCents);
-    const loanPaid = total(live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today && paydayFor(a.value.date) === date), a => a.value.amountCents);
+    const loanPaid = total(live(p.loanPayments).filter(a => !a.value.scheduled && a.value.date <= today && paydayFor(a.value.settledInstallmentDate ?? a.value.date) === date), a => a.value.amountCents);
     const loanPending = total(obligations.filter(o => o.payday === date), o => o.amountCents);
     const recorded = payrollAccount ? live(p.cashEntries).filter(e => e.value.accountId === payrollAccount.id && e.value.kind === 'income' &&
       (e.value.payrollPayday === date || (!e.value.payrollPayday && e.value.date === date))) : [];

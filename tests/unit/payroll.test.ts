@@ -103,6 +103,27 @@ test('a loan without charge account cannot be paid from an account', async () =>
   const h = harness(); h.commit(h.cmd.saveIncome(income(null))); bank(h, null);
   await assert.rejects(h.cmd.payLoanInstallment(h.p.loans[0]!.id, '2026-10-15', 100), /cuenta de débito/);
 });
+test('confirming a different loan installment amount records only the actual payment and account charge', async () => {
+  const h = harness(), id = h.account(); h.commit(h.cmd.saveIncome(income(id))); bank(h, id);
+  h.commit(await h.cmd.receivePayroll('2026-10-15', 2000000));
+  const loanId = h.p.loans[0]!.id, obligation = financeView(h.p, today).obligations.find(o => o.dueDate === '2026-10-15')!;
+  const amount = obligation.amountCents - 1000, before = cashBalance(h.p, id, today);
+  h.commit(await h.cmd.payLoanInstallment(loanId, obligation.dueDate, amount, true));
+  assert.equal(cashBalance(h.p, id, today), before - amount);
+  assert.equal(live(h.p.loanPayments)[0]!.value.amountCents, amount);
+  assert.equal(financeView(h.p, today).obligations.some(o => o.dueDate === obligation.dueDate), false);
+});
+test('a loan installment accepts payroll deposited early on the preceding Friday', async () => {
+  const h = harness('2026-11-16'), id = h.account(); h.commit(h.cmd.saveIncome(income(id)));
+  h.commit(h.cmd.saveLoan({ person: 'Banco', description: 'Crédito', principalCents: 1000000, balanceDate: '2026-10-31', dueDate: '2027-01-31',
+    loanType: 'bank', annualRateBasisPoints: 3500, paymentFrequency: 'biweekly', termMonths: null, firstPaymentDate: '2026-11-15',
+    amortizationMethod: 'progressive', remainingInstallments: 6, nextCapitalCents: 10000, vatBasisPoints: 1600,
+    exemptInterestBasisPoints: 650, includeReceivedMoney: false, archived: false, chargeAccountId: id }));
+  h.commit(await h.cmd.receivePayroll('2026-11-15', 2000000, '2026-11-13'));
+  const loanId = h.p.loans[0]!.id, due = financeView(h.p, h.context.today).obligations[0]!;
+  h.commit(await h.cmd.payLoanInstallment(loanId, due.dueDate, due.amountCents));
+  assert.equal(live(h.p.loanPayments).length, 1);
+});
 
 test('home summary lists pending actions in order and totals cash, goals and debt', async () => {
   const h = harness(), id = h.account(); h.commit(h.cmd.saveIncome(income(id))); bank(h, id);

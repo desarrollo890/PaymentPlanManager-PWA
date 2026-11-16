@@ -1288,6 +1288,9 @@ export const schemas: Readonly<Record<string, Schema>> = {
           "scheduled": {
             "type": "boolean"
           },
+          "settledInstallmentDate": {
+            "$ref": "#/$defs/date"
+          },
           "recordedAt": {
             "anyOf": [
               {

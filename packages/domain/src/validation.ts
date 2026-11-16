@@ -4,7 +4,7 @@ import { live } from './portfolio.ts';
 import type { FinancialRecord, Portfolio } from './portfolio.ts';
 import { activePlans, cardBalance, planAccruedInterest, quotaBalances, financeView } from './finance.ts';
 import { installmentQuotas } from './installments.ts';
-import { bankLoanLastDueDate, bankLoanProjection, bankLoanSchedule, isProgressiveLoan, progressiveLastDueDate } from './loans.ts';
+import { bankLoanEstimatedTotal, bankLoanLastDueDate, bankLoanProjection, bankLoanSchedule, isProgressiveLoan, progressiveLastDueDate } from './loans.ts';
 import { civilDate, cutOnOrAfter, dueDateFor } from './dates.ts';
 import { extensionIssues } from './extensions.ts';
 import { sumCents } from './money.ts';
@@ -110,10 +110,14 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
     if (loan.value.loanType === 'bank') {
       try {
         const schedule = bankLoanSchedule(loan.value);
+        const confirmed = payments.filter(a => a.value.settledInstallmentDate);
+        if (confirmed.some(a => a.value.scheduled || a.value.date > today || !schedule.some(row => row.dueDate === a.value.settledInstallmentDate)) ||
+          new Set(confirmed.map(a => a.value.settledInstallmentDate)).size !== confirmed.length)
+          issue('Revisa las cuotas confirmadas: deben corresponder a pagos reales y no estar repetidas.', loan.id, ...confirmed.map(a => a.id));
         if (loan.value.firstPaymentDate! <= loan.value.balanceDate) issue('La primera cuota debe ser posterior al saldo inicial.', loan.id);
         const lastDue = isProgressiveLoan(loan.value) ? progressiveLastDueDate(loan.value) : bankLoanLastDueDate(loan.value.firstPaymentDate!, loan.value.termMonths!, loan.value.paymentFrequency ?? 'monthly');
         if (loan.value.dueDate !== lastDue) issue('El vencimiento debe coincidir con la última cuota estimada.', loan.id);
-        if (sumCents(payments.map(a => a.value.amountCents)) > sumCents(schedule.map(a => a.paymentCents)))
+        if (sumCents(payments.map(a => a.value.amountCents)) > bankLoanEstimatedTotal(schedule, payments))
           issue('Los pagos bancarios superan el total estimado del contrato.', loan.id, ...payments.map(a => a.id));
         const projection = bankLoanProjection(loan.value, payments, today);
         if (projection.overpaidCents > 0) issue('Los pagos bancarios superan el saldo estimado disponible.', loan.id, ...payments.map(a => a.id));
@@ -121,6 +125,7 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
           issue('Solo puedes archivar un préstamo liquidado.', loan.id);
       } catch (e) { issue(e instanceof Error ? e.message : 'Revisa la amortización del préstamo bancario.', loan.id); }
     } else {
+      if (payments.some(a => a.value.settledInstallmentDate)) issue('Solo los préstamos bancarios admiten cuotas confirmadas.', loan.id);
       if ((loan.value.annualRateBasisPoints ?? null) !== null || (loan.value.paymentFrequency ?? 'monthly') !== 'monthly' ||
         (loan.value.termMonths ?? null) !== null || (loan.value.firstPaymentDate ?? null) !== null || (loan.value.amortizationMethod ?? 'annuity') !== 'annuity' ||
         (loan.value.remainingInstallments ?? null) !== null || (loan.value.nextCapitalCents ?? null) !== null)

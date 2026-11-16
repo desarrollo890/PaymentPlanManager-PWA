@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mergeRevisions } from '@paymentplan/sync';
-import type { Operation, Movement, Card } from '@paymentplan/contracts';
+import type { Operation, Movement, Card, LoanPayment } from '@paymentplan/contracts';
 const vaultId = randomUUID(), entityId = randomUUID();
 const movement: Movement = { cardId: randomUUID(), date: '2026-10-03', amountCents: 10000, kind: 'expense', description: 'Compra', scheduled: false,
   reconciled: false, statementId: null, allocations: [], importReference: null, recordedAt: '2026-10-03T12:00:00Z', legacyOrdinal: null };
@@ -61,4 +61,16 @@ test('a concurrent card name edit keeps a newly added limit history; competing c
   const other = { ...operation(root), entityType: 'card', payload: { ...card, limitCents: 9000,
     limitChanges: [{ id: randomUUID(), date: '2026-10-03', deltaCents: -1000 }] } } as Operation;
   assert.equal(mergeRevisions([root, limit, other]).entities[0]!.status, 'conflict');
+});
+test('a concurrent loan payment description edit preserves installment confirmation and conflicting confirmations are reviewed', () => {
+  const payment: LoanPayment = { loanId: randomUUID(), date: '2026-10-13', amountCents: 50000, description: 'Pago',
+    scheduled: false, recordedAt: '2026-10-13T12:00:00Z', legacyOrdinal: null };
+  const root = { ...operation(), entityType: 'loanPayment', payload: payment } as Operation;
+  const confirm = { ...operation(root), entityType: 'loanPayment', payload: { ...payment, settledInstallmentDate: '2026-10-15' } } as Operation;
+  const description = { ...operation(root), entityType: 'loanPayment', payload: { ...payment, description: 'Corregido' } } as Operation;
+  const merged = mergeRevisions([root, confirm, description]).entities[0]!;
+  assert.equal(merged.status, 'merged');
+  assert.deepEqual(merged.accepted?.payload, { ...payment, settledInstallmentDate: '2026-10-15', description: 'Corregido' });
+  const other = { ...operation(root), entityType: 'loanPayment', payload: { ...payment, settledInstallmentDate: '2026-10-31' } } as Operation;
+  assert.equal(mergeRevisions([root, confirm, other]).entities[0]!.status, 'conflict');
 });

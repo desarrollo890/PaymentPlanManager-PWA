@@ -25,7 +25,7 @@ const financialBundles: Partial<Record<Operation['entityType'], readonly string[
   balance: ['cardId', 'date', 'availableCents', 'debtCents', 'includedMovementIds', 'includedLimitChangeIds', 'interestIncluded'],
   statement: ['cardId', 'cutDate', 'dueDate', 'targetCents', 'minimumCents', 'initialPaidCents', 'reservedCents', 'includedPaymentIds', 'estimated', 'balanceReferenceDate'],
   loan: ['principalCents', 'balanceDate', 'dueDate', 'includeReceivedMoney', 'archived'],
-  loanPayment: ['loanId', 'date', 'amountCents', 'scheduled'],
+  loanPayment: ['loanId', 'date', 'amountCents', 'scheduled', 'settledInstallmentDate'],
   income: ['income15Cents', 'incomeEndCents', 'expensesCents', 'reserveCents'],
   budget: ['payday', 'expectedIncomeCents', 'receivedIncomeCents', 'expensesCents', 'reserveCents'],
 };

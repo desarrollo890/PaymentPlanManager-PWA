@@ -1,6 +1,6 @@
 import { canonical } from '@paymentplan/contracts';
 import type { Category, CategoryRule, CategoryBudget, CashAccount, CashEntry, SavingsGoal, SavingsEntry, VocalGroup, VocalStudent, VocalEvent, VocalPayment, VocalDelivery, Recurrence, EntityPayloads, Balance, Budget, Card, Income, Installment, Loan, Movement, ReminderPreferences, ReminderState, Statement } from '@paymentplan/contracts';
-import { activePlans, applyChanges, assertPortfolio, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
+import { activePlans, applyChanges, assertPortfolio, bankLoanSchedule, cutOnOrAfter, estimateStatement, freeDebt, installmentQuotas, latestBalance,
   live, addMonths, recurrenceDates, goalSaved, periodReport, planEditReason, statementsFor, sumCents, paydayFor, payrollReceiptDate, civilDate, cashBalance, tandaSchedule, suggestedQuota, vocalEventSummary, personalCapital } from '@paymentplan/domain';
 import type { FinancialEntityType, Change, FinancialRecord, Portfolio, Tanda } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
@@ -220,12 +220,31 @@ export class FinancialCommands {
     if (!advance.voided && paid > capital) throw Error('Los abonos registrados superan el capital sin este préstamo. Anula primero los abonos que correspondan.');
     return this.checked([{ entityType: 'loanAdvance', entityId: id, payload: advance.value, voided: true }]);
   }
-  loanPayment(loanId: string, date: string, amountCents: number, description: string): Change[] {
+  private validateSettledInstallment(loanId: string, date: string, paymentId?: string): void {
+    const loan = record(this.portfolio.loans, loanId);
+    if (loan.voided || loan.value.archived || loan.value.loanType !== 'bank') throw Error('Solo los préstamos bancarios vigentes tienen cuotas confirmables.');
+    if (!bankLoanSchedule(loan.value).some(row => row.dueDate === date)) throw Error('Selecciona una cuota del calendario de este préstamo.');
+    if (live(this.portfolio.loanPayments).some(p => p.id !== paymentId && p.value.loanId === loanId && p.value.settledInstallmentDate === date))
+      throw Error('Esa cuota ya tiene un pago confirmado.');
+  }
+  loanPayment(loanId: string, date: string, amountCents: number, description: string, settledInstallmentDate?: string): Change[] {
     if (record(this.portfolio.loans, loanId).value.archived) throw Error('Reabre el préstamo antes de registrar un abono.');
-    return this.checked([{ entityType: 'loanPayment', entityId: this.context.newId(), payload: { loanId, date, amountCents, description: description.trim(), scheduled: date > this.context.today, ...this.stamp() }, voided: false }]);
+    if (settledInstallmentDate) {
+      if (date > this.context.today) throw Error('Solo un pago realizado puede confirmar una cuota.');
+      this.validateSettledInstallment(loanId, settledInstallmentDate);
+    }
+    return this.checked([{ entityType: 'loanPayment', entityId: this.context.newId(), payload: { loanId, date, amountCents, description: description.trim(), scheduled: date > this.context.today,
+      ...(settledInstallmentDate ? { settledInstallmentDate } : {}), ...this.stamp() }, voided: false }]);
+  }
+  confirmLoanInstallment(paymentId: string, dueDate: string | null): Change[] {
+    const payment = record(this.portfolio.loanPayments, paymentId);
+    if (payment.voided || payment.value.scheduled || payment.value.date > this.context.today) throw Error('Selecciona un pago realizado que no esté anulado.');
+    if (dueDate) this.validateSettledInstallment(payment.value.loanId, dueDate, paymentId);
+    const { settledInstallmentDate: _previous, ...value } = payment.value;
+    return this.checked([{ entityType: 'loanPayment', entityId: paymentId, payload: { ...value, ...(dueDate ? { settledInstallmentDate: dueDate } : {}) }, voided: false }]);
   }
   // Paga una cuota bancaria vencida: registra el abono al préstamo y el cargo en su cuenta, siempre con ids derivados para no duplicar.
-  async payLoanInstallment(loanId: string, dueDate: string, amountCents: number): Promise<Change[]> {
+  async payLoanInstallment(loanId: string, dueDate: string, amountCents: number, settled = false): Promise<Change[]> {
     const loan = record(this.portfolio.loans, loanId), account = this.portfolio.cashAccounts.find(a => a.id === loan.value.chargeAccountId && !a.voided);
     if (loan.voided || loan.value.archived || loan.value.loanType !== 'bank') throw Error('Solo puedes pagar cuotas de préstamos bancarios vigentes.');
     if (!account || account.value.kind !== 'debit' || account.value.archived) throw Error('Vincula una cuenta de débito de cargo en el préstamo.');
@@ -233,15 +252,17 @@ export class FinancialCommands {
     if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw Error('Captura un pago mayor a cero.');
     const payday = paydayFor(dueDate), income = live(this.portfolio.incomes)[0]?.value, payroll = this.portfolio.cashAccounts.find(a => a.id === income?.payrollAccountId && !a.voided);
     if (payroll && payday <= this.context.today && payday >= payroll.value.openingDate &&
-      !live(this.portfolio.cashEntries).some(e => e.value.accountId === payroll.id && e.value.kind === 'income' && e.value.date === payday))
+      !live(this.portfolio.cashEntries).some(e => e.value.accountId === payroll.id && e.value.kind === 'income' && (e.value.payrollPayday === payday || (!e.value.payrollPayday && e.value.date === payday))))
       throw Error(`Confirma primero en Presupuesto el ingreso del ${payday}.`);
     const paymentId = await stableId('loanInstallment:' + loanId + ':' + dueDate), entryId = await stableId('loanInstallmentCash:' + loanId + ':' + dueDate);
     const payment = this.portfolio.loanPayments.find(r => r.id === paymentId);
     if (payment && !payment.voided) throw Error('Esa cuota ya está pagada.');
+    this.validateSettledInstallment(loanId, dueDate, paymentId);
     const description = `Pago de préstamo ${loan.value.person}`;
     const entry: CashEntry = { accountId: account.id, toAccountId: null, cardMovementId: null, date: dueDate, amountCents, kind: 'expense', categoryId: null, description };
     return this.checked([
-      { entityType: 'loanPayment', entityId: paymentId, payload: { loanId, date: dueDate, amountCents, description, scheduled: false, ...(payment ? { recordedAt: payment.value.recordedAt, legacyOrdinal: payment.value.legacyOrdinal } : this.stamp()) }, voided: false },
+      { entityType: 'loanPayment', entityId: paymentId, payload: { loanId, date: dueDate, amountCents, description, scheduled: false,
+        ...(settled ? { settledInstallmentDate: dueDate } : {}), ...(payment ? { recordedAt: payment.value.recordedAt, legacyOrdinal: payment.value.legacyOrdinal } : this.stamp()) }, voided: false },
       { entityType: 'cashEntry', entityId: entryId, payload: entry, voided: false },
     ]);
   }

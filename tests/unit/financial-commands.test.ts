@@ -152,6 +152,21 @@ test('bank loans estimate monthly installments and accrue interest before record
   assert.equal(afterPayment.obligations[0]!.dueDate, '2026-12-15');
   assert.throws(() => h.cmd.saveLoan({ ...h.p.loans[0]!.value, annualRateBasisPoints: 1500 }, id), /condiciones de amortización/);
 });
+test('a confirmed fixed loan installment preserves the actual payment and does not apply surplus to the next quota', () => {
+  const h = harness();
+  h.commit(h.cmd.saveLoan({ person: 'Banco', description: 'Crédito', principalCents: 100000, balanceDate: h.context.today,
+    dueDate: '2027-10-15', loanType: 'bank', annualRateBasisPoints: 1200, termMonths: 12, firstPaymentDate: '2026-11-15',
+    includeReceivedMoney: false, archived: false }));
+  const id = h.p.loans[0]!.id, initial = financeView(h.p, h.context.today).obligations;
+  h.context.today = '2026-11-13';
+  h.commit(h.cmd.loanPayment(id, h.context.today, initial[0]!.amountCents + 100, 'Pago', '2026-11-15'));
+  const next = financeView(h.p, '2026-11-16').obligations;
+  assert.equal(next[0]!.dueDate, '2026-12-15');
+  assert.equal(next[0]!.amountCents, initial[1]!.amountCents);
+  assert.equal(h.p.loanPayments[0]!.value.amountCents, initial[0]!.amountCents + 100);
+  assert.throws(() => h.cmd.loanPayment(id, '2026-11-20', 100, 'Futuro', '2026-12-15'), /realizado/);
+  assert.throws(() => h.cmd.confirmLoanInstallment(h.p.loanPayments[0]!.id, '2026-11-16'), /calendario/);
+});
 test('fixed-fee loans save interest and installments with an extra capital payment', () => {
   const h = harness();
   h.commit(h.cmd.saveLoan({ person: 'Banco', description: 'Crédito', principalCents: 100000, balanceDate: h.context.today,

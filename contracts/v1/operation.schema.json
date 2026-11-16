@@ -1262,6 +1262,7 @@
         "scheduled": {
           "type": "boolean"
         },
+        "settledInstallmentDate": { "$ref": "#/$defs/date" },
         "recordedAt": {
           "anyOf": [
             {

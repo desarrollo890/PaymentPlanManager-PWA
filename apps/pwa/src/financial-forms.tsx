@@ -2,14 +2,14 @@ import { FinancialCommands } from '@paymentplan/application';
 import { useState } from 'react';
 import type { VaultSession } from '@paymentplan/application';
 import type { Change } from '@paymentplan/domain';
-import { addDays, bankLoanLastDueDate, civilDate, payrollReceiptDate, progressiveLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
+import { addDays, bankLoanLastDueDate, bankLoanSchedule, civilDate, payrollReceiptDate, progressiveLastDueDate, safeInteger, applyChanges, cutOnOrAfter, financeView, installmentQuotas, latestBalance, live } from '@paymentplan/domain';
 import type { CutView } from '@paymentplan/domain';
 import type { Installment, Loan } from '@paymentplan/contracts';
 import { PaymentAllocation } from './payment-allocation.tsx';
 import { Check, Field, FormDialog, MoneyField, SelectField, amount, money, optionalMoney, parseMoney, str } from './ui.tsx';
 
 export type FinancialModal = { type: 'card'; id?: string } | { type: 'movement'; id?: string; cardId?: string; planId?: string; quotaNumber?: number; capitalCents?: number; interestCents?: number } | { type: 'plan'; id?: string; cardId: string; purchaseId?: string }
-  | { type: 'loan'; id?: string } | { type: 'loanPayment'; loanId: string } | { type: 'loanAdvance'; loanId: string } | { type: 'reconcile'; cardId: string }
+  | { type: 'loan'; id?: string } | { type: 'loanPayment'; loanId: string } | { type: 'loanSettlement'; paymentId: string } | { type: 'loanAdvance'; loanId: string } | { type: 'reconcile'; cardId: string }
   | { type: 'allocation'; id: string } | { type: 'cut'; cardId: string; cut: CutView; create?: boolean } | { type: 'reserve'; cardId: string; cut: CutView } | { type: 'budget'; payday: string } | { type: 'payroll'; payday: string } | { type: 'estimate'; payday: string } | { type: 'loanInstallment'; loanId: string; dueDate: string };
 export function FinancialForm(props: FinancialFormProps) { return props.modal.type === 'allocation' ? <PaymentAllocation id={props.modal.id} session={props.session} today={props.today} close={props.close} save={props.save} /> : <FinancialEditor {...props} modal={props.modal} />; }
 type FinancialFormProps = { modal: FinancialModal; session: VaultSession; today: string; close: () => void; save: (changes: Change[]) => Promise<void> };
@@ -100,7 +100,8 @@ function FinancialEditor({ modal, session, today, close, save }: {
           changes = cmd.saveLoan({ ...base, dueDate }, modal.id); break;
         }
         case 'loanAdvance': changes = cmd.addLoanAdvance(modal.loanId, str(data, 'date'), parseMoney(data.get('amount')), str(data, 'description'), data.has('received')); break;
-        case 'loanPayment': changes = cmd.loanPayment(modal.loanId, str(data, 'date'), parseMoney(data.get('amount')), str(data, 'description')); break;
+        case 'loanPayment': changes = cmd.loanPayment(modal.loanId, str(data, 'date'), parseMoney(data.get('amount')), str(data, 'description'), str(data, 'settledInstallmentDate') || undefined); break;
+        case 'loanSettlement': changes = cmd.confirmLoanInstallment(modal.paymentId, str(data, 'settledInstallmentDate') || null); break;
         case 'reconcile': {
           const debt = parseMoney(data.get('debt')), credit = parseMoney(data.get('credit'));
           if (debt && credit) throw Error('Captura deuda o saldo a favor, no ambos.');
@@ -109,7 +110,7 @@ function FinancialEditor({ modal, session, today, close, save }: {
         case 'cut': changes = cmd.saveStatement(modal.cardId, { cutDate: str(data, 'date'), dueDate: str(data, 'dueDate'), targetCents: parseMoney(data.get('target')),
           minimumCents: parseMoney(data.get('minimum')), initialPaidCents: parseMoney(data.get('paid')) }, !modal.create && modal.cut.estimated && parseMoney(data.get('target')) === modal.cut.targetCents, modal.create ? undefined : modal.cut.id, data.get('includesPayments') === 'on'); break;
         case 'reserve': changes = cmd.reserve(modal.cardId, modal.cut.cutDate, parseMoney(data.get('reserved'))); break;
-        case 'loanInstallment': changes = await cmd.payLoanInstallment(modal.loanId, modal.dueDate, parseMoney(data.get('amount'))); break;
+        case 'loanInstallment': changes = await cmd.payLoanInstallment(modal.loanId, modal.dueDate, parseMoney(data.get('amount')), data.has('settled')); break;
         case 'payroll': changes = await cmd.receivePayroll(modal.payday, parseMoney(data.get('amount')), str(data, 'date')); break;
         case 'estimate': {
           const config = p.incomes.find(r => !r.voided)?.value, received = view.budgets.find(b => b.payday === modal.payday)?.receivedIncomeCents;
@@ -205,7 +206,15 @@ function FinancialEditor({ modal, session, today, close, save }: {
     const loan = view.loans.find(l => l.id === modal.loanId)!;
     title = loan.loanType === 'bank' ? 'Registrar pago bancario' : 'Registrar abono a persona';
     fields = <><p className="form-note">{loan.person} · saldo pendiente estimado {money(loan.balanceCents)} · programado {money(loan.scheduledCents)}{loan.installmentPaymentCents === null ? '' : ` · cuota estimada ${money(loan.installmentPaymentCents)}`}</p><Field label="Fecha del pago" name="date" type="date" value={today} />
-      <MoneyField label="Importe del pago" name="amount" value={loan.installmentPaymentCents ?? Math.max(0, loan.balanceCents - loan.scheduledCents)} /><Field label="Descripción" name="description" /><p className="form-note">Los pagos futuros se programan y requieren confirmación cuando pagues.{loan.loanType === 'bank' ? ` El saldo estima intereses en cada vencimiento ${loan.paymentFrequency === 'biweekly' ? 'quincenal' : 'mensual'}.` : ''}</p></>;
+      <MoneyField label="Importe del pago" name="amount" value={loan.installmentPaymentCents ?? Math.max(0, loan.balanceCents - loan.scheduledCents)} /><Field label="Descripción" name="description" />
+      {loan.loanType === 'bank' && <SelectField label="Cuota que este pago liquida por completo (opcional)" name="settledInstallmentDate"><option value="">No confirmar cuota; es un abono o pago parcial</option>{bankLoanSchedule(p.loans.find(l => l.id === modal.loanId)!.value).filter(row => !live(p.loanPayments).some(a => a.value.loanId === modal.loanId && a.value.settledInstallmentDate === row.dueDate)).map(row => <option key={row.dueDate} value={row.dueDate}>{row.dueDate} · estimado {money(row.paymentCents)}</option>)}</SelectField>}
+      <p className="form-note">Los pagos futuros se programan y requieren confirmación cuando pagues. Este registro no crea un gasto en Cuentas. Si el banco confirmó que la cuota está liquidada, selecciónala aunque el importe sea diferente; el capital aplicado es una estimación.</p></>;
+  } else if (modal.type === 'loanSettlement') {
+    const payment = p.loanPayments.find(a => a.id === modal.paymentId)!, loan = p.loans.find(l => l.id === payment.value.loanId)!;
+    title = 'Confirmar cuota pagada';
+    fields = <><p className="form-note">Pago registrado el {payment.value.date}: {money(payment.value.amountCents)}. No se creará otro pago ni movimiento de cuenta. Selecciona la cuota solo si el banco la considera liquidada.</p>
+      <SelectField label="Cuota liquidada" name="settledInstallmentDate" value={payment.value.settledInstallmentDate ?? ''}><option value="">No confirmar cuota; mantener como abono o pago parcial</option>{bankLoanSchedule(loan.value).filter(row => !live(p.loanPayments).some(a => a.id !== payment.id && a.value.loanId === loan.id && a.value.settledInstallmentDate === row.dueDate)).map(row => <option key={row.dueDate} value={row.dueDate}>{row.dueDate} · estimado {money(row.paymentCents)}</option>)}</SelectField>
+      <p className="form-note">En préstamos progresivos el capital aplicado es estimado; compáralo con el banco. Al retirar la confirmación, la cuota vuelve a calcularse normalmente.</p></>;
   } else if (modal.type === 'reconcile') {
     const balance = view.cards.find(c => c.id === modal.cardId)!;
     title = 'Conciliar saldos con el banco'; fields = <><Field label="Fecha del saldo bancario" name="date" type="date" value={today} min={latestBalance(p, modal.cardId).value.date} max={today} />
@@ -223,7 +232,9 @@ function FinancialEditor({ modal, session, today, close, save }: {
   } else if (modal.type === 'loanInstallment') {
     const o = view.obligations.find(o => o.loanId === modal.loanId && o.dueDate === modal.dueDate), person = p.loans.find(l => l.id === modal.loanId)?.value.person ?? '';
     title = `Pagar cuota · ${person} · ${modal.dueDate}`;
-    fields = <><MoneyField label="Importe cobrado" name="amount" value={o?.amountCents ?? null} hint={`Se descuenta de ${o?.chargeAccountName ?? 'la cuenta de cargo'} y se registra como pago del préstamo. Corrige el importe si el banco cobró otro.`} /></>;
+    fields = <><MoneyField label="Importe cobrado" name="amount" value={o?.amountCents ?? null} hint={`Se descuenta de ${o?.chargeAccountName ?? 'la cuenta de cargo'} y se registra como pago del préstamo. Corrige el importe si el banco cobró otro.`} />
+      <Check name="settled" label="El banco confirma que esta cuota quedó liquidada con este pago" />
+      <p className="form-note">Márcalo si el importe real liquida la cuota aunque difiera del estimado. En préstamos progresivos el capital aplicado es estimado.</p></>;
   } else if (modal.type === 'estimate') {
     const b = view.budgets.find(b => b.payday === modal.payday)!, day15 = civilDate(modal.payday).day === 15;
     title = 'Actualizar estimado de Preferencias';

@@ -115,6 +115,13 @@ export interface BankLoanProjection {
   readonly overpaidCents: number;
   readonly installments: readonly { readonly dueDate: string; readonly amountCents: number; readonly scheduled: boolean }[];
 }
+export function bankLoanEstimatedTotal(schedule: readonly BankInstallment[], payments: readonly FinancialRecord<LoanPayment>[]): number {
+  const amounts = payments.filter(payment => !payment.voided && payment.value.settledInstallmentDate).map(payment => {
+    const row = schedule.find(item => item.dueDate === payment.value.settledInstallmentDate);
+    return row ? Math.max(0, payment.value.amountCents - row.paymentCents) : 0;
+  });
+  return sumCents([...schedule.map(row => row.paymentCents), ...amounts]);
+}
 
 export function bankLoanProjection(loan: Loan, paymentRecords: readonly FinancialRecord<LoanPayment>[], today: string): BankLoanProjection {
   const schedule = bankLoanSchedule(loan), payments = paymentRecords.filter(r => !r.voided && r.value.loanId && r.value.date >= loan.balanceDate)
@@ -139,13 +146,21 @@ export function bankLoanProjection(loan: Loan, paymentRecords: readonly Financia
   }
 
   if (progressive) paidCents = sumCents(realized.map(r => r.value.amountCents));
-  const realizedBySlot = new Map<number, number>();
+  const realizedBySlot = new Map<number, number>(), settledSlots = new Set<number>();
   for (const payment of realized) {
     let remaining = payment.value.amountCents;
+    if (payment.value.settledInstallmentDate) {
+      const index = schedule.findIndex(row => row.dueDate === payment.value.settledInstallmentDate);
+      if (index < 0 || settledSlots.has(index)) throw Error('La cuota confirmada no existe o tiene pagos duplicados.');
+      realizedBySlot.set(index, sumCents([realizedBySlot.get(index) ?? 0, remaining]));
+      settledSlots.add(index);
+      continue;
+    }
     const candidates = schedule.map((row, index) => ({ row, index }))
       .sort((a, b) => Number(b.row.dueDate <= payment.value.date) - Number(a.row.dueDate <= payment.value.date) || a.index - b.index);
     for (const { row, index } of candidates) {
       if (remaining <= 0) break;
+      if (settledSlots.has(index)) continue;
       const paid = realizedBySlot.get(index) ?? 0;
       const allocation = Math.min(remaining, Math.max(0, row.paymentCents - paid));
       if (allocation) realizedBySlot.set(index, paid + allocation);
@@ -154,22 +169,25 @@ export function bankLoanProjection(loan: Loan, paymentRecords: readonly Financia
   }
   if (progressive) {
     // Monto Utilizado: capital que sigue vivo después de las cuotas cubiertas por pagos reales.
-    balance = loan.principalCents - sumCents(schedule.filter((row, index) => (realizedBySlot.get(index) ?? 0) >= row.paymentCents).map(row => row.principalCents));
-    overpaidCents = Math.max(0, paidCents - sumCents(schedule.map(row => row.paymentCents)));
+    balance = loan.principalCents - sumCents(schedule.map((row, index) => {
+      const paid = realizedBySlot.get(index) ?? 0;
+      return settledSlots.has(index) ? Math.min(row.principalCents, paid) : paid >= row.paymentCents ? row.principalCents : 0;
+    }));
+    overpaidCents = Math.max(0, paidCents - bankLoanEstimatedTotal(schedule, realized));
   }
   const scheduledBySlot = new Map<number, FinancialRecord<LoanPayment>[]>();
   for (const payment of scheduled) {
     let slot = schedule.findIndex((row, index) => row.dueDate <= payment.value.date &&
-      (realizedBySlot.get(index) ?? 0) < row.paymentCents && !scheduledBySlot.has(index));
+      !settledSlots.has(index) && (realizedBySlot.get(index) ?? 0) < row.paymentCents && !scheduledBySlot.has(index));
     if (slot < 0) slot = schedule.findIndex((row, index) => row.dueDate >= payment.value.date &&
-      (realizedBySlot.get(index) ?? 0) < row.paymentCents && !scheduledBySlot.has(index));
+      !settledSlots.has(index) && (realizedBySlot.get(index) ?? 0) < row.paymentCents && !scheduledBySlot.has(index));
     if (slot < 0) slot = schedule.length;
     const group = scheduledBySlot.get(slot) ?? [];
     group.push(payment); scheduledBySlot.set(slot, group);
   }
   const installments = schedule.flatMap((row, index) => {
     const paid = realizedBySlot.get(index) ?? 0;
-    if (paid >= row.paymentCents) return [];
+    if (settledSlots.has(index) || paid >= row.paymentCents) return [];
     const planned = scheduledBySlot.get(index);
     return [{ dueDate: planned?.[0]?.value.date ?? row.dueDate,
       amountCents: planned ? sumCents(planned.map(payment => payment.value.amountCents)) : row.paymentCents - paid,

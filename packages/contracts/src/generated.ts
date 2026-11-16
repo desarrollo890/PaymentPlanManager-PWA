@@ -134,6 +134,7 @@ export type LoanPayment = {
   readonly "amountCents": number;
   readonly "description": string;
   readonly "scheduled": boolean;
+  readonly "settledInstallmentDate"?: Date;
   readonly "recordedAt": (string) | (null);
   readonly "legacyOrdinal": (number) | (null);
 };
