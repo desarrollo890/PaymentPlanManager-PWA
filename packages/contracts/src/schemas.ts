@@ -441,6 +441,30 @@ export const schemas: Readonly<Record<string, Schema>> = {
             "minimum": 0,
             "maximum": 9007199254740991
           },
+          "limitChanges": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/uuid"
+                },
+                "date": {
+                  "$ref": "#/$defs/date"
+                },
+                "deltaCents": {
+                  "$ref": "#/$defs/signedMoney"
+                }
+              },
+              "required": [
+                "id",
+                "date",
+                "deltaCents"
+              ]
+            }
+          },
           "cutDay": {
             "type": "integer",
             "minimum": 1,
@@ -534,6 +558,14 @@ export const schemas: Readonly<Record<string, Schema>> = {
               "not": {
                 "const": "00000000-0000-0000-0000-000000000000"
               }
+            },
+            "maxItems": 10000,
+            "uniqueItems": true
+          },
+          "includedLimitChangeIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/uuid"
             },
             "maxItems": 10000,
             "uniqueItems": true
@@ -1569,6 +1601,9 @@ export const schemas: Readonly<Record<string, Schema>> = {
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "limitChangeCents": {
+            "$ref": "#/$defs/signedMoney"
           },
           "closingDebtCents": {
             "type": "integer",

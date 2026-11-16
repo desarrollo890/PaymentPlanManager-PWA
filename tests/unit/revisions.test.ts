@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mergeRevisions } from '@paymentplan/sync';
-import type { Operation, Movement } from '@paymentplan/contracts';
+import type { Operation, Movement, Card } from '@paymentplan/contracts';
 const vaultId = randomUUID(), entityId = randomUUID();
 const movement: Movement = { cardId: randomUUID(), date: '2026-10-03', amountCents: 10000, kind: 'expense', description: 'Compra', scheduled: false,
   reconciled: false, statementId: null, allocations: [], importReference: null, recordedAt: '2026-10-03T12:00:00Z', legacyOrdinal: null };
@@ -47,4 +47,18 @@ test('collisions, sequence reuse, mixed vaults, foreign parents and cycles are r
   assert.throws(() => mergeRevisions([a, { ...b, vaultId: randomUUID() }]), /distintas/);
   assert.throws(() => mergeRevisions([a, { ...b, entityId: randomUUID() }]), /otro registro/);
   assert.throws(() => mergeRevisions([{ ...a, action: 'replace', parentRevisionIds: [b.operationId] } as Operation, b]), /ciclo/);
+});
+test('a concurrent card name edit keeps a newly added limit history; competing changes conflict', () => {
+  const card: Card = { name: 'Tarjeta', bank: 'Banco', limitCents: 10000, cutDay: 10, dueDay: 25, dueMonthOffset: null,
+    color: '#123456', initialDebtOrigin: 'currentPeriod', archived: false };
+  const root = { ...operation(), entityType: 'card', payload: card } as Operation;
+  const limit = { ...operation(root), entityType: 'card', payload: { ...card, limitCents: 12000,
+    limitChanges: [{ id: randomUUID(), date: '2026-10-03', deltaCents: 2000 }] } } as Operation;
+  const name = { ...operation(root), entityType: 'card', payload: { ...card, name: 'Nueva' } } as Operation;
+  const merged = mergeRevisions([root, limit, name]).entities[0]!;
+  assert.equal(merged.status, 'merged');
+  assert.deepEqual(merged.accepted?.payload, { ...limit.payload, name: 'Nueva' });
+  const other = { ...operation(root), entityType: 'card', payload: { ...card, limitCents: 9000,
+    limitChanges: [{ id: randomUUID(), date: '2026-10-03', deltaCents: -1000 }] } } as Operation;
+  assert.equal(mergeRevisions([root, limit, other]).entities[0]!.status, 'conflict');
 });

@@ -1,6 +1,6 @@
 import { canonical } from '@paymentplan/contracts';
 import type { Operation, Installment, Loan } from '@paymentplan/contracts';
-import { live, periodReport, planEditReason } from '@paymentplan/domain';
+import { latestBalance, live, periodReport, planEditReason } from '@paymentplan/domain';
 import type { FinancialIssue, Portfolio } from '@paymentplan/domain';
 import { sha256 } from '@paymentplan/crypto';
 import type { RevisionState } from '@paymentplan/sync';
@@ -49,6 +49,22 @@ export async function historyIssues(state: RevisionState, portfolio: Portfolio, 
       if (concurrent.length) issues.push({ message: entity.entityType === 'cashAccount'
         ? 'Se corrigió el saldo inicial de una cuenta mientras otro dispositivo registraba movimientos. Revisa el saldo inicial y el historial juntos.'
         : 'Se cambió la cuenta de una meta mientras otro dispositivo modificaba su reserva. Revisa dónde debe quedar ese dinero.', entityIds: [entity.entityId, ...concurrent.map(op => op.entityId)] });
+    }
+  }
+  for (const entity of state.entities.filter(e => e.entityType === 'card' && e.status !== 'void' && e.status !== 'conflict')) {
+    for (const head of entity.heads) {
+      if (head.entityType !== 'card' || !head.payload) continue;
+      const baseId = latestBalance(portfolio, entity.entityId).id;
+      const baseHeads = state.entities.find(e => e.entityId === baseId && e.status !== 'void')?.heads ?? [];
+      const cardHistory = state.operations.filter(op => op.entityId === entity.entityId && op.entityType === 'card' && op.payload && observes(head, op));
+      const concurrent = baseHeads.filter(base => !observes(head, base) && cardHistory.some(op => {
+        if (op.entityType !== 'card' || !op.payload || op.parentRevisionIds.length !== 1 || observes(base, op)) return false;
+        const parent = operations.get(op.parentRevisionIds[0]!);
+        return parent?.entityType === 'card' && parent.payload &&
+          (op.payload.limitChanges?.length ?? 0) > (parent.payload.limitChanges?.length ?? 0);
+      }));
+      if (concurrent.length) issues.push({ message: 'El límite cambió mientras otro dispositivo conciliaba esta tarjeta. Compara los saldos con el banco antes de continuar.',
+        entityIds: [entity.entityId, ...concurrent.map(op => op.entityId)] });
     }
   }
   for (const closure of live(portfolio.closures)) {

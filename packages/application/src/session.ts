@@ -1,6 +1,6 @@
 import { assertBatch, assertBlock, assertPayload, canonical, operationVersion } from '@paymentplan/contracts';
 import type { Batch, Operation } from '@paymentplan/contracts';
-import { applyChanges, assertPortfolio, emptyPortfolio, entityTables, financeView, portfolioIssues } from '@paymentplan/domain';
+import { applyChanges, assertPortfolio, emptyPortfolio, entityTables, financeView, latestBalance, portfolioIssues } from '@paymentplan/domain';
 import type { Change, FinancialEntityType, Portfolio } from '@paymentplan/domain';
 import { assertVaultHeader, decodeJson, encodeJson } from '@paymentplan/crypto';
 import type { VaultCipher, VaultHeader } from '@paymentplan/crypto';
@@ -106,6 +106,11 @@ export class VaultSession {
       const parents = importedSeed ? [importedSeed.id] : entity?.heads.map(op => op.operationId) ?? [];
       const referenced = new Set<string>();
       const payload = change.payload as unknown as Record<string, unknown>;
+      if (change.entityType === 'card' && !change.voided) {
+        const previous = this.portfolio.cards.find(card => card.id === change.entityId);
+        if (previous && previous.value.limitCents !== change.payload.limitCents)
+          referenced.add(latestBalance(this.portfolio, change.entityId).id);
+      }
       for (const key of ['cardId', 'loanId', 'purchaseId', 'statementId', 'categoryId', 'movementId', 'recurrenceId', 'accountId', 'payrollAccountId', 'voucherAccountId', 'chargeAccountId', 'toAccountId', 'goalId', 'cardMovementId']) if (typeof payload[key] === 'string') referenced.add(payload[key]);
       if (Array.isArray(payload.allocations)) for (const allocation of payload.allocations as { planId: string }[]) referenced.add(allocation.planId);
       if (Array.isArray(payload.includedMovementIds)) for (const id of payload.includedMovementIds) referenced.add(id);

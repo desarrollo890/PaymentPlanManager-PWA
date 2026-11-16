@@ -19,11 +19,18 @@ export class FinancialCommands {
   }
   saveCard(value: Card, base?: Pick<Balance, 'date' | 'availableCents' | 'debtCents'>, id?: string): Change[] {
     const entityId = id ?? this.context.newId();
-    const changes: Change[] = [{ entityType: 'card', entityId, payload: { ...value, name: value.name.trim(), bank: value.bank.trim(), color: value.color.toUpperCase() }, voided: false }];
+    const previous = id ? record(this.portfolio.cards, id).value : undefined;
+    const delta = previous ? sumCents([value.limitCents, -previous.limitCents]) : 0;
+    if (delta) this.editableDate(entityId, this.context.today);
+    const limitChanges = previous?.limitChanges ?? [];
+    const history = delta ? { limitChanges: [...limitChanges, { id: this.context.newId(), date: this.context.today, deltaCents: delta }] }
+      : previous?.limitChanges ? { limitChanges } : {};
+    const { limitChanges: _ignored, ...fields } = value;
+    const changes: Change[] = [{ entityType: 'card', entityId, payload: { ...fields, ...history, name: value.name.trim(), bank: value.bank.trim(), color: value.color.toUpperCase() }, voided: false }];
     if (!id) {
       if (!base || base.date > this.context.today || base.availableCents < 0) throw Error('Indica saldos iniciales y una fecha de hoy o anterior.');
       changes.push({ entityType: 'balance', entityId: this.context.newId(), payload: { ...base, cardId: entityId, includedMovementIds: [], interestIncluded: false, ...this.stamp() }, voided: false });
-    } else record(this.portfolio.cards, id);
+    }
     return this.checked(changes);
   }
   recordMovement(input: Omit<Movement, 'recordedAt' | 'legacyOrdinal' | 'scheduled' | 'reconciled' | 'importReference'>, id?: string): Change[] {
@@ -146,7 +153,9 @@ export class FinancialCommands {
     const changes: Change[] = included.filter(m => !m.value.reconciled).map(m => ({ entityType: 'movement', entityId: m.id, payload: { ...m.value, reconciled: true }, voided: false }));
     changes.push(...live(this.portfolio.installments).filter(p => p.value.cardId === cardId).map(p => ({ entityType: 'installment' as const, entityId: p.id,
       payload: { ...p.value, interestIncorporatedThrough: value.date }, voided: false })));
-    changes.push({ entityType: 'balance', entityId: this.context.newId(), payload: { ...value, cardId, includedMovementIds: included.map(m => m.id), interestIncluded: true, ...this.stamp() }, voided: false });
+    const limitChanges = record(this.portfolio.cards, cardId).value.limitChanges?.filter(change => change.date <= value.date) ?? [];
+    changes.push({ entityType: 'balance', entityId: this.context.newId(), payload: { ...value, cardId, includedMovementIds: included.map(m => m.id),
+      ...(limitChanges.length ? { includedLimitChangeIds: limitChanges.map(change => change.id) } : {}), interestIncluded: true, ...this.stamp() }, voided: false });
     return this.checked(changes);
   }
   saveStatement(cardId: string, input: Pick<Statement, 'cutDate' | 'dueDate' | 'targetCents' | 'minimumCents' | 'initialPaidCents'>, confirmEstimate = false, id?: string, bankIncludesPayments = false): Change[] {

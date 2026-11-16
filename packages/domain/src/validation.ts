@@ -42,6 +42,9 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
   }
   for (const card of cards) {
     const bases = live(p.balances).filter(b => b.value.cardId === card.id);
+    const limitChanges = card.value.limitChanges ?? [];
+    if (new Set(limitChanges.map(change => change.id)).size !== limitChanges.length || limitChanges.some(change => change.date > today || change.deltaCents === 0))
+      issue('El historial de cambios de límite es inválido.', card.id);
     if (!bases.length) issue('La tarjeta no tiene saldo inicial.', card.id);
     if (bases.length && card.value.archived) {
       try { if (cardBalance(p, card.id, today).debtCents !== 0 || quotaBalances(p, card.id, today).some(q => q.principalCents + q.interestCents + q.futureInterestCents > 0)
@@ -49,6 +52,8 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
     }
     for (const b of bases) {
       if (b.value.date > today) issue('El saldo bancario no puede tener fecha futura.', b.id);
+      if ((b.value.includedLimitChangeIds ?? []).some(id => !limitChanges.some(change => change.id === id && change.date <= b.value.date)))
+        issue('El saldo bancario refiere a un cambio de límite ausente o posterior.', b.id, card.id);
       if (b.value.includedMovementIds.some(id => !p.movements.some(m => m.id === id && m.value.cardId === card.id && !m.voided && !m.value.scheduled && m.value.date <= b.value.date)))
         issue('La conciliación incorpora movimientos ausentes, anulados o posteriores al saldo.', b.id);
     }
@@ -79,7 +84,7 @@ function structuralIssues(p: Portfolio, today: string): FinancialIssue[] {
       const c = closure.value;
       if (c.to < c.from || c.to > today || closures.some(other => other.id !== closure.id && other.value.from <= c.to && other.value.to >= c.from)) issue('Hay cierres inválidos o superpuestos.', closure.id);
       if (sumCents([c.openingDebtCents, c.expensesCents, c.feesCents, c.interestCents, -c.paymentsCents]) !== c.closingDebtCents ||
-        sumCents([c.openingAvailableCents, -c.expensesCents, -c.feesCents, -c.interestCents, c.paymentsCents]) !== c.closingAvailableCents) issue('El cierre no cuadra.', closure.id);
+        sumCents([c.openingAvailableCents, -c.expensesCents, -c.feesCents, -c.interestCents, c.paymentsCents, c.limitChangeCents ?? 0]) !== c.closingAvailableCents) issue('El cierre no cuadra.', closure.id);
     }
   }
   for (const movement of live(p.movements)) {

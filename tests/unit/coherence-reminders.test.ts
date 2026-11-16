@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { FinancialCommands } from '@paymentplan/application';
-import { applyChanges, emptyPortfolio, financeView, remindersFor, orderOf } from '@paymentplan/domain';
+import { applyChanges, emptyPortfolio, financeView, latestBalance, remindersFor, orderOf } from '@paymentplan/domain';
 import { historyIssues } from '../../packages/application/src/coherence.ts';
 import { mergeRevisions } from '@paymentplan/sync';
 import type { Operation } from '@paymentplan/contracts';
@@ -33,4 +33,32 @@ test('received changes in a closed history require reopening instead of silently
   p=applyChanges(p,await new FinancialCommands(p,context).closePeriod(cardId,today,today,null,null));assert.equal((await historyIssues(mergeRevisions([]),p,today)).length,0);
   const movement=p.movements[0]!;p={...p,movements:[{...movement,value:{...movement.value,amountCents:12000}}]};assert.equal((await historyIssues(mergeRevisions([]),p,today)).length,1);
   p={...p,closures:p.closures.map(c=>({...c,voided:true}))};assert.equal((await historyIssues(mergeRevisions([]),p,today)).length,0);
+});
+test('concurrent limit changes and bank reconciliation require review, even after a later name edit', async () => {
+  const today = '2026-10-03', now = '2026-10-03T12:00:00Z', ctx = { today, now, newId: randomUUID };
+  let p = emptyPortfolio();
+  const created = new FinancialCommands(p, ctx).saveCard({ name: 'Card', bank: 'Bank', limitCents: 2000000, cutDay: 11,
+    dueDay: 25, dueMonthOffset: null, color: '#234E70', initialDebtOrigin: 'currentPeriod', archived: false },
+    { date: today, availableCents: 1000000, debtCents: 1000000 });
+  p = applyChanges(p, created);
+  const cardId = p.cards[0]!.id, change = new FinancialCommands(p, ctx).saveCard({ ...p.cards[0]!.value, limitCents: 2500000 }, undefined, cardId)[0]!;
+  const balance = new FinancialCommands(p, { ...ctx, now: '2026-10-03T13:00:00Z' }).reconcile(cardId, { date: today, availableCents: 1500000, debtCents: 1000000 }).at(-1)!;
+  p = applyChanges(p, [change, balance]);
+  const base = { schemaVersion: 1, vaultId: randomUUID(), deviceId: randomUUID(), deviceSequence: 1, dependencyOperationIds: [], groupId: null,
+    groupIndex: 0, groupSize: 1, updatedAt: now };
+  const root = { ...base, operationId: randomUUID(), entityType: 'card', entityId: cardId, action: 'create', parentRevisionIds: [], payload: created[0]!.payload } as Operation;
+  const initial = { ...base, deviceId: randomUUID(), operationId: randomUUID(), entityType: 'balance', entityId: created[1]!.entityId,
+    action: 'create', parentRevisionIds: [], dependencyOperationIds: [root.operationId], payload: created[1]!.payload } as Operation;
+  const edit = { ...base, deviceId: randomUUID(), operationId: randomUUID(), entityType: 'card', entityId: cardId, action: 'replace',
+    parentRevisionIds: [root.operationId], dependencyOperationIds: [initial.operationId], payload: change.payload } as Operation;
+  const rename = { ...base, deviceId: randomUUID(), operationId: randomUUID(), entityType: 'card', entityId: cardId, action: 'replace',
+    parentRevisionIds: [edit.operationId], dependencyOperationIds: [initial.operationId], payload: { ...change.payload, name: 'Renamed' } } as Operation;
+  const reconcile = { ...base, deviceId: randomUUID(), operationId: randomUUID(), entityType: 'balance', entityId: balance.entityId, action: 'create',
+    parentRevisionIds: [], dependencyOperationIds: [root.operationId], payload: balance.payload } as Operation;
+  const ops = [root, initial, edit, rename, reconcile];
+  assert.equal(latestBalance(p, cardId).id, balance.entityId);
+  assert.equal(mergeRevisions(ops).entities.find(e => e.entityId === cardId)?.accepted?.operationId, rename.operationId);
+  assert.equal((await historyIssues(mergeRevisions(ops), p, today)).length, 1);
+  const observed = { ...reconcile, dependencyOperationIds: [rename.operationId] };
+  assert.equal((await historyIssues(mergeRevisions([root, initial, edit, rename, observed]), p, today)).length, 0);
 });

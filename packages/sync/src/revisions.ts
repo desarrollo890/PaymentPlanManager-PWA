@@ -6,6 +6,7 @@ export interface RevisionEntity {
 }
 export interface RevisionState { readonly operations: readonly Operation[]; readonly entities: readonly RevisionEntity[]; readonly pendingOperationIds: readonly string[] }
 const financialBundles: Partial<Record<Operation['entityType'], readonly string[]>> = {
+  card: ['limitCents', 'limitChanges'],
   cashAccount: ['openingDate', 'openingCents', 'archived'],
   cashEntry: ['accountId', 'toAccountId', 'cardMovementId', 'date', 'payrollPayday', 'amountCents', 'kind'],
   savingsGoal: ['accountId', 'targetCents', 'targetDate', 'archived'],
@@ -21,7 +22,7 @@ const financialBundles: Partial<Record<Operation['entityType'], readonly string[
   categoryBudget: ['categoryId', 'payday', 'limitCents'],
   movement: ['cardId', 'date', 'amountCents', 'kind', 'scheduled', 'reconciled', 'statementId', 'allocations'],
   installment: ['cardId', 'principalCents', 'months', 'interestCents', 'startDate', 'firstCutDate', 'cutDay', 'purchaseId', 'interestIncludedInDebt', 'interestIncorporatedThrough', 'amortization'],
-  balance: ['cardId', 'date', 'availableCents', 'debtCents', 'includedMovementIds', 'interestIncluded'],
+  balance: ['cardId', 'date', 'availableCents', 'debtCents', 'includedMovementIds', 'includedLimitChangeIds', 'interestIncluded'],
   statement: ['cardId', 'cutDate', 'dueDate', 'targetCents', 'minimumCents', 'initialPaidCents', 'reservedCents', 'includedPaymentIds', 'estimated', 'balanceReferenceDate'],
   loan: ['principalCents', 'balanceDate', 'dueDate', 'includeReceivedMoney', 'archived'],
   loanPayment: ['loanId', 'date', 'amountCents', 'scheduled'],
@@ -35,7 +36,7 @@ function fieldMerge(base: Operation, heads: readonly Operation[]): Operation | n
   const bundle = financialBundles[base.entityType] ?? [];
   const financialWriters = changed.filter(fields => fields.some(field => bundle.includes(field)));
   if (financialWriters.length > 1) return null;
-  for (const key of Object.keys(original)) {
+  for (const key of new Set([ ...Object.keys(original), ...heads.flatMap(head => Object.keys(head.payload!)) ])) {
     const values = heads.filter((_, index) => changed[index]!.includes(key)).map(h => (h.payload as unknown as Record<string, unknown>)[key]);
     if (new Set(values.map(canonical)).size > 1) return null;
     if (values.length) result[key] = values[0];

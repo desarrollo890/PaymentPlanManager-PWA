@@ -1,6 +1,6 @@
 import { canonical } from '@paymentplan/contracts';
 import { addDays, civilDate } from './dates.ts';
-import { activePlans } from './finance.ts';
+import { activePlans, unappliedLimitChanges } from './finance.ts';
 import { installmentQuotas } from './installments.ts';
 import { sumCents } from './money.ts';
 import { live, orderOf } from './portfolio.ts';
@@ -37,13 +37,19 @@ export function periodReport(p: Portfolio, cardId: string, from: string, to: str
     .filter(q => (q.cutDate > base.value.date || (!base.value.interestIncluded && q.cutDate === base.value.date)) && q.cutDate <= to);
   const changeBefore = sumCents(movements.filter(m => m.value.date < from).map(m => m.value.kind === 'payment' ? -m.value.amountCents : m.value.amountCents));
   const openingDebtCents = sumCents([base.value.debtCents, changeBefore, ...quotas.filter(q => q.cutDate < from).map(q => q.interestCents)]);
-  const openingAvailableCents = sumCents([base.value.availableCents, base.value.debtCents, -openingDebtCents]);
+  const limitChanges = unappliedLimitChanges(p, cardId, base.value, to);
+  const openingAvailableCents = sumCents([base.value.availableCents, base.value.debtCents, -openingDebtCents,
+    ...limitChanges.filter(change => change.date < from).map(change => change.deltaCents)]);
   const rows = movements.filter(m => m.value.date >= from);
   const amounts = (kind: string) => sumCents(rows.filter(m => m.value.kind === kind).map(m => m.value.amountCents));
   const paymentsCents = amounts('payment'), expensesCents = amounts('expense'), feesCents = amounts('fee');
   const interestCents = sumCents([amounts('interest'), ...quotas.filter(q => q.cutDate >= from).map(q => q.interestCents)]);
   const difference = sumCents([expensesCents, feesCents, interestCents, -paymentsCents]);
+  const inPeriod = limitChanges.filter(change => change.date >= from);
+  const limitChangeCents = sumCents(inPeriod.map(change => change.deltaCents));
   const values = { cardId, from, to, openingDebtCents, openingAvailableCents, paymentsCents, expensesCents, feesCents, interestCents,
-    closingDebtCents: sumCents([openingDebtCents, difference]), closingAvailableCents: sumCents([openingAvailableCents, -difference]) };
-  return { ...values, fingerprintInput: canonical({ base, values, movements: movements.toSorted((a, b) => a.id.localeCompare(b.id)), quotas }) };
+    ...(inPeriod.length ? { limitChangeCents } : {}),
+    closingDebtCents: sumCents([openingDebtCents, difference]), closingAvailableCents: sumCents([openingAvailableCents, -difference, limitChangeCents]) };
+  return { ...values, fingerprintInput: canonical({ base, values, movements: movements.toSorted((a, b) => a.id.localeCompare(b.id)), quotas,
+    ...(limitChanges.length ? { limitChanges } : {}) }) };
 }

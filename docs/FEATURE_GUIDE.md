@@ -63,3 +63,5 @@ Cuando aparezca «Actualizar aplicación», púlsalo para activar la versión de
 La interfaz usa azul intenso, azul marino y superficies blancas. Los colores personalizados de tus registros se conservan. [Paleta y criterios de uso](COLOR_PALETTE.md).
 
 En Tarjetas, cada tarjeta resume límite, deuda actual, disponible y deuda a meses. Pulsa el último renglón para abrir los planes. Allí se agrupan en «En curso», «Liquidados» y «Cancelados»; cada grupo se despliega por separado. El menú de tres puntos reúne las acciones por tipo.
+
+Al editar el límite, el disponible cambia automáticamente por la misma diferencia a partir de ese día; la deuda y los movimientos no cambian. Si el banco reporta otro disponible, usa «Conciliar con el banco». El historial y los cierres muestran el cambio de límite por separado. Los cambios de límite realizados antes de esta función no se ajustan retroactivamente: concilia una vez con el banco. Actualiza todos los dispositivos antes de sincronizar una cartera con estos cambios.

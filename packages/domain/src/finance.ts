@@ -70,6 +70,11 @@ export function latestBalance(p: Portfolio, cardId: string): FinancialRecord<Bal
   if (!balances[0]) throw Error('La tarjeta necesita un saldo inicial.');
   return balances[0];
 }
+export function unappliedLimitChanges(p: Portfolio, cardId: string, base: Balance, at: string): NonNullable<Card['limitChanges']> {
+  const card = live(p.cards).find(c => c.id === cardId);
+  if (!card) throw Error('Tarjeta no encontrada.');
+  return (card.value.limitChanges ?? []).filter(change => change.date <= at && !(base.includedLimitChangeIds ?? []).includes(change.id));
+}
 export function planAccruedInterest(plan: Installment, at: string): number {
   return plan.interestIncludedInDebt ? 0 : total(installmentQuotas(plan).filter(q => q.cutDate <= at &&
     (plan.interestIncorporatedThrough === null || q.cutDate > plan.interestIncorporatedThrough)), q => q.interestCents);
@@ -80,7 +85,8 @@ export function cardBalance(p: Portfolio, cardId: string, at: string): { debtCen
   const change = total(movementsFor(p, cardId).filter(m => !m.value.scheduled && m.value.date <= at &&
     !m.value.reconciled && !base.includedMovementIds.includes(m.id)), m => m.value.kind === 'payment' ? -m.value.amountCents : m.value.amountCents);
   const interest = total(activePlans(p, cardId), r => planAccruedInterest(r.value, at));
-  return { debtCents: sumCents([base.debtCents, change, interest]), availableCents: sumCents([base.availableCents, -change, -interest]) };
+  const limitChange = total(unappliedLimitChanges(p, cardId, base, at), change => change.deltaCents);
+  return { debtCents: sumCents([base.debtCents, change, interest]), availableCents: sumCents([base.availableCents, -change, -interest, limitChange]) };
 }
 export function balanceAlerts(limitCents: number, availableCents: number, debtCents: number): BalanceAlert[] {
   cents(limitCents); cents(availableCents, true); cents(debtCents, true);

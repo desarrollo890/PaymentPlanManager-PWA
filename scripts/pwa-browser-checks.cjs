@@ -32,6 +32,13 @@ async function save(page) { await page.getByRole('dialog').getByRole('button', {
       await fill(page,'name','Tarjeta sintética'); await fill(page,'bank','Banco de pruebas'); await fill(page,'limit','20000'); await fill(page,'available','10000'); await fill(page,'debt','10000'); await save(page);
       await go(page,'Tarjetas'); await page.locator('.credit-card').waitFor();
       assert.equal(await page.locator('.credit-limit span').textContent(),'Límite de crédito'); assert.match(await page.locator('.credit-limit strong').textContent(),/20,000/);
+      await page.locator('.card-menu summary').click(); await page.getByRole('button',{name:'Editar tarjeta',exact:true}).click();
+      await fill(page,'limit','21000'); await save(page);
+      assert.match(await page.locator('.credit-balance-item').nth(1).textContent(),/11,000/);
+      assert.match(await page.locator('.credit-balance-debt').textContent(),/10,000/);
+      await page.locator('.card-menu summary').click(); await page.getByRole('button',{name:'Editar tarjeta',exact:true}).click();
+      await fill(page,'limit','20000'); await save(page);
+      assert.match(await page.locator('.credit-balance-item').nth(1).textContent(),/10,000/);
       await page.locator('.credit-months').first().click();
       await page.getByRole('button',{name:'Dividir deuda',exact:true}).click();
       assert.equal(await page.locator('input[name="capital"]').inputValue(),'10000.00'); await fill(page,'capital','6000'); await fill(page,'description','Plan MSI sintético'); await fill(page,'months','14'); await save(page);

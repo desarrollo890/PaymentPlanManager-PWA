@@ -22,6 +22,11 @@ export type Card = {
   readonly "name": string;
   readonly "bank": string;
   readonly "limitCents": number;
+  readonly "limitChanges"?: ReadonlyArray<{
+  readonly "id": Uuid;
+  readonly "date": Date;
+  readonly "deltaCents": SignedMoney;
+}>;
   readonly "cutDay": number;
   readonly "dueDay": number;
   readonly "dueMonthOffset": (number) | (null);
@@ -37,6 +42,7 @@ export type Balance = {
   readonly "availableCents": number;
   readonly "debtCents": number;
   readonly "includedMovementIds": ReadonlyArray<string>;
+  readonly "includedLimitChangeIds"?: ReadonlyArray<Uuid>;
   readonly "interestIncluded": boolean;
   readonly "recordedAt": (string) | (null);
   readonly "legacyOrdinal": (number) | (null);
@@ -182,6 +188,7 @@ export type Closure = {
   readonly "expensesCents": number;
   readonly "feesCents": number;
   readonly "interestCents": number;
+  readonly "limitChangeCents"?: SignedMoney;
   readonly "closingDebtCents": number;
   readonly "closingAvailableCents": number;
   readonly "bankDebtCents": (number) | (null);

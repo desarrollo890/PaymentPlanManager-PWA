@@ -5,6 +5,8 @@ import { FinancialCommands } from '@paymentplan/application';
 import { applyChanges, assertPortfolio, emptyPortfolio, financeView, fixedLoanExtraSavings, periodReport } from '@paymentplan/domain';
 import type { Change, Portfolio } from '@paymentplan/domain';
 import { assertPayload } from '@paymentplan/contracts';
+import { historyIssues } from '../../packages/application/src/coherence.ts';
+import { mergeRevisions } from '@paymentplan/sync';
 
 function harness() {
   let state: Portfolio = emptyPortfolio(), sequence = 0;
@@ -74,6 +76,41 @@ test('bank reconciliation avoids double counting and retains the original period
   assert.throws(() => h.cmd.changeMovement(h.p.movements[0]!.id, 'void'), /conciliado/);
   const report = periodReport(h.p, cardId, h.context.today, h.context.today, h.context.today);
   assert.equal(report.openingDebtCents, 1000000); assert.equal(report.closingDebtCents, 900000); assert.equal(report.paymentsCents, 100000);
+});
+test('changing a card limit adjusts availability without changing debt or locking movements', () => {
+  const h = harness(), id = h.addCard();
+  h.commit(h.cmd.recordMovement({ cardId: id, date: h.context.today, amountCents: 50000, kind: 'expense', description: 'Compra', statementId: null, allocations: [] }));
+  h.context.today = '2026-10-04';
+  h.commit(h.cmd.saveCard({ ...h.p.cards[0]!.value, limitCents: 2500000 }, undefined, id));
+  assert.equal(financeView(h.p, h.context.today).cards[0]!.availableCents, 1450000);
+  assert.equal(financeView(h.p, h.context.today).cards[0]!.debtCents, 1050000);
+  assert.equal(financeView(h.p, '2026-10-03').cards[0]!.availableCents, 950000);
+  h.commit(h.cmd.saveCard({ ...h.p.cards[0]!.value, name: 'Renombrada' }, undefined, id));
+  h.commit(h.cmd.saveCard({ ...h.p.cards[0]!.value, limitCents: 2200000 }, undefined, id));
+  assert.equal(financeView(h.p, h.context.today).cards[0]!.availableCents, 1150000);
+  h.commit(h.cmd.changeMovement(h.p.movements[0]!.id, 'void'));
+  assert.equal(financeView(h.p, h.context.today).cards[0]!.availableCents, 1200000);
+});
+test('limit changes are included once in reconciliation and historical period closures', async () => {
+  const h = harness(), id = h.addCard();
+  h.commit(await h.cmd.closePeriod(id, '2026-10-03', '2026-10-03', null, null));
+  h.context.today = '2026-10-04';
+  h.commit(h.cmd.saveCard({ ...h.p.cards[0]!.value, limitCents: 2500000 }, undefined, id));
+  const report = periodReport(h.p, id, '2026-10-04', '2026-10-04', h.context.today);
+  assert.equal(report.openingAvailableCents, 1000000);
+  assert.equal(report.limitChangeCents, 500000);
+  assert.equal(report.closingAvailableCents, 1500000);
+  h.commit(await h.cmd.closePeriod(id, '2026-10-04', '2026-10-04', null, null));
+  assert.equal((await historyIssues(mergeRevisions([]), h.p, h.context.today)).length, 0);
+  assert.throws(() => h.cmd.saveCard({ ...h.p.cards[0]!.value, limitCents: 2600000 }, undefined, id), /Reabre/);
+  h.context.today = '2026-10-05';
+  h.commit(h.cmd.reconcile(id, { date: h.context.today, debtCents: 1000000, availableCents: 1490000 }));
+  assert.equal(financeView(h.p, h.context.today).cards[0]!.availableCents, 1490000);
+  h.commit(h.cmd.saveCard({ ...h.p.cards[0]!.value, limitCents: 2600000 }, undefined, id));
+  assert.equal(financeView(h.p, h.context.today).cards[0]!.availableCents, 1590000);
+  h.commit(h.cmd.reconcile(id, { date: h.context.today, debtCents: 1000000, availableCents: 1580000 }));
+  assert.equal(financeView(h.p, h.context.today).cards[0]!.availableCents, 1580000);
+  assert.equal((await historyIssues(mergeRevisions([]), h.p, h.context.today)).length, 0);
 });
 test('confirmed bank targets persist as movements recalculate the portfolio', () => {
   const h = harness(), cardId = h.addCard(); h.context.today = '2026-10-11';
